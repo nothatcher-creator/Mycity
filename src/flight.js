@@ -125,6 +125,10 @@ export function createFlightInput({
   upButton,
   downButton,
   boostButton,
+  forwardButton,
+  backButton,
+  leftButton,
+  rightButton,
   onInteract,
 }) {
   const document = canvas?.ownerDocument || globalThis.document;
@@ -133,7 +137,11 @@ export function createFlightInput({
   const keys = new Set();
   const rising = new Set(),
     falling = new Set(),
-    boosting = new Set();
+    boosting = new Set(),
+    forwardTouches = new Set(),
+    backTouches = new Set(),
+    leftTouches = new Set(),
+    rightTouches = new Set();
   const pointerOwners = new Map();
   let enabled = true,
     disposed = false;
@@ -175,6 +183,10 @@ export function createFlightInput({
     rising.clear();
     falling.clear();
     boosting.clear();
+    forwardTouches.clear();
+    backTouches.clear();
+    leftTouches.clear();
+    rightTouches.clear();
     resetStick();
     for (const pointerId of [...pointerOwners.keys()]) release(pointerId);
   }
@@ -239,7 +251,9 @@ export function createFlightInput({
     if (
       !enabled ||
       disposed ||
-      (event.button !== undefined && event.button !== 0)
+      (event.pointerType !== "touch" &&
+        event.button !== undefined &&
+        event.button !== 0)
     )
       return;
     stop(event);
@@ -265,7 +279,9 @@ export function createFlightInput({
       if (
         !enabled ||
         disposed ||
-        (event.button !== undefined && event.button !== 0)
+        (event.pointerType !== "touch" &&
+          event.button !== undefined &&
+          event.button !== 0)
       )
         return;
       stop(event);
@@ -286,6 +302,10 @@ export function createFlightInput({
   touchButton(upButton, rising);
   touchButton(downButton, falling);
   touchButton(boostButton, boosting);
+  touchButton(forwardButton, forwardTouches);
+  touchButton(backButton, backTouches);
+  touchButton(leftButton, leftTouches);
+  touchButton(rightButton, rightTouches);
 
   function held(action) {
     return [...keys].some((value) => CODE_ACTIONS.get(value) === action)
@@ -297,8 +317,20 @@ export function createFlightInput({
       if (!enabled || disposed)
         return { forward: 0, strafe: 0, rise: 0, boost: false };
       return {
-        forward: axis(held("forward") - held("back") + stickForward),
-        strafe: axis(held("right") - held("left") + stickStrafe),
+        forward: axis(
+          held("forward") -
+            held("back") +
+            stickForward +
+            (forwardTouches.size ? 1 : 0) -
+            (backTouches.size ? 1 : 0),
+        ),
+        strafe: axis(
+          held("right") -
+            held("left") +
+            stickStrafe +
+            (rightTouches.size ? 1 : 0) -
+            (leftTouches.size ? 1 : 0),
+        ),
         rise: axis(
           held("up") -
             held("down") +

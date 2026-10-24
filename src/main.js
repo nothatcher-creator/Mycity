@@ -6,6 +6,13 @@ import { createDeviceJournal } from "./journal.js";
 import { buildContributionUrl } from "./community.js";
 
 const $ = (id) => document.getElementById(id);
+document.body.dataset.touchMode = "buttons";
+function showTouchControls(show = true) {
+  document.body.classList.toggle("touch-enabled", show);
+  $("touch-show").hidden = show;
+  flightInput?.setEnabled(false);
+  syncInput();
+}
 const journal = createDeviceJournal();
 let projects = [],
   city,
@@ -485,6 +492,15 @@ $("start-flying").addEventListener("click", () => {
   dismissWelcome();
   $("world-canvas").focus();
 });
+$("touch-show").addEventListener("click", () => showTouchControls());
+$("touch-hide").addEventListener("click", () => showTouchControls(false));
+$("touch-mode-toggle").addEventListener("click", () => {
+  const buttons = document.body.dataset.touchMode !== "buttons";
+  document.body.dataset.touchMode = buttons ? "buttons" : "stick";
+  $("touch-mode-toggle").textContent = buttons ? "Use joystick" : "Use buttons";
+  flightInput?.setEnabled(false);
+  syncInput();
+});
 $("featured-launch").addEventListener("click", () => launch(projects[0]));
 $("library-toggle").addEventListener("click", () => {
   closeDetails(false);
@@ -599,7 +615,9 @@ $("world-canvas").addEventListener("webglcontextlost", (event) => {
 });
 
 async function loadJSON(path) {
-  const response = await fetch(new URL(path, document.baseURI));
+  const response = await fetch(new URL(path, document.baseURI), {
+    cache: "no-cache",
+  });
   if (!response.ok) throw new Error(`Could not load ${path}`);
   return response.json();
 }
@@ -638,8 +656,18 @@ async function init() {
     upButton: $("flight-up"),
     downButton: $("flight-down"),
     boostButton: $("flight-boost"),
+    forwardButton: $("flight-forward"),
+    backButton: $("flight-back"),
+    leftButton: $("flight-left"),
+    rightButton: $("flight-right"),
     onInteract: interact,
   });
+  if (
+    navigator.maxTouchPoints > 0 ||
+    matchMedia("(any-pointer: coarse)").matches ||
+    innerWidth <= 800
+  )
+    showTouchControls();
   try {
     const { createWorld } = await import("./world.js");
     world = createWorld({

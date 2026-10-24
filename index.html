@@ -141,6 +141,47 @@
         ><span><kbd>Shift</kbd> boost</span><span>Drag to look</span>
       </div>
       <div class="touch-controls" id="touch-controls">
+        <div class="touch-actions">
+          <button id="touch-mode-toggle" type="button">Use joystick</button
+          ><button
+            id="touch-hide"
+            type="button"
+            aria-label="Hide on-screen controls"
+          >
+            ×
+          </button>
+        </div>
+        <div
+          id="flight-pad"
+          class="flight-pad"
+          role="group"
+          aria-label="Directional movement buttons"
+        >
+          <button
+            id="flight-forward"
+            type="button"
+            aria-label="Hold to fly forward"
+          >
+            ↑
+          </button>
+          <button id="flight-left" type="button" aria-label="Hold to fly left">
+            ←
+          </button>
+          <button
+            id="flight-back"
+            type="button"
+            aria-label="Hold to fly backward"
+          >
+            ↓
+          </button>
+          <button
+            id="flight-right"
+            type="button"
+            aria-label="Hold to fly right"
+          >
+            →
+          </button>
+        </div>
         <div
           id="flight-joystick"
           class="flight-joystick"
@@ -159,6 +200,9 @@
           </button>
         </div>
       </div>
+      <button id="touch-show" class="touch-show" type="button">
+        On-screen controls
+      </button>
       <section
         id="library-view"
         class="library-view"

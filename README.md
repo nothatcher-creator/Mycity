@@ -17,7 +17,7 @@ The city has **96 physical lots**, initially containing **23 projects and 73 ope
 | E | Enter a nearby project or inspect an empty lot |
 | M | Open the city map |
 
-Phones have a movement stick, up/down buttons, and a boost button that can be held together. Neighborhood buttons and the minimap provide quick travel. The map includes every creation and every vacant slot, and works when WebGL is unavailable.
+Phones and tablets show directional movement buttons by default, including in landscape. Hold the arrows to fly; the right-side up/down and boost buttons can be held together. **Use joystick** switches movement modes, and **On-screen controls** restores hidden controls on any screen. Neighborhood buttons and the minimap provide quick travel. The map includes every creation and every vacant slot, and works when WebGL is unavailable.
 
 ## Neighborhoods
 

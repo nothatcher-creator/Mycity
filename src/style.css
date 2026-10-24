@@ -1340,7 +1340,7 @@ body[data-view="library"] .touch-controls {
     bottom: 20px;
   }
 }
-@media (max-width: 800px) {
+@media (max-width: 800px), (any-pointer: coarse) {
   .topbar {
     top: 14px;
     left: 16px;
@@ -1865,5 +1865,240 @@ body[data-view="library"] .touch-controls {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Touch availability follows input capability, including landscape and tablets. */
+body:not(.touch-enabled) .touch-controls {
+  display: none !important;
+}
+body.touch-enabled[data-view="world"] .touch-controls {
+  display: block;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+}
+body.touch-enabled .flight-hint {
+  display: none;
+}
+body[data-view="library"] .touch-controls,
+body[data-view="library"] .touch-show {
+  display: none !important;
+}
+.touch-show {
+  position: fixed;
+  left: 27px;
+  bottom: 23px;
+  z-index: 8;
+  padding: 10px 13px;
+  border: 1px solid #d4fff13a;
+  border-radius: 8px;
+  background: #153747d9;
+  color: #c6e6dc;
+  font-size: 10px;
+  backdrop-filter: blur(10px);
+}
+.touch-actions {
+  position: absolute;
+  left: 20px;
+  bottom: calc(157px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+.touch-actions button {
+  min-height: 29px;
+  border: 1px solid #d2fff13a;
+  border-radius: 7px;
+  background: #163a4bdc;
+  color: #c3e1d8;
+  font-size: 9px;
+  padding: 6px 9px;
+  touch-action: manipulation;
+}
+.touch-actions button:last-child {
+  width: 28px;
+  font-size: 17px;
+  padding: 2px;
+}
+.flight-pad {
+  position: absolute;
+  left: 20px;
+  bottom: calc(23px + env(safe-area-inset-bottom, 0px));
+  width: 126px;
+  height: 126px;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.flight-pad button {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #dcfff261;
+  border-radius: 10px;
+  background: #184352e8;
+  color: #dcf5eb;
+  font-size: 25px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  box-shadow: 0 4px 14px #07233135;
+  backdrop-filter: blur(10px);
+}
+.flight-pad button:active,
+.touch-altitude button:active {
+  background: #b8ebd6;
+  color: #163d44;
+}
+#flight-forward {
+  left: 42px;
+  top: 0;
+}
+#flight-left {
+  left: 0;
+  top: 42px;
+}
+#flight-back {
+  left: 42px;
+  top: 84px;
+}
+#flight-right {
+  left: 84px;
+  top: 42px;
+}
+.touch-controls .flight-joystick {
+  position: absolute;
+  left: 23px;
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  background: #112f4477;
+  border: 1px solid #e4fff32d;
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.joystick-rim {
+  position: absolute;
+  inset: 15px;
+  border: 1px solid #bcf1da22;
+  border-radius: 50%;
+}
+.flight-stick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 39px;
+  height: 39px;
+  border-radius: 50%;
+  border: 1px solid #d7fff064;
+  background: linear-gradient(135deg, #add9ce88, #5599a188);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 5px 16px #082c3d44;
+}
+.touch-controls .touch-altitude {
+  position: absolute;
+  right: 18px;
+  bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  pointer-events: auto;
+}
+.touch-controls .touch-altitude button {
+  width: 43px;
+  height: 39px;
+  border: 1px solid #dbfff23b;
+  border-radius: 9px;
+  background: #163b4ce8;
+  color: #d1ece0;
+  font-size: 22px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  backdrop-filter: blur(10px);
+}
+.touch-controls .touch-altitude button:last-child {
+  font-size: 7px;
+  letter-spacing: 0.5px;
+}
+body[data-touch-mode="buttons"] .flight-joystick {
+  display: none;
+}
+body[data-touch-mode="stick"] .flight-pad {
+  display: none;
+}
+body.touch-enabled .nearby-card {
+  max-width: calc(100% - 170px);
+}
+.toast {
+  pointer-events: none;
+}
+.flight-pad:after {
+  content: "MOVE";
+  position: absolute;
+  left: 42px;
+  top: 58px;
+  width: 42px;
+  text-align: center;
+  font-size: 6px;
+  letter-spacing: 1px;
+  color: #bcded0;
+  pointer-events: none;
+}
+.touch-altitude:before {
+  content: "HEIGHT";
+  position: absolute;
+  top: -14px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 6px;
+  letter-spacing: 1px;
+  color: #d6eee2;
+  pointer-events: none;
+}
+@media (max-height: 500px) and (any-pointer: coarse) {
+  .welcome-card {
+    display: none !important;
+  }
+  .topbar {
+    top: 9px;
+  }
+  .location-pill {
+    top: 42px;
+  }
+  .district-dock {
+    top: 84px;
+    padding: 3px 5px;
+  }
+  .district-dock #district-travel button {
+    padding: 6px 7px;
+  }
+  .touch-controls .touch-altitude {
+    flex-direction: row;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    right: 17px;
+  }
+  .nearby-card {
+    bottom: calc(73px + env(safe-area-inset-bottom, 0px));
+    right: 17px;
+    width: 235px;
+  }
+  .minimap {
+    display: none;
+  }
+  .touch-actions {
+    bottom: calc(151px + env(safe-area-inset-bottom, 0px));
   }
 }

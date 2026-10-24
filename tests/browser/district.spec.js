@@ -189,6 +189,7 @@ test("phone joystick plus altitude and boost move the cube without losing touch 
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await page.locator("#touch-mode-toggle").click();
   const stick = await page.locator("#flight-joystick").boundingBox(),
     up = await page.locator("#flight-up").boundingBox(),
     boost = await page.locator("#flight-boost").boundingBox();

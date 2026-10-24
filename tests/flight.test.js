@@ -130,6 +130,10 @@ function inputFixture() {
   const upButton = new TestTarget(),
     downButton = new TestTarget(),
     boostButton = new TestTarget();
+  const forwardButton = new TestTarget(),
+    backButton = new TestTarget(),
+    leftButton = new TestTarget(),
+    rightButton = new TestTarget();
   let interactions = 0;
   const controls = createFlightInput({
     canvas,
@@ -138,6 +142,10 @@ function inputFixture() {
     upButton,
     downButton,
     boostButton,
+    forwardButton,
+    backButton,
+    leftButton,
+    rightButton,
     onInteract: () => interactions++,
   });
   return {
@@ -149,10 +157,50 @@ function inputFixture() {
     upButton,
     downButton,
     boostButton,
+    forwardButton,
+    backButton,
+    leftButton,
+    rightButton,
     controls,
     interactions: () => interactions,
   };
 }
+
+test("directional touch buttons move independently alongside altitude and boost", () => {
+  const f = inputFixture();
+  f.forwardButton.dispatchEvent(
+    event("pointerdown", { pointerId: 11, button: 0 }),
+  );
+  f.rightButton.dispatchEvent(
+    event("pointerdown", { pointerId: 12, button: 0 }),
+  );
+  f.upButton.dispatchEvent(event("pointerdown", { pointerId: 13, button: 0 }));
+  f.boostButton.dispatchEvent(
+    event("pointerdown", { pointerId: 14, button: 0 }),
+  );
+  assert.deepEqual(f.controls.getState(), {
+    forward: 1,
+    strafe: 1,
+    rise: 1,
+    boost: true,
+  });
+  f.forwardButton.dispatchEvent(event("pointerup", { pointerId: 11 }));
+  assert.deepEqual(f.controls.getState(), {
+    forward: 0,
+    strafe: 1,
+    rise: 1,
+    boost: true,
+  });
+  f.controls.setEnabled(false);
+  assert.deepEqual(f.controls.getState(), {
+    forward: 0,
+    strafe: 0,
+    rise: 0,
+    boost: false,
+  });
+  assert.equal(f.rightButton.captures.size, 0);
+  f.controls.dispose();
+});
 
 test("joystick, altitude and boost can be held by separate touch inputs", () => {
   const f = inputFixture();

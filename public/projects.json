@@ -1,0 +1,102 @@
+[
+  {
+    "id": "astraforge",
+    "plot": 1,
+    "title": "Astraforge",
+    "subtitle": "LyricForge video studio",
+    "description": "Turn your music into lyric videos. Transcribe locally, shape the timing, build a look, and export from your browser.",
+    "category": "tools",
+    "url": "https://nothatcher-creator.github.io/Astraforge/",
+    "source": "https://github.com/nothatcher-creator/Astraforge",
+    "embed": true,
+    "theme": "forge",
+    "tags": ["Featured", "Video", "AI", "Creative studio"]
+  },
+  {
+    "id": "bench-lab",
+    "plot": 2,
+    "title": "Bench Lab",
+    "subtitle": "Put a model to the test",
+    "description": "A transparent AI testing space. Copy a task, paste a model response, check the result, and compare your saved runs. No API key needed.",
+    "category": "benchmarks",
+    "url": "./benchmarks/",
+    "embed": true,
+    "theme": "benchmark",
+    "tags": ["AI", "Evaluation", "Local history", "JSON export"]
+  },
+  {
+    "id": "relicfall",
+    "plot": 3,
+    "title": "RELICFALL",
+    "subtitle": "Beneath the Beacon",
+    "description": "A lighthouse dungeon roguelike with custom weapons and a rare golden-wall secret. Visit its original Project 0 lot.",
+    "category": "games",
+    "url": "https://project0.city/#3672",
+    "embed": false,
+    "theme": "lighthouse",
+    "tags": ["Project 0", "Roguelike", "Lighthouse"]
+  },
+  {
+    "id": "crownfall",
+    "plot": 4,
+    "title": "Crownfall",
+    "subtitle": "The Ashen March",
+    "description": "A medieval world of campaigns, mounted combat, field battles, and castle sieges. Visit its original Project 0 lot.",
+    "category": "games",
+    "url": "https://project0.city/#1043",
+    "embed": false,
+    "theme": "castle",
+    "tags": ["Project 0", "Medieval", "Battle"]
+  },
+  {
+    "id": "blackbox",
+    "plot": 5,
+    "title": "BLACKBOX",
+    "subtitle": "Recovery Protocol",
+    "description": "A first-person salvage escape with drones, oxygen, and reactor puzzles. Visit its original Project 0 lot.",
+    "category": "games",
+    "url": "https://project0.city/#1003",
+    "embed": false,
+    "theme": "blackbox",
+    "tags": ["Project 0", "Sci-fi", "Escape"]
+  },
+  {
+    "id": "balatro-modpack",
+    "plot": 6,
+    "title": "Balatro Modpack",
+    "subtitle": "Android compatibility workshop",
+    "description": "Android modpack releases, compatibility fixes, and the latest crash hotfix. Browse the release notes and available downloads.",
+    "category": "mods",
+    "url": "https://github.com/nothatcher-creator/balatro-android-modpack/releases/tag/5678",
+    "source": "https://github.com/nothatcher-creator/balatro-android-modpack",
+    "embed": false,
+    "theme": "cards",
+    "tags": ["Android", "Mods", "Downloads"]
+  },
+  {
+    "id": "project-workshop",
+    "plot": 7,
+    "title": "Project Workshop",
+    "subtitle": "A home for the next idea",
+    "description": "An offline-first workspace for project briefs, notes, assets, planning boards, and exports. Bring your next build together.",
+    "category": "tools",
+    "url": "https://nothatcher-creator.github.io/Project-workshop/",
+    "source": "https://github.com/nothatcher-creator/Project-workshop",
+    "embed": true,
+    "theme": "workshop",
+    "tags": ["Planning", "Notes", "Local-first"]
+  },
+  {
+    "id": "weblab",
+    "plot": 8,
+    "title": "WebLab",
+    "subtitle": "Code, preview, repeat",
+    "description": "A browser playground for HTML, CSS, and JavaScript with sandboxed previews, a console, and Three.js starters.",
+    "category": "tools",
+    "url": "https://nothatcher-creator.github.io/Rotspire/",
+    "source": "https://github.com/nothatcher-creator/Rotspire",
+    "embed": true,
+    "theme": "terminal",
+    "tags": ["Codex", "Web", "Three.js", "Playground"]
+  }
+]

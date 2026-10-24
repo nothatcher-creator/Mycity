@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d1420" />
+    <meta
+      name="description"
+      content="Explore Nothatcher District: a 3D world of games, AI experiments, and creative tools. Enter Astraforge, visit a project, or test a model in Bench Lab."
+    />
+    <meta
+      property="og:title"
+      content="Nothatcher District — a world of projects"
+    />
+    <meta
+      property="og:description"
+      content="Games, tools, and experiments. Every project has a place."
+    />
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <title>Nothatcher District — a world of projects</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#project-search">Skip to project search</a>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Nothatcher District home"
+        ><span class="brand-mark" aria-hidden="true"
+          ><i></i><i></i><i></i><i></i></span
+        ><span
+          >nothatcher<span class="brand-sub">THE PROJECT DISTRICT</span></span
+        ></a
+      >
+      <nav class="primary-nav" aria-label="Main navigation">
+        <a class="nav-current" href="./" aria-current="page"
+          >Explore<span></span
+        ></a>
+        <a href="./benchmarks/"
+          >Bench Lab
+          <span class="tiny-arrow" aria-hidden="true"
+            ><svg
+              class="arrow-svg"
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <path
+                d="M4 12 12 4M4 4h8v8"
+                stroke="currentColor"
+                stroke-width="1.4"
+              /></svg></span
+        ></a>
+        <a
+          href="https://github.com/nothatcher-creator"
+          target="_blank"
+          rel="noopener noreferrer"
+          >GitHub
+          <span class="tiny-arrow" aria-hidden="true"
+            ><svg
+              class="arrow-svg"
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <path
+                d="M4 12 12 4M4 4h8v8"
+                stroke="currentColor"
+                stroke-width="1.4"
+              /></svg></span
+        ></a>
+      </nav>
+      <button
+        class="library-toggle"
+        id="library-toggle"
+        type="button"
+        aria-pressed="false"
+      >
+        <span class="grid-icon" aria-hidden="true">▦</span>
+        <span id="view-label">Library view</span>
+      </button>
+    </header>
+
+    <main id="main-content">
+      <section
+        class="world-panel"
+        id="world-panel"
+        aria-label="Interactive 3D project district"
+      >
+        <canvas
+          id="world-canvas"
+          aria-label="3D project plots. Drag to orbit and pinch or scroll to zoom. Each plot also has an accessible button."
+          tabindex="0"
+        ></canvas>
+        <div
+          id="plot-labels"
+          class="plot-labels"
+          aria-label="Select a project plot"
+        ></div>
+        <div class="world-loading" id="world-loading" role="status">
+          <span class="loading-orbit" aria-hidden="true"></span>Building your
+          district
+        </div>
+        <div class="world-signature" aria-hidden="true">
+          <span class="status-dot"></span> A SPACE FOR WHAT'S NEXT
+        </div>
+        <div class="world-tools">
+          <button
+            id="reset-camera"
+            class="icon-button"
+            type="button"
+            aria-label="Reset camera to district overview"
+            title="Reset view"
+          >
+            ⌂
+          </button>
+          <details class="world-help">
+            <summary
+              class="icon-button"
+              aria-label="World controls"
+              title="Controls"
+            >
+              ?
+            </summary>
+            <p>
+              Drag to orbit. Scroll or pinch to zoom. Select a plot to explore
+              it. Use Library view for a keyboard-friendly collection.
+            </p>
+          </details>
+        </div>
+        <p class="world-hint">
+          <span aria-hidden="true">◈</span> Drag to explore <i>·</i> Select a
+          plot to enter
+        </p>
+      </section>
+
+      <section class="intro" id="intro" aria-labelledby="intro-title">
+        <div class="eyebrow">
+          <span class="status-dot"></span> WELCOME TO MY CORNER OF THE INTERNET
+        </div>
+        <h1 id="intro-title">Small ideas.<br /><span>Whole worlds.</span></h1>
+        <p class="intro-description">
+          Games, tools, and experiments.<br />Built with curiosity. Connected
+          here.
+        </p>
+        <div class="district-stats" aria-label="District statistics">
+          <div>
+            <strong id="total-count">08</strong><span>PROJECT PLOTS</span>
+          </div>
+          <div><strong>04</strong><span>CREATIVE DISTRICTS</span></div>
+        </div>
+        <article class="featured-card">
+          <div class="featured-heading">
+            <span class="eyebrow">THE FIRST INTEGRATION</span
+            ><span class="plot-number">001</span>
+          </div>
+          <div class="featured-orb" aria-hidden="true">
+            <span></span><i></i><b>✦</b>
+          </div>
+          <h2>Astraforge</h2>
+          <p>
+            Music becomes a world of its own.<br />Your LyricForge video studio,
+            right here.
+          </p>
+          <button id="featured-launch" class="primary-button" type="button">
+            Enter Astraforge
+            <span aria-hidden="true"
+              ><svg
+                class="arrow-svg"
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                fill="none"
+              >
+                <path
+                  d="M4 12 12 4M4 4h8v8"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                /></svg
+            ></span>
+          </button>
+          <span class="featured-note"
+            ><span class="status-dot"></span> LIVE EDITOR
+            <span>·</span> CREATIVE TOOLS</span
+          >
+        </article>
+        <p class="maker-note">
+          <span aria-hidden="true">✦</span> Made with Codex. Room to keep
+          growing.
+        </p>
+      </section>
+
+      <section
+        id="library-view"
+        class="library-view"
+        hidden
+        aria-labelledby="library-title"
+      >
+        <div class="library-heading">
+          <div>
+            <p class="eyebrow">THE COLLECTION</p>
+            <h1 id="library-title">
+              Every project.<br /><span>One place.</span>
+            </h1>
+          </div>
+          <a
+            class="subtle-link"
+            href="https://github.com/nothatcher-creator/Mycity/edit/main/public/projects.json"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Add a project
+            <span aria-hidden="true"
+              ><svg
+                class="arrow-svg"
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                fill="none"
+              >
+                <path
+                  d="M4 12 12 4M4 4h8v8"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                /></svg></span
+          ></a>
+        </div>
+        <p class="fallback-notice" id="fallback-notice" hidden>
+          The 3D view isn't available on this device. All projects are ready to
+          explore here.
+        </p>
+        <div id="project-grid" class="project-grid"></div>
+      </section>
+
+      <aside
+        class="project-details"
+        id="project-details"
+        hidden
+        role="dialog"
+        aria-labelledby="detail-title"
+        aria-modal="false"
+      >
+        <div class="detail-top">
+          <span id="detail-plot" class="eyebrow"></span
+          ><button
+            id="detail-close"
+            type="button"
+            class="icon-button"
+            aria-label="Close project details"
+          >
+            ×
+          </button>
+        </div>
+        <div id="detail-art" class="detail-art" aria-hidden="true">
+          <span></span><i></i><b></b>
+        </div>
+        <p id="detail-category" class="eyebrow"></p>
+        <h2 id="detail-title"></h2>
+        <p id="detail-subtitle" class="detail-subtitle"></p>
+        <p id="detail-description" class="detail-description"></p>
+        <div id="detail-tags" class="detail-tags"></div>
+        <button id="detail-launch" type="button" class="primary-button">
+          Open project
+          <span aria-hidden="true"
+            ><svg
+              class="arrow-svg"
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <path
+                d="M4 12 12 4M4 4h8v8"
+                stroke="currentColor"
+                stroke-width="1.4"
+              /></svg
+          ></span>
+        </button>
+        <a
+          id="detail-source"
+          class="detail-source"
+          target="_blank"
+          rel="noopener noreferrer"
+          >View source on GitHub
+          <span aria-hidden="true"
+            ><svg
+              class="arrow-svg"
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <path
+                d="M4 12 12 4M4 4h8v8"
+                stroke="currentColor"
+                stroke-width="1.4"
+              /></svg></span
+        ></a>
+        <p id="detail-destination" class="detail-destination"></p>
+      </aside>
+      <p id="empty-state" class="empty-state" hidden>
+        No plots match your search. Try another name or district.
+      </p>
+    </main>
+
+    <footer class="bottom-bar">
+      <div
+        class="district-filters"
+        role="group"
+        aria-label="Filter projects by district"
+      >
+        <button
+          class="filter-button active"
+          data-category="all"
+          type="button"
+          aria-pressed="true"
+        >
+          All plots <span id="all-count">8</span></button
+        ><button
+          class="filter-button"
+          data-category="games"
+          type="button"
+          aria-pressed="false"
+        >
+          <i class="category-dot games"></i>Games</button
+        ><button
+          class="filter-button"
+          data-category="benchmarks"
+          type="button"
+          aria-pressed="false"
+        >
+          <i class="category-dot benchmarks"></i>AI Benchmarks</button
+        ><button
+          class="filter-button"
+          data-category="tools"
+          type="button"
+          aria-pressed="false"
+        >
+          <i class="category-dot tools"></i>Tools</button
+        ><button
+          class="filter-button"
+          data-category="mods"
+          type="button"
+          aria-pressed="false"
+        >
+          <i class="category-dot mods"></i>Mods
+        </button>
+      </div>
+      <label class="search-box"
+        ><span aria-hidden="true">⌕</span
+        ><input
+          id="project-search"
+          type="search"
+          placeholder="Find a project…"
+          aria-label="Search projects"
+          autocomplete="off"
+        /><kbd aria-hidden="true">/</kbd></label
+      >
+      <span id="result-count" class="result-count" aria-live="polite"
+        >8 plots to explore</span
+      >
+    </footer>
+
+    <dialog
+      id="project-player"
+      class="project-player"
+      aria-labelledby="player-title"
+    >
+      <header class="player-header">
+        <div>
+          <span class="player-breadcrumb"
+            >NOTHATCHER DISTRICT <span>/</span></span
+          ><strong id="player-title">Project</strong>
+        </div>
+        <div class="player-actions">
+          <a id="player-external" target="_blank" rel="noopener noreferrer"
+            >Open in new tab
+            <svg
+              class="arrow-svg"
+              aria-hidden="true"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <path
+                d="M4 12 12 4M4 4h8v8"
+                stroke="currentColor"
+                stroke-width="1.4"
+              /></svg></a
+          ><button
+            id="player-close"
+            type="button"
+            class="icon-button"
+            aria-label="Close app and return to district"
+          >
+            ×
+          </button>
+        </div>
+      </header>
+      <div class="player-body">
+        <p id="player-loading" class="player-loading" role="status">
+          Opening the project…<span
+            >If the app doesn't appear, use “Open in new tab”.</span
+          >
+        </p>
+        <iframe
+          id="project-frame"
+          title="Project app"
+          allow="autoplay; fullscreen"
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

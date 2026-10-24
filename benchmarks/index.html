@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10131f" />
+    <meta
+      name="description"
+      content="Small, transparent AI response tests. Run prompts in any model, inspect each check, and keep your results locally."
+    />
+    <title>Bench Lab — Nothatcher District</title>
+  </head>
+  <body class="bench-page">
+    <a class="skip-link" href="#benchmark-form">Skip to the benchmark</a>
+    <header class="bench-header">
+      <a
+        class="district-brand"
+        href="../"
+        aria-label="Back to Nothatcher District"
+        ><span class="brand-symbol" aria-hidden="true">N<span>→</span></span
+        ><span
+          >NOTHATCHER<span class="brand-subtitle"
+            >DISTRICT / BENCH LAB</span
+          ></span
+        ></a
+      >
+      <a class="back-link" href="../">← Back to the world</a>
+    </header>
+    <main class="bench-main">
+      <section class="bench-intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">
+            <span class="status-dot" aria-hidden="true"></span> PLOT 002 / THE
+            EVALUATION ROOM
+          </p>
+          <h1 id="page-title">
+            Measure the response.<br /><span>Keep the evidence.</span>
+          </h1>
+          <p class="intro-copy">
+            Small tests. Visible rules. Bring a response from any AI model and
+            see exactly where it passes.
+          </p>
+        </div>
+        <div class="local-note">
+          <span class="local-icon" aria-hidden="true">⌘</span>
+          <div>
+            <strong>Your lab, your browser.</strong>
+            <p>
+              No model calls or API keys. Your responses stay on this device.
+            </p>
+          </div>
+        </div>
+      </section>
+      <div class="bench-layout">
+        <aside class="task-sidebar" aria-label="Test instructions">
+          <p class="eyebrow">THE TEST SUITE</p>
+          <h2>Pick your challenge.</h2>
+          <label class="field-label" for="task-select">Benchmark</label>
+          <select id="task-select"></select>
+          <p id="task-description" class="task-description"></p>
+          <ol class="steps-list">
+            <li>
+              <span>01</span>
+              <div>
+                <strong>Copy the prompt</strong>
+                <p>Use the same prompt each time.</p>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <strong>Ask your model</strong>
+                <p>Run it in the AI app you want to test.</p>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <strong>Bring back the answer</strong>
+                <p>Paste the raw response below.</p>
+              </div>
+            </li>
+          </ol>
+          <div class="scope-note">
+            <span aria-hidden="true">i</span>
+            <p>
+              These are focused contract checks, not a general intelligence
+              ranking. A score describes only this test.
+            </p>
+          </div>
+        </aside>
+        <section class="evaluation-panel" aria-labelledby="challenge-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow" id="task-category"></p>
+              <h2 id="challenge-title"></h2>
+            </div>
+            <span class="test-count">5 visible checks</span>
+          </div>
+          <div class="prompt-box">
+            <div class="prompt-heading">
+              <span>THE PROMPT</span
+              ><button type="button" id="copy-prompt" class="text-button">
+                Copy prompt <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <pre id="task-prompt" tabindex="0"></pre>
+          </div>
+          <form id="benchmark-form">
+            <div class="model-row">
+              <label for="model-name"
+                >Model / version <span>optional</span></label
+              ><input
+                id="model-name"
+                name="model"
+                type="text"
+                maxlength="80"
+                autocomplete="off"
+                placeholder="e.g. model name · default settings"
+              />
+            </div>
+            <label class="response-label" for="model-response"
+              >Model response</label
+            >
+            <textarea
+              id="model-response"
+              name="response"
+              rows="7"
+              maxlength="40000"
+              required
+              spellcheck="false"
+              placeholder="Paste the model’s complete answer here…"
+            ></textarea>
+            <div class="submit-row">
+              <p>Evaluated locally. Never sent to a server.</p>
+              <button
+                type="submit"
+                id="evaluate-response"
+                class="primary-button"
+              >
+                Evaluate response <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </form>
+          <p id="app-notice" class="notice" role="status" hidden></p>
+          <section
+            id="evaluation-result"
+            class="evaluation-result"
+            aria-labelledby="result-title"
+            hidden
+          >
+            <div class="result-summary">
+              <div>
+                <p class="eyebrow">RESULT</p>
+                <h3 id="result-title">Response evaluated</h3>
+                <p id="result-summary"></p>
+              </div>
+              <div class="score">
+                <output id="result-score">0</output><span>/ 100</span>
+              </div>
+            </div>
+            <ul id="result-checks" class="result-checks"></ul>
+            <details class="grading-details">
+              <summary>How this test is graded</summary>
+              <p id="grading-note"></p>
+              <p>
+                Each visible check has equal weight. Scores are rounded to a
+                whole percentage. No model or hidden judge is involved.
+              </p>
+            </details>
+          </section>
+          <p
+            id="evaluation-announcement"
+            class="visually-hidden"
+            role="status"
+          ></p>
+        </section>
+      </div>
+      <section class="history-panel" aria-labelledby="history-title">
+        <div class="history-heading">
+          <div>
+            <p class="eyebrow">YOUR NOTEBOOK</p>
+            <h2 id="history-title">
+              Recent runs <span id="history-count">0</span>
+            </h2>
+          </div>
+          <div class="history-actions">
+            <button
+              type="button"
+              id="export-history"
+              class="secondary-button"
+              disabled
+            >
+              Export JSON →</button
+            ><button
+              type="button"
+              id="clear-history"
+              class="text-button"
+              disabled
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        <p id="history-empty" class="history-empty">
+          Your notebook starts empty. Evaluate a response to save your first
+          run.
+        </p>
+        <ul id="history-list" class="history-list"></ul>
+        <p class="history-note">
+          The last 10 runs are stored in this browser when storage is available.
+          Export a copy before clearing browser data.
+        </p>
+      </section>
+    </main>
+    <footer class="bench-footer">
+      <span>NOTHATCHER DISTRICT</span>
+      <p>Built to experiment. Honest about what gets measured.</p>
+      <a
+        href="https://github.com/nothatcher-creator/Mycity/blob/main/src/benchmark-engine.js"
+        target="_blank"
+        rel="noopener noreferrer"
+        >View the checks on GitHub →</a
+      >
+    </footer>
+    <script type="module" src="/src/benchmarks.js"></script>
+  </body>
+</html>

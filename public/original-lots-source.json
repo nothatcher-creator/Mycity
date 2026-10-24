@@ -1,0 +1,1318 @@
+{
+  "source": "https://project0.city/api/world",
+  "sourceVerifiedAt": "2026-10-24T12:58:03.959426+00:00",
+  "ownerId": 113,
+  "ownerName": "Nothatcher",
+  "importDate": "2026-10-24",
+  "purpose": "Original exterior models for the owner-requested Mycity import. Game code and Project 0 platform services are not included in this asset package.",
+  "loadingNotes": [
+    "Configure GLTFLoader with MeshoptDecoder for EXT_meshopt_compression and KHR_mesh_quantization.",
+    "LOD1 is the lighter city representation; LOD0 retains original animation clips where available.",
+    "All imported GLBs are self-contained: no external buffer or image URI references."
+  ],
+  "attribution": [
+    {
+      "name": "Original Nothatcher-owned Project 0 lot builds",
+      "source": "https://project0.city/",
+      "scope": "The 16 original published exterior builds requested by their owner. This manifest does not assign a new license to complete builds or unknown individual components."
+    },
+    {
+      "name": "Grass Bermuda 01",
+      "author": "Rico Cilliers / Poly Haven",
+      "license": "CC0 1.0",
+      "source": "https://polyhaven.com/a/grass_bermuda_01",
+      "scope": "Documented coastal grass component; see attribution/coastal-upgrade.txt."
+    },
+    {
+      "name": "KayKit Adventurers hooded rogue and animations",
+      "author": "Kay Lousberg",
+      "license": "CC0 1.0",
+      "source": "https://kaylousberg.itch.io/kaykit-adventurers",
+      "scope": "Documented coastal keeper component; see attribution/KayKit-LICENSE.txt."
+    },
+    {
+      "name": "Kenney Space Kit and Space Station Kit",
+      "author": "Kenney",
+      "license": "CC0 1.0",
+      "source": "https://kenney.nl/",
+      "scope": "Documented BLACKBOX exterior components; see attribution/Kenney-space-kit-LICENSE.txt and Kenney-station-kit-LICENSE.txt."
+    },
+    {
+      "name": "Three.js water example assets and adaptation",
+      "author": "Three.js authors",
+      "license": "MIT",
+      "source": "https://github.com/mrdoob/three.js/tree/dev/examples",
+      "scope": "Documented coastal exterior water example. No original exterior build scripts are executed by this asset import; see attribution/Three-LICENSE.txt."
+    },
+    {
+      "name": "Grab3D lighthouse and keeper cottage",
+      "author": "Grab3D",
+      "license": "CC0 1.0",
+      "source": "https://grab3d.com/models/buildings/lighthouse/",
+      "scope": "Retained lot3667 original-manifest credits."
+    },
+    {
+      "name": "Original Crownstone and Crownfall project credits",
+      "scope": "Preserved as source-project provenance. These may list interior/game assets that are not part of the exterior-only GLB import; inclusion of a credit is not a claim that its asset is imported.",
+      "files": [
+        "./assets/original-lots/attribution/Crownstone-original-project-credits.txt",
+        "./assets/original-lots/attribution/Crownfall-original-project-credits.txt"
+      ]
+    }
+  ],
+  "lots": [
+    {
+      "originalLot": 643,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Meridian Ironwatch",
+      "exteriorName": "One More Floor — The Meridian",
+      "description": "A monumental Meshy sunburst, deep fluted limestone entrance, planted terraces, bronze balustrades and a widened astrolabe crown transform the Meridian.",
+      "originalLotUrl": "https://project0.city/#643",
+      "originalExteriorVersion": "b9b820ec20536585-ce77c2da96535576",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/643/b9b820ec20536585-lod1.glb",
+          "path": "./assets/original-lots/643/lod1.glb",
+          "sha256": "e024c61bdb83a3efc69c8484d4172cced396daee9cdb3125cf5daf31017a33d4",
+          "sizeBytes": 255188,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_materials_emissive_strength",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 3,
+          "nodeCount": 3,
+          "imageCount": 1,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 3,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/643/b9b820ec20536585-lod0.glb",
+          "path": "./assets/original-lots/643/lod0.glb",
+          "sha256": "cf76ffedb37cf93757d69277f325b08e1a413469d61801ae960d7faa729776ac",
+          "sizeBytes": 1701204,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_materials_emissive_strength",
+            "KHR_mesh_quantization",
+            "KHR_texture_transform"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization",
+            "KHR_texture_transform"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 7,
+          "nodeCount": 7,
+          "imageCount": 6,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 7,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "2c64b9167d50394c",
+        "title": "Meridian Ironwatch",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/643/2c64b9167d50394c/",
+        "filesUrl": "https://project0.city/api/lots/643/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 987,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Convoy Chaos — Golden Routes v0.8",
+      "exteriorName": "CONVOY CHAOS — GOLDEN ROUTES",
+      "description": "Your blue semi carries rotating photographs of thirteen other Nothatcher lots. Overhead signs cycle through their lot numbers as the rooftop runner jumps. Utility posts, wire, trees and road markings rush past, fade away and reappear ahead. Enter to play six rooftop-running routes.",
+      "originalLotUrl": "https://project0.city/#987",
+      "originalExteriorVersion": "98be82fff5d56c77-3bd0ac5b40c60ee8",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/987/98be82fff5d56c77-lod1.glb",
+          "path": "./assets/original-lots/987/lod1.glb",
+          "sha256": "eddc8f682016c32ae906607d400c07608106aa860af7019f6bbddfa51c0f76be",
+          "sizeBytes": 164172,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization",
+            "KHR_texture_transform"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization",
+            "KHR_texture_transform"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 1,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/987/98be82fff5d56c77-lod0.glb",
+          "path": "./assets/original-lots/987/lod0.glb",
+          "sha256": "ad0b8c859221fa3196e215dd48a344dcf76d5ea656101ee4c642a777d49b0e08",
+          "sizeBytes": 804724,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization",
+            "KHR_texture_transform"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization",
+            "KHR_texture_transform"
+          ],
+          "animationCount": 1,
+          "animationNames": [
+            "RooftopHops"
+          ],
+          "meshCount": 14,
+          "nodeCount": 35,
+          "imageCount": 3,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 14,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "4f856d2a4a122c59",
+        "title": "Convoy Chaos — Golden Routes v0.8",
+        "maxPlayers": 1,
+        "baseUrl": "https://files.project0.city/x/987/4f856d2a4a122c59/",
+        "filesUrl": "https://project0.city/api/lots/987/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 1003,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "BLACKBOX: Recovery Protocol",
+      "exteriorName": "BLACKBOX — Recovery Station",
+      "description": "A downloaded Kenney orbital hangar, cargo courier, rover and rotating satellite dish. Animated recovery beacons and amber warning bands mark a disabled station. Enter BLACKBOX: restore power, recover its flight recorder and escape the security drones.",
+      "originalLotUrl": "https://project0.city/#1003",
+      "originalExteriorVersion": "afd9dba8a085bd08-ce55d98ad9ffb51d",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/1003/afd9dba8a085bd08-lod1.glb",
+          "path": "./assets/original-lots/1003/lod1.glb",
+          "sha256": "6578f7acbf9e48812e6e8ec572e30bc466e81942cc1fc357240dfcf2b3aeaeab",
+          "sizeBytes": 18132,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 1,
+          "nodeCount": 1,
+          "imageCount": 0,
+          "materialCount": 1,
+          "positionAccessorBoundsAvailable": 1,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/1003/afd9dba8a085bd08-lod0.glb",
+          "path": "./assets/original-lots/1003/lod0.glb",
+          "sha256": "5fcc9199e244c84f0c5cdda07ac7fb7ef396f33a8fd215e53e9b5d5378d8fa7c",
+          "sizeBytes": 55800,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 3,
+          "nodeCount": 3,
+          "imageCount": 0,
+          "materialCount": 1,
+          "positionAccessorBoundsAvailable": 3,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "709bc4918b782da5",
+        "title": "BLACKBOX: Recovery Protocol",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/1003/709bc4918b782da5/",
+        "filesUrl": "https://project0.city/api/lots/1003/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 1043,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Crownfall: The Ashen March",
+      "exteriorName": "Crownfall — Ashen Keep",
+      "description": "A weathered frontier fortress: vaulted gatehouse, iron portcullis, crenellated towers, timber hoardings, slate keep, reflective moat and wind-tossed banners. Enter Crownfall for mounted combat, a recruitable warband and a four-contract medieval campaign.",
+      "originalLotUrl": "https://project0.city/#1043",
+      "originalExteriorVersion": "c1052ff49eb8cdd6-0835a5e3da65da1b",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/1043/c1052ff49eb8cdd6-lod1.glb",
+          "path": "./assets/original-lots/1043/lod1.glb",
+          "sha256": "c2a70e4c55db1b979177f3ce110b266e4b89cb44c2bf7503fff89997fb6370dd",
+          "sizeBytes": 193572,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/1043/c1052ff49eb8cdd6-lod0.glb",
+          "path": "./assets/original-lots/1043/lod0.glb",
+          "sha256": "05a08c856345fa25a855499e45b5703c2ec77de35db435efd85c4dd35088b653",
+          "sizeBytes": 919996,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 4,
+          "nodeCount": 4,
+          "imageCount": 6,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "52d169c21f9f1c2e",
+        "title": "Crownfall: The Ashen March",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/1043/52d169c21f9f1c2e/",
+        "filesUrl": "https://project0.city/api/lots/1043/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 1099,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Crownstone Keep: Castle Games",
+      "exteriorName": "Crownstone Keep",
+      "description": "A monumental castle gatehouse with a deep arched entrance, raised red gable, sunburst crest, paired stone guardians, buttresses and tall matching spires.",
+      "originalLotUrl": "https://project0.city/#1099",
+      "originalExteriorVersion": "29d5f146d61719e3-470fdfc926988ae5",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/1099/29d5f146d61719e3-lod1.glb",
+          "path": "./assets/original-lots/1099/lod1.glb",
+          "sha256": "57c9698c0ddc6ec98349b1cc6e979bda039c43b3c6be3b983ff46ae0e5e3d322",
+          "sizeBytes": 378652,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/1099/29d5f146d61719e3-lod0.glb",
+          "path": "./assets/original-lots/1099/lod0.glb",
+          "sha256": "ea38f19ab1e708d6656c05e417a7dea2821d12b7cfd137081cb1b4a2a8440894",
+          "sizeBytes": 2051488,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 6,
+          "nodeCount": 8,
+          "imageCount": 4,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 6,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "b6889836b2de58e3",
+        "title": "Crownstone Keep: Castle Games",
+        "maxPlayers": 16,
+        "baseUrl": "https://files.project0.city/x/1099/b6889836b2de58e3/",
+        "filesUrl": "https://project0.city/api/lots/1099/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 1123,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Orbital Shipyard: City Flight",
+      "exteriorName": "Orbital Shipyard",
+      "description": "A rebuilt orbital drydock with broad curved structural ribs, thick docking collar, jointed service arms and mechanical latches around the spacecraft.",
+      "originalLotUrl": "https://project0.city/#1123",
+      "originalExteriorVersion": "ab6fe6dc182d7c70-5148c46a3e583bc6",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/1123/ab6fe6dc182d7c70-lod1.glb",
+          "path": "./assets/original-lots/1123/lod1.glb",
+          "sha256": "9dce4d95924d536a29734080365ef49037336c450f76864f80d1e48f83562118",
+          "sizeBytes": 313484,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_materials_emissive_strength",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 1,
+          "nodeCount": 1,
+          "imageCount": 1,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/1123/ab6fe6dc182d7c70-lod0.glb",
+          "path": "./assets/original-lots/1123/lod0.glb",
+          "sha256": "9f9d47384a33b1933caf3f03ba2cb84e62f4e6942b145d6f4a9989bc81636fb4",
+          "sizeBytes": 2152648,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_materials_emissive_strength",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 8,
+          "nodeCount": 15,
+          "imageCount": 6,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 12,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "f2483d53d724880c",
+        "title": "Orbital Shipyard: City Flight",
+        "maxPlayers": 4,
+        "baseUrl": "https://files.project0.city/x/1123/f2483d53d724880c/",
+        "filesUrl": "https://project0.city/api/lots/1123/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 1147,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Ashen Owl: Cinders & Cards",
+      "exteriorName": "Ashen Owl: Cinders & Cards",
+      "description": "Enter the Living Library: a feathered owl watches over a curled grimoire, a card table and eight glowing ante lanterns. Learn at a guided practice table, then face progressively tougher blinds.",
+      "originalLotUrl": "https://project0.city/#1147",
+      "originalExteriorVersion": "821a482f786aa145-c8f56724e2a2e8bd",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/1147/821a482f786aa145-lod1.glb",
+          "path": "./assets/original-lots/1147/lod1.glb",
+          "sha256": "b783a128b675c41b3d74541e6664d04d8a3e89b4ccc618c5034fe39141448bac",
+          "sizeBytes": 331184,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_materials_emissive_strength",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 1,
+          "nodeCount": 1,
+          "imageCount": 1,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/1147/821a482f786aa145-lod0.glb",
+          "path": "./assets/original-lots/1147/lod0.glb",
+          "sha256": "017098a1216429f6f8b50cf53b9e3abc45528a78b3e5ea6a117dae72e8f636fb",
+          "sizeBytes": 2202116,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_materials_emissive_strength",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 9,
+          "nodeCount": 17,
+          "imageCount": 4,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 14,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "b6078fa7e7bacae3",
+        "title": "Ashen Owl: Cinders & Cards",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/1147/b6078fa7e7bacae3/",
+        "filesUrl": "https://project0.city/api/lots/1147/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 1669,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "The Sevenfold Archive",
+      "exteriorName": "The Sevenfold Key Hunt Shrine",
+      "description": "A black-stone and neon-celestial archive of Project 0's seven-key hunt: confirmed clues, lost commands, the inverted city, Lot Zero, two-part key, theories and an interactive guestbook inside. Enter to explore.",
+      "originalLotUrl": "https://project0.city/#1669",
+      "originalExteriorVersion": "9abab95ed8213de2",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/1669/9abab95ed8213de2-lod1.glb",
+          "path": "./assets/original-lots/1669/lod1.glb",
+          "sha256": "48f72f84d4696542e8afe6f5da2b23fa00c96ae15ca8e7eb7f4e76aa9018528c",
+          "sizeBytes": 7676,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 3,
+          "imageCount": 0,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/1669/9abab95ed8213de2-lod0.glb",
+          "path": "./assets/original-lots/1669/lod0.glb",
+          "sha256": "f246937849734cc09f4cb1ed9d01766ffc91c66a5c02aa4778602f00c62e7e2a",
+          "sizeBytes": 37448,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 4,
+          "nodeCount": 5,
+          "imageCount": 0,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "c478b56baec98abe",
+        "title": "The Sevenfold Archive",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/1669/c478b56baec98abe/",
+        "filesUrl": "https://project0.city/api/lots/1669/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 3665,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "The Last Beacon: Do Not Answer",
+      "exteriorName": "The Last Beacon",
+      "description": "A weathered lighthouse with tall wind-swaying Poly Haven coastal grass, a gravel path and a hooded groundskeeper walking his endless rounds. Enter to investigate a point-and-click lighthouse horror mystery: Do Not Answer.",
+      "originalLotUrl": "https://project0.city/#3665",
+      "originalExteriorVersion": "e63dfeec67fbca92-0b2aaae0982226f0",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3665/e63dfeec67fbca92-lod1.glb",
+          "path": "./assets/original-lots/3665/lod1.glb",
+          "sha256": "ca4fb2d34831c99cd50e6044a742d5024a11f2c433437ec62de05affaa6bd6fc",
+          "sizeBytes": 210884,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3665/e63dfeec67fbca92-lod0.glb",
+          "path": "./assets/original-lots/3665/lod0.glb",
+          "sha256": "86d9c09898b0fb1f2c320c9f9ad34ff63d982f9c4f422b43dec8f043e7626d09",
+          "sizeBytes": 1224152,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization",
+            "KHR_texture_transform"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 2,
+          "animationNames": [
+            "Keeper Idle",
+            "Keeper Walk"
+          ],
+          "meshCount": 4,
+          "nodeCount": 47,
+          "imageCount": 5,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "ee95b197d67f58ea",
+        "title": "The Last Beacon: Do Not Answer",
+        "maxPlayers": 1,
+        "baseUrl": "https://files.project0.city/x/3665/ee95b197d67f58ea/",
+        "filesUrl": "https://project0.city/api/lots/3665/experience/files",
+        "entry": "bundle.js"
+      },
+      "retainedCreditManifest": "./assets/original-lots/attribution/original-manifest-3665.json"
+    },
+    {
+      "originalLot": 3666,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Abyssal Relic — Full Resolution",
+      "exteriorName": "Abyssal Relic — Living Bronze",
+      "description": "The ancient bronze candle relic gains broken temple arches, guardian pylons, ritual buttresses and a sculpted basalt-and-bronze foundation.",
+      "originalLotUrl": "https://project0.city/#3666",
+      "originalExteriorVersion": "290abe6bc0163c60-50491dea3965a5aa",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3666/290abe6bc0163c60-lod1.glb",
+          "path": "./assets/original-lots/3666/lod1.glb",
+          "sha256": "329e5bebc13701f258c494c2511706c4958dbd447c36b93b6264d1279a7a9bfa",
+          "sizeBytes": 264196,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 4,
+          "nodeCount": 4,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3666/290abe6bc0163c60-lod0.glb",
+          "path": "./assets/original-lots/3666/lod0.glb",
+          "sha256": "a05245388ab88c963066cceef12feabf93d0f969c728919314605cff2df3b2b0",
+          "sizeBytes": 986308,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 8,
+          "nodeCount": 9,
+          "imageCount": 5,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 8,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "975e8ef617ff2bfc",
+        "title": "Abyssal Relic — Full Resolution",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/3666/975e8ef617ff2bfc/",
+        "filesUrl": "https://project0.city/api/lots/3666/experience/files",
+        "entry": "bundle.js"
+      }
+    },
+    {
+      "originalLot": 3667,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Stormglass: Keeper's Watch",
+      "exteriorName": "Stormglass Lighthouse",
+      "description": "A red-and-white lighthouse above a deep sea cave, with a physical stone bridge, cliff platform, exterior spiral stair and sculpted bronze lantern cage. Now with animated beacon light, sea spray and tidal glints and visitor-reactive glow. Tall wind-swaying coastal grass, a walking hooded keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+      "originalLotUrl": "https://project0.city/#3667",
+      "originalExteriorVersion": "43bdf42d47fd07a7-25080301829b6257",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3667/43bdf42d47fd07a7-lod1.glb",
+          "path": "./assets/original-lots/3667/lod1.glb",
+          "sha256": "bfc42c53e499be7827c06f00fba5223c5d034861daa4ebdefc8b2f45701e1aee",
+          "sizeBytes": 228380,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 4,
+          "nodeCount": 5,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3667/43bdf42d47fd07a7-lod0.glb",
+          "path": "./assets/original-lots/3667/lod0.glb",
+          "sha256": "290c5946ff5ae322e155c90bf4aa44a25f63788ca2dc94765027094f0eb9e762",
+          "sizeBytes": 1316108,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_materials_emissive_strength",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 1,
+          "animationNames": [
+            "Keeper Walk"
+          ],
+          "meshCount": 9,
+          "nodeCount": 53,
+          "imageCount": 6,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 11,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "c9b387c0dddfcbf0",
+        "title": "Stormglass: Keeper's Watch",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/3667/c9b387c0dddfcbf0/",
+        "filesUrl": "https://project0.city/api/lots/3667/experience/files",
+        "entry": "bundle.js"
+      },
+      "retainedCreditManifest": "./assets/original-lots/attribution/original-manifest-3667.json"
+    },
+    {
+      "originalLot": 3668,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Tideborn — Your Creature, Your Beginning",
+      "exteriorName": "Stormbound Lighthouse — Animated",
+      "description": "A tentacle-wrapped lighthouse framed by broken bronze armillary arches, suspended rune stones and four floating coral-and-crystal altar groups. Now with animated beacon light, floating keeper lights and visitor-reactive glow. Tall wind-swaying coastal grass, a walking hooded keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+      "originalLotUrl": "https://project0.city/#3668",
+      "originalExteriorVersion": "6c5ad067aaa83ec6-d00d19689f23f8bf",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3668/6c5ad067aaa83ec6-lod1.glb",
+          "path": "./assets/original-lots/3668/lod1.glb",
+          "sha256": "3f8cc7c5f4303f8e8c248e8c6aa115ce05cf1ee34a6dbfb060a9685dd83fa349",
+          "sizeBytes": 216384,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 4,
+          "nodeCount": 5,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3668/6c5ad067aaa83ec6-lod0.glb",
+          "path": "./assets/original-lots/3668/lod0.glb",
+          "sha256": "ad369396d1b8c33c2ed49fb03c0d7611fdbc37b64cb41755c532b9577262d1c9",
+          "sizeBytes": 1513876,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 1,
+          "animationNames": [
+            "Keeper Walk"
+          ],
+          "meshCount": 10,
+          "nodeCount": 54,
+          "imageCount": 4,
+          "materialCount": 4,
+          "positionAccessorBoundsAvailable": 10,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "870cacbb725c1d60",
+        "title": "Tideborn — Your Creature, Your Beginning",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/3668/870cacbb725c1d60/",
+        "filesUrl": "https://project0.city/api/lots/3668/experience/files",
+        "entry": "bundle.js"
+      },
+      "retainedCreditManifest": "./assets/original-lots/attribution/original-manifest-3668.json"
+    },
+    {
+      "originalLot": 3669,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Relicfall: Beneath the Beacon",
+      "exteriorName": "Stormwatch Lighthouse",
+      "description": "A weathered, colourful lighthouse on a rocky outcrop, rising over the city. Now with animated beacon light, sea spray and tidal glints and visitor-reactive glow. Tall wind-swaying coastal grass, a walking hooded keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+      "originalLotUrl": "https://project0.city/#3669",
+      "originalExteriorVersion": "1acddd419090e304-a61e1ae610829e78",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3669/1acddd419090e304-lod1.glb",
+          "path": "./assets/original-lots/3669/lod1.glb",
+          "sha256": "e2e9df3e53fd84470f9d27211ea32ad3ef9c0f9e201ae229b6d4a4f1956a09aa",
+          "sizeBytes": 231256,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3669/1acddd419090e304-lod0.glb",
+          "path": "./assets/original-lots/3669/lod0.glb",
+          "sha256": "250f318d659226d340e80074fc1fa1ac45d8d957353300ec0e727f884a3655fd",
+          "sizeBytes": 997796,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 1,
+          "animationNames": [
+            "Keeper Walk"
+          ],
+          "meshCount": 4,
+          "nodeCount": 47,
+          "imageCount": 3,
+          "materialCount": 3,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "e75ed2704cca45f0",
+        "title": "Relicfall: Beneath the Beacon",
+        "maxPlayers": 1,
+        "baseUrl": "https://files.project0.city/x/3669/e75ed2704cca45f0/",
+        "filesUrl": "https://project0.city/api/lots/3669/experience/files",
+        "entry": "bundle.js"
+      },
+      "retainedCreditManifest": "./assets/original-lots/attribution/original-manifest-3669.json"
+    },
+    {
+      "originalLot": 3670,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Skybound: Beaconfall",
+      "exteriorName": "Skybound Lighthouse Island — Restored",
+      "description": "A hovering tropical island with cliffs, palms, turquoise water and a lighthouse. The island rises and falls on a slow magical current while three clouds drift independently overhead. Now with animated beacon light, drifting aether wisps and visitor-reactive glow. Tall wind-swaying coastal grass, a walking hooded keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+      "originalLotUrl": "https://project0.city/#3670",
+      "originalExteriorVersion": "b9de658e0e182dd8-7235132ecb00f50c",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3670/b9de658e0e182dd8-lod1.glb",
+          "path": "./assets/original-lots/3670/lod1.glb",
+          "sha256": "55ea1676887958ee978a2221b1a4cad773970e75bb2aaf6357fc82c02e034efa",
+          "sizeBytes": 378460,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 3,
+          "nodeCount": 4,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 3,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3670/b9de658e0e182dd8-lod0.glb",
+          "path": "./assets/original-lots/3670/lod0.glb",
+          "sha256": "cdc665957d4ae6fb8f6329ef2503e3e0e2a17f5f9ad632c0e5daf1a1d6204f94",
+          "sizeBytes": 1146764,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 2,
+          "animationNames": [
+            "Hovering island and drifting clouds",
+            "Keeper Walk"
+          ],
+          "meshCount": 8,
+          "nodeCount": 55,
+          "imageCount": 5,
+          "materialCount": 3,
+          "positionAccessorBoundsAvailable": 8,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "0cb4c37b71946496",
+        "title": "Skybound: Beaconfall",
+        "maxPlayers": 8,
+        "baseUrl": "https://files.project0.city/x/3670/0cb4c37b71946496/",
+        "filesUrl": "https://project0.city/api/lots/3670/experience/files",
+        "entry": "bundle.js"
+      },
+      "retainedCreditManifest": "./assets/original-lots/attribution/original-manifest-3670.json"
+    },
+    {
+      "originalLot": 3671,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "Beaconfall — The Lantern Frontier v0.9",
+      "exteriorName": "Snowcap Watchtower",
+      "description": "A towering wooden lookout with a snowy peaked roof and warmly lit windows. A rustic winter landmark above the city. Now with animated beacon light, falling snow and visitor-reactive glow. Tall wind-swaying coastal grass, a walking hooded keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+      "originalLotUrl": "https://project0.city/#3671",
+      "originalExteriorVersion": "98371cae3d592f4d-c4361605a0da5810",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3671/98371cae3d592f4d-lod1.glb",
+          "path": "./assets/original-lots/3671/lod1.glb",
+          "sha256": "28baca9a83091baf45bcab3e7e68a008d536fc2fa0720318f9e7a543f3ac27eb",
+          "sizeBytes": 254080,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3671/98371cae3d592f4d-lod0.glb",
+          "path": "./assets/original-lots/3671/lod0.glb",
+          "sha256": "c37cd8d3efae3999e6b9733aaad95027b80f34250ea93cbe53d8dd8809f5dc9f",
+          "sizeBytes": 720976,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 1,
+          "animationNames": [
+            "Keeper Walk"
+          ],
+          "meshCount": 4,
+          "nodeCount": 47,
+          "imageCount": 4,
+          "materialCount": 3,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "104adb1c2e299137",
+        "title": "Beaconfall — The Lantern Frontier v0.9",
+        "maxPlayers": 1,
+        "baseUrl": "https://files.project0.city/x/3671/104adb1c2e299137/",
+        "filesUrl": "https://project0.city/api/lots/3671/experience/files",
+        "entry": "bundle.js"
+      },
+      "retainedCreditManifest": "./assets/original-lots/attribution/original-manifest-3671.json"
+    },
+    {
+      "originalLot": 3672,
+      "ownerId": 113,
+      "ownerName": "Nothatcher",
+      "title": "RELICFALL: Beneath the Beacon v0.8",
+      "exteriorName": "The Clawlight Keeper",
+      "description": "The lighthouse didn't sink—it grew claws. Now its unlikely keeper prowls the drowned coast, guiding lost souls through the fog and snapping at whatever follows. Now with animated beacon light, floating keeper lights and visitor-reactive glow. Tall wind-swaying coastal grass, a walking navy-cloaked coastal keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+      "originalLotUrl": "https://project0.city/#3672",
+      "originalExteriorVersion": "fa8c20257ee09fd2-d9631a72e71618df",
+      "models": {
+        "lod1": {
+          "sourceUrl": "https://files.project0.city/lots/3672/fa8c20257ee09fd2-lod1.glb",
+          "path": "./assets/original-lots/3672/lod1.glb",
+          "sha256": "2c3152e500695b556603b275a1a810560eeddaa1f4cd582b1611cb97b7bc6d9d",
+          "sizeBytes": 268636,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 0,
+          "animationNames": [],
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 2,
+          "materialCount": 2,
+          "positionAccessorBoundsAvailable": 2,
+          "externalAssetReferences": []
+        },
+        "lod0": {
+          "sourceUrl": "https://files.project0.city/lots/3672/fa8c20257ee09fd2-lod0.glb",
+          "path": "./assets/original-lots/3672/lod0.glb",
+          "sha256": "dc0f52170b2d3f4efc4acadd9b8953d3d076dc60c6b4b648859ffc603c305163",
+          "sizeBytes": 1067060,
+          "asset": {
+            "generator": "glTF-Transform v4.5.1",
+            "version": "2.0"
+          },
+          "extensionsUsed": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "extensionsRequired": [
+            "EXT_meshopt_compression",
+            "EXT_texture_webp",
+            "KHR_mesh_quantization"
+          ],
+          "animationCount": 1,
+          "animationNames": [
+            "Keeper Walk"
+          ],
+          "meshCount": 4,
+          "nodeCount": 47,
+          "imageCount": 3,
+          "materialCount": 3,
+          "positionAccessorBoundsAvailable": 4,
+          "externalAssetReferences": []
+        }
+      },
+      "experience": {
+        "version": "a51748aac5fd2760",
+        "title": "RELICFALL: Beneath the Beacon v0.8",
+        "maxPlayers": 1,
+        "baseUrl": "https://files.project0.city/x/3672/a51748aac5fd2760/",
+        "filesUrl": "https://project0.city/api/lots/3672/experience/files",
+        "entry": "bundle.js"
+      },
+      "retainedCreditManifest": "./assets/original-lots/attribution/original-manifest-3672.json"
+    }
+  ],
+  "totals": {
+    "lots": 16,
+    "models": 32,
+    "lod1Bytes": 3714336,
+    "lod0Bytes": 18898464
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "originalLot": 3665,
+  "source": "Original local coastal-upgrade publication manifest",
+  "name": "The Last Beacon",
+  "description": "A weathered lighthouse with tall wind-swaying Poly Haven coastal grass, a gravel path and a hooded groundskeeper walking his endless rounds. Enter to investigate a point-and-click lighthouse horror mystery: Do Not Answer.",
+  "credits": [
+    {
+      "work": "Animated keeper beacons and themed exterior visual effects",
+      "by": "Original geometry and shaders for Nothatcher"
+    },
+    {
+      "work": "Grass Bermuda 01, adapted into wind-swaying coastal planting",
+      "by": "Rico Cilliers / Poly Haven — CC0, polyhaven.com/a/grass_bermuda_01"
+    },
+    {
+      "work": "Hooded Rogue model and original Idle/Walking animations, adapted as the groundsk",
+      "by": "Kay Lousberg — KayKit Character Pack: Adventurers, CC0; kaylousberg.itch.io/kaykit-adventurers"
+    },
+    {
+      "work": "Do Not Answer: original story, puzzle logic, cutaway interiors, interface and sy",
+      "by": "Created for Nothatcher"
+    }
+  ]
+}

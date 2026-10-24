@@ -1,0 +1,6 @@
+Grass Bermuda 01 by Rico Cilliers / Poly Haven. CC0 1.0. https://polyhaven.com/a/grass_bermuda_01
+Hooded Rogue and original walking/idle animation by Kay Lousberg. KayKit Character Pack: Adventurers. CC0 1.0.
+Official itch.io release: https://kaylousberg.itch.io/kaykit-adventurers
+Author-maintained source mirror: https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+Original lighthouse model and painted texture: existing Nothatcher-owned lot #3665.
+Puzzle game, interior scenery, interface and sound design created for this Project 0 experience.

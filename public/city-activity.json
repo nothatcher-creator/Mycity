@@ -1,0 +1,20 @@
+[
+  {
+    "id": "flying-city-2026-10-24",
+    "type": "city-update",
+    "at": "2026-10-24T17:54:06.734459+00:00",
+    "actor": "nothatcher-creator",
+    "title": "A whole city to explore",
+    "message": "Added the flying cube, 96 neighborhood lots, all 16 original game lots, Nexus Mods, the art gallery, and friend submissions.",
+    "url": "https://github.com/nothatcher-creator/Mycity"
+  },
+  {
+    "id": "first-city-b5cc98c",
+    "type": "city-published",
+    "at": "2026-10-24T12:46:32Z",
+    "actor": "nothatcher-creator",
+    "title": "The first district opened",
+    "message": "Mycity began with eight project plots and Astraforge as its first integration.",
+    "url": "https://github.com/nothatcher-creator/Mycity/commit/b5cc98ca859ebb5a4306d11f8930dbf8aa990831"
+  }
+]

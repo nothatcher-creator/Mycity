@@ -13,6 +13,8 @@ const first = {
   subtitle: "LyricForge video studio",
   description: "A local creative studio.",
   category: "tools",
+  district: "tools",
+  slot: "tools-01",
   url: "https://nothatcher-creator.github.io/Astraforge/",
   embed: true,
   theme: "forge",
@@ -24,6 +26,8 @@ const second = {
   title: "Bench Lab",
   description: "Transparent model response tests.",
   category: "benchmarks",
+  district: "tools",
+  slot: "tools-02",
   url: "./benchmarks/",
   embed: true,
   theme: "benchmark",
@@ -91,6 +95,29 @@ test("array IDs cannot pass validation through JavaScript string coercion", () =
     () => validateCatalog([first, { ...second, id: ["bench-lab"] }]),
     /Invalid project/i,
   );
+});
+test("neighborhoods and slots are required and art/android projects are valid", () => {
+  assert.throws(
+    () => validateCatalog([{ ...first, district: "unknown" }]),
+    /project|district/i,
+  );
+  assert.throws(
+    () => validateCatalog([{ ...first, slot: "games-01" }]),
+    /project|slot/i,
+  );
+  assert.throws(
+    () => validateCatalog([first, { ...second, slot: first.slot }]),
+    /slot|duplicate/i,
+  );
+  for (const category of ["art", "android"]) {
+    assert.equal(
+      validateCatalog([
+        first,
+        { ...second, category, district: category, slot: `${category}-01` },
+      ]).length,
+      2,
+    );
+  }
 });
 test("search combines words, tags and category while preserving plot order", () => {
   const catalog = validateCatalog([first, second]);

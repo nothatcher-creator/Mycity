@@ -1,0 +1,151 @@
+{
+  "checkedAt": "2026-10-24T17:40:57.818490+00:00",
+  "mode": "solo guest with browser-local progress",
+  "fullPlaythroughs": false,
+  "results": [
+    {
+      "originalLot": 643,
+      "title": "Meridian Ironwatch",
+      "experienceVersion": "2c64b9167d50394c",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 987,
+      "title": "Convoy Chaos — Golden Routes v0.8",
+      "experienceVersion": "4f856d2a4a122c59",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 1003,
+      "title": "BLACKBOX: Recovery Protocol",
+      "experienceVersion": "709bc4918b782da5",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 1043,
+      "title": "Crownfall: The Ashen March",
+      "experienceVersion": "52d169c21f9f1c2e",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 1099,
+      "title": "Crownstone Keep: Castle Games",
+      "experienceVersion": "b6889836b2de58e3",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 1123,
+      "title": "Orbital Shipyard: City Flight",
+      "experienceVersion": "f2483d53d724880c",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 1147,
+      "title": "Ashen Owl: Cinders & Cards",
+      "experienceVersion": "b6078fa7e7bacae3",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 1669,
+      "title": "The Sevenfold Archive",
+      "experienceVersion": "c478b56baec98abe",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3665,
+      "title": "The Last Beacon: Do Not Answer",
+      "experienceVersion": "ee95b197d67f58ea",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3666,
+      "title": "Abyssal Relic — Full Resolution",
+      "experienceVersion": "975e8ef617ff2bfc",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3667,
+      "title": "Stormglass: Keeper's Watch",
+      "experienceVersion": "c9b387c0dddfcbf0",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3668,
+      "title": "Tideborn — Your Creature, Your Beginning",
+      "experienceVersion": "870cacbb725c1d60",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3669,
+      "title": "Relicfall: Beneath the Beacon",
+      "experienceVersion": "e75ed2704cca45f0",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3670,
+      "title": "Skybound: Beaconfall",
+      "experienceVersion": "0cb4c37b71946496",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3671,
+      "title": "Beaconfall — The Lantern Frontier v0.9",
+      "experienceVersion": "104adb1c2e299137",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    },
+    {
+      "originalLot": 3672,
+      "title": "RELICFALL: Beneath the Beacon v0.8",
+      "experienceVersion": "a51748aac5fd2760",
+      "started": true,
+      "canvasCount": 1,
+      "error": null,
+      "scriptErrors": []
+    }
+  ]
+}

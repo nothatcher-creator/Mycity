@@ -1,0 +1,28 @@
+CROWNSTONE KEEP — DOWNLOADED ASSET CREDITS
+All assets listed here are CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/).
+Source: Poly Haven (https://polyhaven.com/license).
+Optimized for the browser; geometry simplified where necessary and textures resized to 1024.
+Courtyard HDRI: linear pixels averaged to 512×256 and encoded as RGBA half-float values in JSON; dynamic range preserved.
+
+wine_barrel_01 — James Ray Cock
+https://polyhaven.com/a/wine_barrel_01
+wooden_crate_01 — James Ray Cock
+https://polyhaven.com/a/wooden_crate_01
+gothic_coffee_table — Ulan Cabanilla
+https://polyhaven.com/a/gothic_coffee_table
+gothic_statue — Benny Weimer
+https://polyhaven.com/a/gothic_statue
+wooden_lantern_01 — James Ray Cock
+https://polyhaven.com/a/wooden_lantern_01
+stone_brick_wall_001 — Dimitrios Savva, Rico Cilliers
+https://polyhaven.com/a/stone_brick_wall_001
+aerial_rocks_02 — Rob Tuytel
+https://polyhaven.com/a/aerial_rocks_02
+wood_floor — Dimitrios Savva
+https://polyhaven.com/a/wood_floor
+courtyard — Greg Zaal
+https://polyhaven.com/a/courtyard
+
+Original architecture: Castle Kit 2.0 by Kenney, CC0. https://kenney.nl/assets/castle-kit
+Search record: itch.io/game-assets/tag-3d/tag-realistic was inspected. Selected Poly Haven assets for clear CC0 licensing and castle style. Their original tags are recorded in source metadata; no false claim of a realistic tag.
+Badge artwork: original generated achievement illustrations for this castle.

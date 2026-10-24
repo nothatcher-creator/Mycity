@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "id": "castle-golf",
+      "title": "Crownstone — On the Green",
+      "caption": "Original castle-and-golf artwork created for Crownstone Keep.",
+      "src": "./art/castle-golf.png",
+      "sourceLot": 1099
+    },
+    {
+      "id": "castaway-shotgun",
+      "title": "The Castaway",
+      "caption": "My returning shotgun: throw, land, fire, return. Original RELICFALL weapon card artwork.",
+      "src": "./art/castaway-shotgun.png",
+      "sourceLot": 3672
+    },
+    {
+      "id": "castle-bowling",
+      "title": "Crownstone — Strike",
+      "caption": "Original bowling artwork created for Castle Games.",
+      "src": "./art/castle-bowling.png",
+      "sourceLot": 1099
+    }
+  ]
+}

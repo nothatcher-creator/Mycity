@@ -1,0 +1,245 @@
+@font-face {
+  font-family: Manrope;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/manrope-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/dm-sans-latin.woff2") format("woff2");
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 80% 0, #47344830, transparent 60%), #151f30;
+  color: #edf0f2;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #d4b3dd;
+  outline-offset: 5px;
+}
+header {
+  height: 86px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5%;
+  border-bottom: 1px solid #ffffff13;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+header > a:first-child {
+  color: #c0e4d5;
+}
+header > span {
+  font-size: 7px;
+  color: #8c8da4;
+  letter-spacing: 2px;
+}
+header > a:last-child {
+  padding: 10px 13px;
+  border: 1px solid #e1cde52a;
+  border-radius: 7px;
+  color: #d8bbdc;
+  font-size: 10px;
+}
+main {
+  max-width: 1400px;
+  padding: 57px 5% 65px;
+  margin: auto;
+}
+.eyebrow {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: #c4a5c8;
+}
+h1 {
+  font-family: Manrope, sans-serif;
+  font-size: 46px;
+  line-height: 1.2;
+  font-weight: 500;
+  letter-spacing: -2px;
+  margin: 20px 0;
+}
+h1 em {
+  font-style: normal;
+  color: #b4a9c3;
+}
+.intro {
+  max-width: 440px;
+  font-size: 13px;
+  line-height: 1.9;
+  color: #8f9caf;
+}
+#art-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 25px;
+  margin-top: 45px;
+}
+.art-card {
+  padding: 0;
+  text-align: left;
+  background: #1d293b;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.art-card:hover {
+  transform: translateY(-5px);
+  border-color: #d5b4dd77;
+}
+.art-card > img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: #121d2c;
+}
+.art-card > div {
+  padding: 21px;
+}
+.art-card > div > span {
+  font-family: monospace;
+  font-size: 9px;
+  color: #a991b3;
+}
+.art-card h2 {
+  font-family: Manrope, sans-serif;
+  font-size: 19px;
+  line-height: 1.5;
+  letter-spacing: -0.6px;
+  font-weight: 500;
+  margin: 9px 0;
+}
+.art-card p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #8f9eb5;
+  margin: 0;
+}
+footer {
+  border-top: 1px solid #ffffff13;
+  display: flex;
+  justify-content: space-between;
+  padding: 25px 5%;
+  font-size: 8px;
+  color: #728199;
+  gap: 20px;
+}
+footer > span:first-child {
+  letter-spacing: 1.6px;
+}
+dialog {
+  width: min(1000px, 96vw);
+  max-height: 94dvh;
+  padding: 0;
+  overflow: auto;
+  background: #172234;
+  border: 1px solid #dbc0e541;
+  border-radius: 12px;
+  color: #e8f3f0;
+}
+dialog::backdrop {
+  background: #080e1cdd;
+  backdrop-filter: blur(9px);
+}
+dialog > img {
+  display: block;
+  max-height: 70dvh;
+  max-width: 100%;
+  object-fit: contain;
+  margin: auto;
+}
+dialog > div {
+  padding: 20px 25px;
+}
+dialog h2 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.6px;
+  margin: 0 0 9px;
+}
+dialog p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #9dacc0;
+}
+dialog a {
+  font-size: 11px;
+  color: #badbd1;
+}
+#art-close {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #102135cc;
+  border: 1px solid #ffffff34;
+  font-size: 23px;
+  z-index: 1;
+}
+@media (max-width: 700px) {
+  header {
+    height: 70px;
+    padding: 0 6%;
+    font-size: 8px;
+  }
+  header > span {
+    display: none;
+  }
+  main {
+    padding: 35px 6% 40px;
+  }
+  h1 {
+    font-size: 34px;
+    letter-spacing: -1.5px;
+  }
+  .intro {
+    font-size: 11px;
+  }
+  #art-grid {
+    grid-template-columns: 1fr;
+    gap: 23px;
+    margin-top: 30px;
+  }
+  .art-card > img {
+    max-height: 500px;
+    object-fit: cover;
+  }
+  .art-card > div {
+    padding: 18px;
+  }
+  .art-card h2 {
+    font-size: 19px;
+  }
+  footer {
+    font-size: 7px;
+    line-height: 1.8;
+  }
+  dialog > div {
+    padding: 17px;
+  }
+  dialog h2 {
+    font-size: 18px;
+  }
+}

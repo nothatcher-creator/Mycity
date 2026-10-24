@@ -1,0 +1,24 @@
+{
+  "originalLot": 3672,
+  "source": "Original local coastal-upgrade publication manifest",
+  "name": "The Clawlight Keeper",
+  "description": "The lighthouse didn't sink—it grew claws. Now its unlikely keeper prowls the drowned coast, guiding lost souls through the fog and snapping at whatever follows. Now with animated beacon light, floating keeper lights and visitor-reactive glow. Tall wind-swaying coastal grass, a walking navy-cloaked coastal keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+  "credits": [
+    {
+      "work": "Animated keeper beacons and themed exterior visual effects",
+      "by": "Original geometry and shaders for Nothatcher"
+    },
+    {
+      "work": "Grass Bermuda 01, tall wind-swaying planting",
+      "by": "Rico Cilliers / Poly Haven — CC0; polyhaven.com/a/grass_bermuda_01"
+    },
+    {
+      "work": "Hooded Rogue and original skeletal Walking animation",
+      "by": "Kay Lousberg — KayKit Adventurers, CC0; kaylousberg.itch.io/kaykit-adventurers"
+    },
+    {
+      "work": "Downloaded water normal texture and adapted animated Water example",
+      "by": "Three.js authors — MIT; github.com/mrdoob/three.js, examples/textures/waternormals.jpg and examples/jsm/objects/Water.js"
+    }
+  ]
+}

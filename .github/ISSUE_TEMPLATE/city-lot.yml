@@ -1,0 +1,51 @@
+name: Add a project to a city lot
+description: Sign in with GitHub and submit a project for an empty Mycity lot.
+title: "[City lot] "
+labels: ["city:submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Your GitHub account identifies your submission. The city owner reviews it before it becomes a published lot. Submissions are public; use a deployed project URL, and keep passwords and API keys out of this form.
+  - type: input
+    id: slot
+    attributes:
+      label: Lot slot
+      description: Copy the vacant slot shown in the city, such as games-09.
+      placeholder: games-09
+    validations:
+      required: true
+  - type: dropdown
+    id: district
+    attributes:
+      label: Neighborhood
+      options:
+        - games
+        - tools
+        - art
+        - android
+        - mods
+    validations:
+      required: true
+  - type: input
+    id: project_title
+    attributes:
+      label: Project title
+      description: A short project name, up to 80 characters.
+    validations:
+      required: true
+  - type: input
+    id: project_url
+    attributes:
+      label: Project URL
+      description: A deployed HTTPS app or project page on a public domain.
+      placeholder: https://your-name.github.io/your-project/
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Explain what visitors can do, in up to 500 characters. This is displayed as plain text.
+    validations:
+      required: true

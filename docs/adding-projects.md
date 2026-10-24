@@ -25,7 +25,9 @@ Copy this object into the JSON array. Add a comma between objects, and choose an
 ```json
 {
   "id": "my-game",
-  "plot": 9,
+  "plot": 9000,
+  "district": "games",
+  "slot": "games-17",
   "title": "My Game",
   "subtitle": "A small adventure",
   "description": "Explore the island and find the missing beacon.",
@@ -44,10 +46,12 @@ Remove `source` if there is no public source repository. Keep Astraforge as the 
 | --- | --- |
 | `id` | A unique stable slug, beginning with a lowercase letter; use lowercase letters, digits, and hyphens. |
 | `plot` | An unused positive whole number. Keep existing numbers stable. |
+| `district` | `games`, `tools`, `art`, `android`, or `mods`. Keep related creations together. |
+| `slot` | An existing empty slot from `public/city.json`, such as `games-17`. Check it is still vacant. |
 | `title` | The project's visible name. |
 | `subtitle` | A short optional label for the card. |
 | `description` | A clear, accurate explanation of what visitors can do. |
-| `category` | `games`, `benchmarks`, `tools`, or `mods`. |
+| `category` | `games`, `benchmarks`, `tools`, `mods`, `art`, or `android`. |
 | `url` | The launch destination: a relative path or HTTPS URL. |
 | `source` | Optional HTTPS link to public source. |
 | `embed` | `true` to open the app inside the district; `false` to open its destination in a new tab. |

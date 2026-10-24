@@ -1,0 +1,19 @@
+# Lighthouse exterior upgrade — prepared for publishing
+
+Lots: 3665, 3667, 3668, 3669, 3670, 3671, 3672.
+
+- 3665: taller coastal grass, retaining the walking keeper and existing game.
+- Other six lighthouse lots: tall wind-swaying grass, a rigged KayKit keeper walking an exterior route, and animated water using downloaded wave-normal textures.
+- Water is fitted to each coastal setting, including the existing floating island lagoon.
+- All lots include three model levels of detail and their exterior shader/script packages.
+- These packages contain no experience/game changes.
+
+Assets and permissions:
+- Grass Bermuda 01 by Rico Cilliers / Poly Haven, CC0: https://polyhaven.com/a/grass_bermuda_01
+- Hooded Rogue and original walking animation by Kay Lousberg / KayKit Adventurers, CC0: https://kaylousberg.itch.io/kaykit-adventurers
+- Water normal texture and adapted animated Water example by the Three.js authors, MIT: https://github.com/mrdoob/three.js/tree/dev/examples
+Original model credits are retained in each lot manifest.
+
+Local verification: all 21 GLBs fit triangle, draw-call, material, texture and animation budgets. Exterior scripts were simulated over two minutes for all seven lots. Desktop WebGL previews compiled and rendered the custom shaders.
+
+Publication status: PUBLISHED AND VERIFIED. All seven exterior updates are live. Lot 3672 uses a navy coastal keeper palette. The user-supplied RELICFALL v0.5 game was subsequently published separately on lot 3672.

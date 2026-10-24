@@ -1,0 +1,18 @@
+Crownfall original code, maps, fortress, UI and horse gallop created for Nothatcher / Project 0 lot1043.
+
+Animated Knight, Clement Wu, Nikolaus & Botanic, CC BY 3.0.
+https://opengameart.org/content/animated-knight
+https://creativecommons.org/licenses/by/3.0/
+Converted from Blender to uncompressed glTF, scale normalized, texture embedded, legacy material adapted to PBR. Authored Attack, Damaged, Die, Idle and Walk clips preserved. Additional rider/weapon visuals original.
+
+Rigged Horse, model by Lyndon Daniels, rig by ChadM, CC0.
+https://opengameart.org/content/rigged-horse
+https://creativecommons.org/publicdomain/zero/1.0/
+Converted and scaled; textures resized, authored rig animated with original gallop keyframes.
+
+Poly Haven CC0: Wine Barrel01, Wooden Crate01, Wooden Lantern01 by James Ray Cock. Medieval Blocks03, Cobblestone Floor08, Brown Mud03, Wood Floor, Overcast Soil PureSky and Grass Medium01 by Poly Haven contributors. https://polyhaven.com/license
+Textures resized and repacked for glTF/PBR/foliage. HDR stored as linear half float data.
+
+Kenney Impact Sounds, CC0. https://kenney.nl/assets/impact-sounds
+
+Mount & Blade is a mechanics reference only. No commercial game files, code, characters, logos, maps, music or other proprietary assets reused. Crownfall is an original independent work.

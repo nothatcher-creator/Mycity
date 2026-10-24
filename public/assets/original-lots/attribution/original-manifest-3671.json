@@ -1,0 +1,48 @@
+{
+  "originalLot": 3671,
+  "source": "Original local coastal-upgrade publication manifest",
+  "name": "Snowcap Watchtower",
+  "description": "A towering wooden lookout with a snowy peaked roof and warmly lit windows. A rustic winter landmark above the city. Now with animated beacon light, falling snow and visitor-reactive glow. Tall wind-swaying coastal grass, a walking hooded keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+  "credits": [
+    {
+      "work": "Original watchtower model and painted texture",
+      "by": "Nothatcher, supplied asset"
+    },
+    {
+      "work": "Surface and detail mesh repairs",
+      "by": "Codex"
+    },
+    {
+      "work": "Beaconfall v0.7 and supplied RPG, dungeon, premium scenery and effect sheets",
+      "by": "Nothatcher, supplied assets; original creators retain their rights"
+    },
+    {
+      "work": "Legend of Adventure — procedural-world inspiration",
+      "by": "Matt Basta (2014), MIT; license included"
+    },
+    {
+      "work": "Project 0 sandbox adaptation and synthesized sound effects",
+      "by": "Created for Nothatcher"
+    },
+    {
+      "work": "Animated keeper beacons and themed exterior visual effects",
+      "by": "Original geometry and shaders for Nothatcher"
+    },
+    {
+      "work": "The Lantern Frontier: original animated explorer, icons, weapons and regions",
+      "by": "Created for Nothatcher"
+    },
+    {
+      "work": "Grass Bermuda 01, tall wind-swaying planting",
+      "by": "Rico Cilliers / Poly Haven — CC0; polyhaven.com/a/grass_bermuda_01"
+    },
+    {
+      "work": "Hooded Rogue and original skeletal Walking animation",
+      "by": "Kay Lousberg — KayKit Adventurers, CC0; kaylousberg.itch.io/kaykit-adventurers"
+    },
+    {
+      "work": "Downloaded water normal texture and adapted animated Water example",
+      "by": "Three.js authors — MIT; github.com/mrdoob/three.js, examples/textures/waternormals.jpg and examples/jsm/objects/Water.js"
+    }
+  ]
+}

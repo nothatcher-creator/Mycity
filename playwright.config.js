@@ -1,12 +1,12 @@
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/browser",
-  timeout: 60000,
+  timeout: 90000,
   fullyParallel: false,
   workers: 1,
   use: {
     baseURL: process.env.DISTRICT_TEST_URL || "http://localhost:5188/Mycity/",
-    viewport: { width: 1440, height: 1000 },
+    viewport: { width: 1100, height: 760 },
     reducedMotion: "reduce",
     launchOptions: {
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE

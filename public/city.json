@@ -1,0 +1,67 @@
+{
+  "identity": {
+    "name": "Nothatcher",
+    "landmark": "Nothatcher's Beacon",
+    "tagline": "A city for the things I make, and the people I make them with.",
+    "github": "https://github.com/nothatcher-creator",
+    "nexus": "https://www.nexusmods.com/profile/Nothatcher"
+  },
+  "bounds": { "radius": 320, "floor": 1.6, "ceiling": 55 },
+  "districts": [
+    {
+      "id": "games",
+      "name": "Game Quarter",
+      "description": "Original worlds. Original lot numbers.",
+      "center": [-118, -90],
+      "columns": 8,
+      "slotCount": 32,
+      "spacing": 17,
+      "color": "#a9c8ff",
+      "prefix": "G"
+    },
+    {
+      "id": "tools",
+      "name": "Tools & AI",
+      "description": "Make, build, measure, repeat.",
+      "center": [94, -90],
+      "columns": 4,
+      "slotCount": 16,
+      "spacing": 17,
+      "color": "#91e4cb",
+      "prefix": "T"
+    },
+    {
+      "id": "art",
+      "name": "Art & Images",
+      "description": "A place to put something beautiful.",
+      "center": [-118, 82],
+      "columns": 4,
+      "slotCount": 16,
+      "spacing": 17,
+      "color": "#edb0d6",
+      "prefix": "A"
+    },
+    {
+      "id": "android",
+      "name": "Android District",
+      "description": "Apps and releases made for the small screen.",
+      "center": [96, 82],
+      "columns": 4,
+      "slotCount": 16,
+      "spacing": 17,
+      "color": "#b4dfa1",
+      "prefix": "D"
+    },
+    {
+      "id": "mods",
+      "name": "Mod Row",
+      "description": "Nexus creations, game mods, and new possibilities.",
+      "center": [0, 170],
+      "columns": 4,
+      "slotCount": 16,
+      "spacing": 17,
+      "color": "#f4c18c",
+      "prefix": "M"
+    }
+  ]
+}

@@ -7,6 +7,7 @@ export default defineConfig({
       input: {
         district: resolve("index.html"),
         benchmarks: resolve("benchmarks/index.html"),
+        gallery: resolve("gallery/index.html"),
       },
     },
   },

@@ -1,0 +1,52 @@
+{
+  "originalLot": 3670,
+  "source": "Original local coastal-upgrade publication manifest",
+  "name": "Skybound Lighthouse Island — Restored",
+  "description": "A hovering tropical island with cliffs, palms, turquoise water and a lighthouse. The island rises and falls on a slow magical current while three clouds drift independently overhead. Now with animated beacon light, drifting aether wisps and visitor-reactive glow. Tall wind-swaying coastal grass, a walking hooded keeper and flowing water with downloaded wave-normal textures enrich the exterior.",
+  "credits": [
+    {
+      "work": "Original island scene and painted texture",
+      "by": "Nothatcher, supplied Tripo asset"
+    },
+    {
+      "work": "Mesh repairs, floating island and drifting clouds",
+      "by": "Codex"
+    },
+    {
+      "work": "Survival mechanics source adaptations",
+      "by": "Martin Erlic / SeloSlav — Apache-2.0"
+    },
+    {
+      "work": "Data compression",
+      "by": "lz-string / Pieroxy — WTFPL"
+    },
+    {
+      "work": "World, story, Stormrunner, scenery and sounds",
+      "by": "Original Project0 creation; AI-generated sprite art and original synthesized effects"
+    },
+    {
+      "work": "Downloaded town and NPC sprites (CC0)",
+      "by": "Kenney — Tiny Town and Tiny Dungeon"
+    },
+    {
+      "work": "Downloaded resource and inventory sprites (CC0)",
+      "by": "SwisserDev — FiveM Inventory Icons, Pixel Art"
+    },
+    {
+      "work": "Animated keeper beacons and themed exterior visual effects",
+      "by": "Original geometry and shaders for Nothatcher"
+    },
+    {
+      "work": "Grass Bermuda 01, tall wind-swaying planting",
+      "by": "Rico Cilliers / Poly Haven — CC0; polyhaven.com/a/grass_bermuda_01"
+    },
+    {
+      "work": "Hooded Rogue and original skeletal Walking animation",
+      "by": "Kay Lousberg — KayKit Adventurers, CC0; kaylousberg.itch.io/kaykit-adventurers"
+    },
+    {
+      "work": "Downloaded water normal texture and adapted animated Water example",
+      "by": "Three.js authors — MIT; github.com/mrdoob/three.js, examples/textures/waternormals.jpg and examples/jsm/objects/Water.js"
+    }
+  ]
+}

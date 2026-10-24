@@ -1,35 +1,56 @@
-# Nothatcher District
+# Mycity — Nothatcher's world
 
-[Open the district](https://nothatcher-creator.github.io/Mycity/) · [Bench Lab](https://nothatcher-creator.github.io/Mycity/benchmarks/) · [Source](https://github.com/nothatcher-creator/Mycity) · [Add a project](docs/adding-projects.md)
+[Enter the city](https://nothatcher-creator.github.io/Mycity/) · [Friend submissions](docs/community-lots.md) · [Add a project](docs/adding-projects.md)
 
-A 3D home for games, AI experiments, and Codex creations. Each project has its own plot, with search, category filters, a library view, and an app player. Touch devices can orbit and pinch to zoom; the library remains available when 3D graphics are unavailable.
+Play as a little flying cube in a city of games, tools, art, Android projects, and mods. **Nothatcher's Beacon** stands in the center, with lighthouse, castle, card, and creative-tool motifs from the owner's projects.
 
-**Astraforge is plot 001 and the first integration.** Its existing [LyricForge video studio](https://nothatcher-creator.github.io/Astraforge/) opens inside the district. The app keeps its own repository and hosting.
+The city has **96 physical lots**, initially containing **23 projects and 73 open lots**. Empty lots have stable addresses so friends can choose a place for their own work. Astraforge remains project **001**, in Tools & AI, and its existing LyricForge editor opens inside Mycity.
 
-The initial collection also links Project Workshop, WebLab, existing Project 0 games, and the Balatro Android modpack release. Those external projects keep their original hosting. This repository does not contain their full source or game binaries.
+## Explore
 
-Bench Lab provides deterministic prompts and checks for pasted AI responses. Runs stay in the current browser and can be exported as JSON. It does not call AI services, require an API key, or supply invented model scores.
+| Control | Action |
+| --- | --- |
+| WASD or arrow keys | Fly relative to the camera |
+| Drag the world | Look around the cube |
+| Space / C | Rise / descend |
+| Shift | Boost |
+| E | Enter a nearby project or inspect an empty lot |
+| M | Open the city map |
 
-## Run locally
+Phones have a movement stick, up/down buttons, and a boost button that can be held together. Neighborhood buttons and the minimap provide quick travel. The map includes every creation and every vacant slot, and works when WebGL is unavailable.
+
+## Neighborhoods
+
+- **Game Quarter:** all 16 currently owned Project 0 games, with their actual original numbers and downloaded original exterior models. The pinned experience versions also run in Mycity's sandbox guest player. See [original sources and attribution](docs/original-lots.md).
+- **Tools & AI:** Astraforge, Project Workshop, WebLab, and the local Bench Lab.
+- **Art & Images:** an original-art gallery, including The Castaway card and Crownstone artwork, with open neighboring plots for friends.
+- **Android District:** the Balatro Android modpack release and space for Android apps and downloads.
+- **Mod Row:** [Nothatcher on Nexus Mods](https://www.nexusmods.com/profile/Nothatcher), with space for more mods.
+
+Guest games use Project 0's hosted sandbox/runtime and public game assets. Guest saves and scores belong to this browser. The original lot link remains available for Project 0 accounts, multiplayer, official boards, items, and rewards. Startup checks are not full playthroughs of every game.
+
+Bench Lab evaluates pasted model responses through visible, deterministic checks. Results stay in the browser and can be exported; no model calls or API keys are involved.
+
+## Friends and city history
+
+Select an empty lot, enter a project link and description, then choose **Continue with GitHub**. GitHub handles sign-in and records the real account submitting the request. The city owner reviews it and applies `city:approved`; a workflow validates the reviewed snapshot, publishes the lot and shared journal entry, and starts the Pages deployment.
+
+An unapproved request does not claim a lot. Community submissions are project links, rather than automatically executed source code. There is no separate Mycity password or simulated authenticated session. Read [the contribution guide](docs/community-lots.md).
+
+The journal has two clearly marked histories: shared city publications and this device's visits/actions. Device history can be cleared or exported without deleting other apps' data. The city does not pretend to track live players or everyone's movements.
+
+## Develop and publish
 
 Use Node.js 22 or newer.
 
 ```bash
 npm ci
 npm run dev
-```
-
-Open the local URL printed by Vite. Before publishing:
-
-```bash
 npm test
 npm run build
-npm run preview
 ```
 
-The build validates the project catalog and writes the static site to `dist/`.
-
-Browser checks cover the 3D scene, Astraforge's actual embedded editor, search, local benchmark launch, phone pinch gestures, and the WebGL fallback:
+The production base is `/Mycity/`. GitHub Actions tests and deploys `dist/` from `main`.
 
 ```bash
 npx playwright install chromium
@@ -37,20 +58,6 @@ npm run build
 npm run test:browser
 ```
 
-If Chromium is already installed, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its path. Set `DISTRICT_TEST_URL` to a deployed district URL to run the same checks against the live site.
+Use `PLAYWRIGHT_CHROMIUM_EXECUTABLE` for an existing Chromium binary. `DISTRICT_TEST_URL` can point the browser tests at a deployed city.
 
-## Add the next creation
-
-Edit [`public/projects.json`](public/projects.json). A valid catalog entry automatically gets a plot and a library card. Keep Astraforge first, with `id: "astraforge"` and `plot: 1`.
-
-For a browser game hosted here, put its static files in `public/games/<slug>/` and use a relative URL such as `./games/my-game/`. For an existing app, use its HTTPS URL. See the [step-by-step guide](docs/adding-projects.md) for fields, examples, and checks.
-
-GitHub Pages serves static HTML, JavaScript, WebAssembly, and assets. Apps requiring a server or private API credentials need a separate backend; link or embed their deployed HTTPS app instead.
-
-## Deployment
-
-The [Pages workflow](.github/workflows/pages.yml) runs tests, builds the site, and deploys `dist/` when `main` changes. It can also be run manually from the repository's Actions tab. GitHub Pages must be configured to use **GitHub Actions** as its source.
-
-This site is hosted from the `Mycity` repository, so the Vite base is `/Mycity/`. Keep that prefix when adding routes or site assets; relative catalog destinations resolve inside it. Existing project sites such as `/Astraforge/` keep their own URLs. No browser API token or repository secret is needed for the hub.
-
-The source is public. Do not add passwords, `.env` files, private project data, or paid game files.
+`public/projects.json` defines creations; `public/city.json` defines stable neighborhood slots; `public/city-activity.json` records published changes. Static games hosted here can live under `public/games/<slug>/`. GitHub Pages serves browser assets; apps requiring a private backend keep their own server. Never publish credentials, private user data, or paid game binaries in this public repository.

@@ -11,8 +11,8 @@ body:
     id: slot
     attributes:
       label: Lot slot
-      description: Copy the vacant slot shown in the city, such as games-09.
-      placeholder: games-09
+      description: Copy the vacant slot shown in the city, such as games-17.
+      placeholder: games-17
     validations:
       required: true
   - type: dropdown

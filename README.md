@@ -25,7 +25,7 @@ Phones have a movement stick, up/down buttons, and a boost button that can be he
 - **Tools & AI:** Astraforge, Project Workshop, WebLab, and the local Bench Lab.
 - **Art & Images:** an original-art gallery, including The Castaway card and Crownstone artwork, with open neighboring plots for friends.
 - **Android District:** the Balatro Android modpack release and space for Android apps and downloads.
-- **Mod Row:** [Nothatcher on Nexus Mods](https://www.nexusmods.com/profile/Nothatcher), with space for more mods.
+- **Mod Row, beside the Game Quarter:** [Nothatcher on Nexus Mods](https://www.nexusmods.com/profile/Nothatcher), with space for more mods.
 
 Guest games use Project 0's hosted sandbox/runtime and public game assets. Guest saves and scores belong to this browser. The original lot link remains available for Project 0 accounts, multiplayer, official boards, items, and rewards. Startup checks are not full playthroughs of every game.
 

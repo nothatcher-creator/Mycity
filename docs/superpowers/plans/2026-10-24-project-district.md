@@ -24,6 +24,6 @@ Unsafe catalog URLs; duplicate IDs/plots; unavailable WebGL; storage failure; sm
 - [x] World: create `src/world.js` exporting `createWorld({canvas,labelsContainer,projects,onSelect,onReady})`; controller methods `focusProject(id)`, `setVisible(ids)`, `reset()`, `dispose()`. Render actual themed plots and accessible projected labels, orbit/touch controls, selective animation.
 - [x] Benchmark lab: independently implement `benchmarks/index.html`, `src/benchmarks.js`, `src/benchmarks.css`, `src/benchmark-engine.js`, and engine tests; graded prompts, browser-local history, export. Agent owns these only.
 - [x] Integration + deployment: implement `src/main.js` and `src/style.css`; launch Astraforge in player, external fallbacks, dialog/focus, category/search/list behavior, mobile and WebGL fallback. Add README/AGENTS/add-project docs and Pages workflow.
-- [ ] Verify: node tests, production build, browser desktop/mobile/WebGL-disabled and benchmark smoke tests, independent review. Resolve material defects, publish repository/Pages, verify live HTML/assets/app links and deployment status.
+- [x] Verify: node tests, production build, browser desktop/mobile/WebGL-disabled and benchmark smoke tests, independent review. Resolve material defects, publish repository/Pages, verify live HTML/assets/app links and deployment status.
 
 The user requested execution and hosting; implementation choices above are builder assumptions, not approvals attributed to them. Work proceeds within that authorized scope.

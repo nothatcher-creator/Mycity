@@ -17,7 +17,9 @@ The city has **96 physical lots**, initially containing **23 projects and 73 ope
 | E | Enter a nearby project or inspect an empty lot |
 | M | Open the city map |
 
-Phones and tablets show directional movement buttons by default, including in landscape. Hold the arrows to fly; the right-side up/down and boost buttons can be held together. **Use joystick** switches movement modes, and **On-screen controls** restores hidden controls on any screen. Neighborhood buttons and the minimap provide quick travel. The map includes every creation and every vacant slot, and works when WebGL is unavailable.
+Buildings are solid: the cube slides along walls and can land on roofs, and the camera pulls in rather than ending up inside a wall. Every building is visible from anywhere in the city; exteriors stream in nearest-first after the first frame and pause while a game or dialog is open. Rendering follows the display's refresh rate and lowers resolution only when frames run long.
+
+Phones and tablets show directional movement buttons by default, including in landscape. Hold the arrows to fly; the right-side up/down and boost buttons can be held together. **Use joystick** switches movement modes, and **On-screen controls** restores hidden controls on any screen. Neighborhood buttons and the minimap provide quick travel. The City map view draws every lot, built or open, beside the cards: hover a lot for its name, click it for details, and the neighborhood and search filters highlight what matches. Cards show a picture of each lot's real building. The map works when WebGL is unavailable.
 
 ## Neighborhoods
 

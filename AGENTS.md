@@ -24,7 +24,7 @@ Use Node.js 22 or newer. Run `npm ci`, `npm test`, and `npm run build`. The buil
 
 For changes to the scene, player, navigation, or a new app, also check the actual browser flow at desktop and mobile widths. Verify the destination, player closing, external-open fallback, category/search behavior, and that the library still works without WebGL. Do not infer a successful integration from a passing build alone.
 
-The world lives in `src/world.js`, center/sky visuals in `src/city-visuals.js`, and tested flight/input in `src/flight.js`. The shell/player is in `src/main.js` and `src/style.css`. `src/p0-player.js` is the sandbox guest host; official Project 0 services remain on original lots. Bench Lab and Gallery are separate Vite pages. Run actual browser launches for any changes to those integrations.
+The world lives in `src/world.js`, center/sky visuals in `src/city-visuals.js`, and tested flight/input in `src/flight.js`. Buildings are solid through the height field in `src/collision.js`, which the flight physics and follow camera share; it is built from each displayed building's triangles. The minimap and the City map view's map are 2D canvas drawings from `src/city-map.js`, so they work without WebGL. Card pictures come from `scripts/render-thumbnails.mjs`; rerun it after adding or restyling a project. The shell/player is in `src/main.js` and `src/style.css`. `src/p0-player.js` is the sandbox guest host; official Project 0 services remain on original lots. Bench Lab and Gallery are separate Vite pages. Run actual browser launches for any changes to those integrations.
 
 ## Hosting and privacy
 

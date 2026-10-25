@@ -12,7 +12,8 @@
     "theme": "forge",
     "tags": ["Featured", "Video", "AI", "Creative studio"],
     "district": "tools",
-    "slot": "tools-01"
+    "slot": "tools-01",
+    "lotStyle": "tower"
   },
   {
     "id": "bench-lab",
@@ -41,7 +42,8 @@
     "theme": "workshop",
     "tags": ["Planning", "Notes", "Local-first"],
     "district": "tools",
-    "slot": "tools-03"
+    "slot": "tools-03",
+    "lotStyle": "workshop"
   },
   {
     "id": "weblab",
@@ -56,7 +58,8 @@
     "theme": "terminal",
     "tags": ["Codex", "Web", "Three.js", "Playground"],
     "district": "tools",
-    "slot": "tools-04"
+    "slot": "tools-04",
+    "lotStyle": "arcade"
   },
   {
     "id": "meridian-ironwatch",

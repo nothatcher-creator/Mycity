@@ -5,6 +5,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { buildCityLots, getDistrictAtPosition } from "./city-layout.js";
 import { createFlightState, stepFlight } from "./flight.js";
+import { createHeightField } from "./collision.js";
 import { createCityVisuals } from "./city-visuals.js";
 import { createCityResources, cityBuildingSource } from "./city-resources.js";
 import { CITY_LOOK } from "./city-look.js";
@@ -38,12 +39,16 @@ export function createWorld({
     alpha: false,
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  // Resolution adapts to measured frame time (see adaptQuality) between these limits.
+  const maxPixelRatio = Math.min(devicePixelRatio || 1, 2);
+  const minPixelRatio = Math.min(maxPixelRatio, 0.75);
+  let pixelRatio = maxPixelRatio;
+  renderer.setPixelRatio(pixelRatio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = CITY_LOOK.exposure;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   renderer.shadowMap.needsUpdate = true;
   const scene = new THREE.Scene();
@@ -134,6 +139,7 @@ export function createWorld({
     if (scale) item.scale.set(...scale);
     item.castShadow = kind !== "glow" && kind !== "glass";
     item.receiveShadow = true;
+    if (kind === "glow") item.userData.decorative = true;
     parent.add(item);
     return item;
   }
@@ -242,6 +248,59 @@ export function createWorld({
   const visuals = createCityVisuals({ scene, city });
   const lots = buildCityLots(projects, city),
     entries = new Map();
+  // Everything the cube and camera can bump into. Lots are rebuilt from the
+  // triangles of whichever building is currently shown on them; nothing under
+  // 0.9 m can stop the cube (its floor is 1.6 m) or the camera above it.
+  const solids = createHeightField({ cellSize: 0.5, ignoreBelow: 0.9 });
+  solids.addDisc(0, 0, 9.7, 1.38);
+  solids.addDisc(0, 0, 7.8, 2.13);
+  solids.addDisc(0, 0, 3.5, 8);
+  solids.addBox(-3.1, -3.1, 3.1, 3.1, 14.2);
+  solids.addDisc(0, 0, 3.3, 16.8);
+  solids.addDisc(0, 0, 1.2, 18.9);
+  for (const side of [-1, 1]) {
+    solids.addBox(-5.9, side * 8.05 - 0.1, 5.9, side * 8.05 + 0.1, 4.33);
+    solids.addBox(side * 8.05 - 0.1, -5.9, side * 8.05 + 0.1, 5.9, 4.33);
+  }
+  for (const [x, z, radius] of [[0, -16, 4.5], [-16, 0, 4.5], [16, 0, 4.5], [0, 19, 3.9]])
+    solids.addDisc(x, z, radius, 1.13);
+  solids.addBox(-2.65, -18.65, 2.65, -13.35, 5.3);
+  solids.addBox(-17.6, -0.5, -14.4, 0.5, 5.1);
+  solids.addBox(13.1, -0.9, 18.8, 0.9, 3.9);
+  solids.addBox(16, -0.5, 18.5, 0.5, 7.1);
+  solids.addBox(-2.65, 18.85, 2.65, 19.15, 6.25);
+  const solidVertex = new THREE.Vector3(),
+    instanceMatrix = new THREE.Matrix4(),
+    solidMatrix = new THREE.Matrix4();
+  function rebuildSolids(entry) {
+    const { x, z } = entry.lot.position;
+    solids.clearRect(x - 7.6, z - 7.6, x + 7.6, z + 7.6);
+    const shown = entry.model || entry.fallback;
+    if (!shown) return;
+    entry.group.updateWorldMatrix(true, true);
+    shown.traverse((object) => {
+      if (!object.isMesh || object.isSkinnedMesh || object.userData.decorative) return;
+      const position = object.geometry?.getAttribute("position");
+      if (!position) return;
+      const index = object.geometry.index?.array || null;
+      const copies = object.isInstancedMesh ? object.count : 1;
+      const points = new Float32Array(position.count * 3);
+      for (let copy = 0; copy < copies; copy++) {
+        solidMatrix.copy(object.matrixWorld);
+        if (object.isInstancedMesh) {
+          object.getMatrixAt(copy, instanceMatrix);
+          solidMatrix.multiply(instanceMatrix);
+        }
+        for (let i = 0; i < position.count; i++) {
+          solidVertex.fromBufferAttribute(position, i).applyMatrix4(solidMatrix);
+          points[i * 3] = solidVertex.x;
+          points[i * 3 + 1] = solidVertex.y;
+          points[i * 3 + 2] = solidVertex.z;
+        }
+        solids.addTriangles(points, index);
+      }
+    });
+  }
   const cityResources = createCityResources({
     renderer,
     scene,
@@ -470,6 +529,7 @@ export function createWorld({
     return group;
   }
 
+  const markerTransforms = [];
   for (const lot of lots) {
     const { x, z } = lot.position,
       project = lot.project,
@@ -529,15 +589,7 @@ export function createWorld({
       onSelect?.(project?.id || lot.slotId),
     );
     labelsContainer.append(button);
-    const marker = mesh(
-      group,
-      "cylinder",
-      color,
-      [0, 0.08, 7.3],
-      [0.6, 0.12, 0.6],
-      "glow",
-    );
-    marker.castShadow = false;
+    markerTransforms.push({ p: [x, 0.53, z + 7.3], s: [0.6, 0.12, 0.6], c: color });
     entries.set(lot.slotId, {
       lot,
       group,
@@ -551,6 +603,20 @@ export function createWorld({
       distance: Infinity,
     });
   }
+  const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+  resources.materials.add(markerMaterial);
+  const markers = new THREE.InstancedMesh(geometry("cylinder"), markerMaterial, markerTransforms.length);
+  const markerObject = new THREE.Object3D();
+  for (const [index, transform] of markerTransforms.entries()) {
+    markerObject.position.set(...transform.p);
+    markerObject.scale.set(...transform.s);
+    markerObject.updateMatrix();
+    markers.setMatrixAt(index, markerObject.matrix);
+    markers.setColorAt(index, new THREE.Color(transform.c));
+  }
+  markers.name = "Lot-entrance-markers";
+  scene.add(markers);
+  for (const entry of entries.values()) rebuildSolids(entry);
   instances("box", COLORS.stone, tileTransforms);
   cityResources.surface("grass", grassTransforms, { uvScale: 5 });
   instances("box", COLORS.mint, stakeTransforms, "glow");
@@ -657,6 +723,10 @@ export function createWorld({
   resources.materials.add(playerShadow.material);
 
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  // Exteriors are light (LOD1 is ~10k triangles), so the whole skyline streams
+  // in nearest-first instead of only the few lots beside the cube.
+  const MAX_LOADS = 3;
+  let exteriorCount = 0;
   const mixers = new Set(),
     loadedObjects = new Set();
   let loadingCount = 0,
@@ -668,7 +738,6 @@ export function createWorld({
     rendering = false,
     frame = 0,
     lastTime = performance.now(),
-    lastRendered = 0,
     time = 0,
     lastStatus = 0,
     lastNearby = "",
@@ -727,7 +796,7 @@ export function createWorld({
       !source ||
       disposed ||
       (high ? entry.highLoading || entry.high : entry.loading || entry.model) ||
-      loadingCount >= 2
+      loadingCount >= MAX_LOADS
     )
       return;
     if (high) entry.highLoading = true;
@@ -742,6 +811,18 @@ export function createWorld({
         return;
       }
       const fitted = fitModel(gltf.scene);
+      // Compile shaders and upload textures now, so the first frame that shows
+      // the building does not stall (one building at a time, not twenty at once).
+      fitted.traverse((object) => {
+        for (const material of [object.material].flat().filter(Boolean))
+          for (const value of Object.values(material)) if (value?.isTexture) renderer.initTexture(value);
+      });
+      try {
+        await renderer.compileAsync(fitted, camera, scene);
+      } catch {
+        /* Rendering compiles anything left over. */
+      }
+      if (disposed) return;
       entry.group.add(fitted);
       loadedObjects.add(fitted);
       if (high) {
@@ -752,6 +833,10 @@ export function createWorld({
         if (entry.high) fitted.visible = false;
       }
       if (entry.fallback) entry.fallback.visible = false;
+      if (!high) {
+        rebuildSolids(entry);
+        canvas.dataset.exteriors = String(++exteriorCount);
+      }
       if (high && gltf.animations.length) {
         entry.mixer = new THREE.AnimationMixer(gltf.scene);
         gltf.animations.forEach((clip) => entry.mixer.clipAction(clip).play());
@@ -766,7 +851,24 @@ export function createWorld({
       );
     } finally {
       loadingCount--;
+      if (!high) queueExteriors();
     }
+  }
+  /** Nearby exteriors first; the rest of the skyline follows once the city has rendered. */
+  function queueExteriors() {
+    // Paused means a game or dialog is in front: leave the network and GPU to it.
+    if (disposed || paused || loadingCount >= MAX_LOADS) return;
+    [...entries.values()]
+      .filter(
+        (entry) =>
+          (ready || entry.distance < 115) &&
+          cityBuildingSource(entry.lot.project) &&
+          !entry.model &&
+          !entry.loading,
+      )
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, MAX_LOADS - loadingCount)
+      .forEach((entry) => loadModel(entry));
   }
   function districtAt(position) {
     return getDistrictAtPosition(position, city);
@@ -779,7 +881,6 @@ export function createWorld({
         playerState.position.x - entry.lot.position.x,
         playerState.position.z - entry.lot.position.z,
       );
-      entry.group.visible = entry.distance < 135;
       const distance = Math.hypot(
         entry.distance,
         (playerState.position.y - 2) * 0.3,
@@ -804,27 +905,21 @@ export function createWorld({
       dirty = true;
     }
     const newDistrict = districtAt(playerState.position);
-    if (now - lastStatus > 220 || newDistrict !== currentDistrict) {
+    if (now - lastStatus > 100 || newDistrict !== currentDistrict) {
       currentDistrict = newDistrict;
       lastStatus = now;
       onLocation?.({
         position: { ...playerState.position },
         district: currentDistrict,
         slotId: nearbyKey || null,
+        heading: playerState.heading,
+        view: Math.atan2(
+          controls.target.x - camera.position.x,
+          controls.target.z - camera.position.z,
+        ),
       });
     }
-    // Prioritize nearby exteriors and reviewed prefabs over distant downloads.
-    [...entries.values()]
-      .filter(
-        (entry) =>
-          entry.distance < 115 &&
-          cityBuildingSource(entry.lot.project) &&
-          !entry.model &&
-          !entry.loading,
-      )
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 2)
-      .forEach((entry) => loadModel(entry));
+    queueExteriors();
     if (
       nearest?.distance < 27 &&
       nearest.lot.project?.exterior?.highModel &&
@@ -835,6 +930,9 @@ export function createWorld({
       loadModel(nearest, true);
   }
   function updateLabels() {
+    // Read layout once: interleaving reads with the style writes below forces a reflow per label.
+    const width = canvas.clientWidth,
+      height = canvas.clientHeight;
     for (const entry of entries.values()) {
       const matches =
         !allowedIds ||
@@ -858,7 +956,7 @@ export function createWorld({
         Math.abs(projected.y) < 1.08;
       entry.button.hidden = !show;
       if (show) {
-        entry.button.style.transform = `translate(-50%,-50%) translate(${(projected.x * 0.5 + 0.5) * canvas.clientWidth}px,${(-projected.y * 0.5 + 0.5) * canvas.clientHeight}px)`;
+        entry.button.style.transform = `translate(-50%,-50%) translate(${(projected.x * 0.5 + 0.5) * width}px,${(-projected.y * 0.5 + 0.5) * height}px)`;
         entry.button.style.zIndex = String(
           10 + Math.round((1 - projected.z) * 100),
         );
@@ -875,6 +973,79 @@ export function createWorld({
     dirty = true;
     start();
   }
+  const DEFAULT_BOUNDS = { radius: 310, floor: 1.6, ceiling: 55 };
+  const smoothing = (rate, dt) => 1 - Math.exp(-rate * dt);
+  const shortestTurn = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
+  // The orbit keeps its chosen distance; only the rendered camera is pulled in
+  // when a wall would come between it and the cube.
+  const orbitPosition = new THREE.Vector3(),
+    cameraOffset = new THREE.Vector3(),
+    cameraLift = new THREE.Vector3(0, 1, 0),
+    sideTarget = new THREE.Vector3();
+  let cameraReach = 1,
+    squash = 0;
+  function clearCamera(dt) {
+    cameraOffset.copy(camera.position).sub(controls.target);
+    const distance = cameraOffset.length();
+    if (distance < 0.01) return false;
+    const clear = solids.clearFraction(controls.target, camera.position, 0.45);
+    const allowed = clear >= 1 ? 1 : Math.min(1, Math.max(2.4 / distance, clear - 0.6 / distance));
+    if (allowed < cameraReach || reducedMotion.matches) cameraReach = allowed;
+    else cameraReach += (allowed - cameraReach) * smoothing(4, dt);
+    camera.position.copy(controls.target).addScaledVector(cameraOffset, cameraReach);
+    return Math.abs(allowed - cameraReach) > 0.002;
+  }
+  /** Pick the least-obstructed view of the cube, preferring the given angle. */
+  function frameCamera({ yaw = 0.42, elevation = 0.45, distance = 23 } = {}) {
+    let best = null;
+    for (const d of [distance, distance * 0.7])
+      for (const turn of [0, -0.84, 0.5, -1.3, 1.1, -Math.PI / 2, Math.PI / 2])
+        for (const lift of [0, 0.15, 0.3, 0.45, 0.6, 0.75]) {
+          const y = yaw + turn, e = Math.min(1.3, elevation + lift);
+          cameraOffset.set(Math.sin(y) * Math.cos(e), Math.sin(e), Math.cos(y) * Math.cos(e)).multiplyScalar(d);
+          orbitPosition.copy(controls.target).add(cameraOffset);
+          const clear = solids.clearFraction(controls.target, orbitPosition, 0.45);
+          // Also look towards the corners of the frame, so a neighbour does not fill it.
+          let corners = 0;
+          for (const side of [-1, 1])
+            for (const height of [-1, 1]) {
+              sideTarget.set(Math.cos(y) * side, 0, -Math.sin(y) * side).multiplyScalar(d * 0.28).add(controls.target);
+              sideTarget.y = Math.max(1, sideTarget.y + height * d * 0.16);
+              corners += solids.clearFraction(sideTarget, orbitPosition, 0.45);
+            }
+          const cost = (1 - clear) * 10 + (4 - corners) * 1.2 + Math.abs(turn) * 0.8 + lift + (d < distance ? 0.9 : 0);
+          if (!best || cost < best.cost) best = { cost, position: orbitPosition.clone() };
+        }
+    camera.position.copy(best.position);
+    cameraReach = 1;
+  }
+  let readyAt = 0,
+    frameCost = 1 / 60,
+    qualityChanged = 0,
+    qualityCeiling = maxPixelRatio;
+  /** Trade resolution for a steady frame rate, recovering slowly when there is headroom. */
+  function adaptQuality(now, dt) {
+    if (reducedMotion.matches || !ready || dt <= 0 || now - readyAt < 3000) return;
+    // Clamp single hitches (shader compiles, downloads) so only sustained cost counts.
+    frameCost += (Math.min(dt, 0.1) - frameCost) * 0.06;
+    if (now - qualityChanged < 2000) return;
+    let next = pixelRatio;
+    if (frameCost > 1 / 40 && pixelRatio > minPixelRatio) {
+      qualityCeiling = Math.max(minPixelRatio, pixelRatio - 0.125);
+      next = Math.max(minPixelRatio, pixelRatio - 0.25);
+    } else if (frameCost < 1 / 57 && now - qualityChanged > 6000) {
+      if (pixelRatio >= qualityCeiling && now - qualityChanged > 20000)
+        qualityCeiling = Math.min(maxPixelRatio, qualityCeiling + 0.125);
+      next = Math.min(qualityCeiling, pixelRatio + 0.125);
+    }
+    if (next === pixelRatio) return;
+    pixelRatio = next;
+    qualityChanged = now;
+    frameCost = 1 / 50;
+    renderer.setPixelRatio(pixelRatio);
+    canvas.dataset.pixelRatio = pixelRatio.toFixed(3);
+    dirty = true;
+  }
   function tick(now) {
     frame = 0;
     if (disposed || paused || document.hidden || !visible) return;
@@ -883,6 +1054,8 @@ export function createWorld({
     lastTime = now;
     const input = flightInput?.getState?.() || zeroInput;
     const before = { ...playerState.position };
+    const wasGrounded = playerState.grounded,
+      fallSpeed = playerState.velocity.y;
     const yaw = Math.atan2(
       camera.position.x - controls.target.x,
       camera.position.z - controls.target.z,
@@ -894,7 +1067,8 @@ export function createWorld({
         input,
         Math.min(0.05, remaining),
         yaw,
-        city.bounds || { radius: 310, floor: 1.6, ceiling: 55 },
+        city.bounds || DEFAULT_BOUNDS,
+        solids,
       );
     tempVector.set(
       playerState.position.x - before.x,
@@ -912,37 +1086,48 @@ export function createWorld({
       playerState.position.y,
       playerState.position.z,
     );
+    const speed = Math.hypot(playerState.velocity.x, playerState.velocity.z);
     if (moved) {
-      player.rotation.y = THREE.MathUtils.lerp(
-        player.rotation.y,
-        playerState.heading || 0,
-        0.15,
-      );
-      cube.rotation.z = THREE.MathUtils.lerp(
-        cube.rotation.z,
-        -(input.strafe || 0) * 0.1,
-        0.12,
-      );
-      cube.rotation.x = THREE.MathUtils.lerp(
-        cube.rotation.x,
-        (input.forward || 0) * 0.08,
-        0.12,
-      );
+      // Turn the short way round, lean into travel and bank into turns.
+      const turn = shortestTurn(player.rotation.y, playerState.heading || 0) * smoothing(9, dt);
+      player.rotation.y += turn;
+      const bank = THREE.MathUtils.clamp(-(turn / Math.max(dt, 1e-3)) * 0.09, -0.32, 0.32);
+      cube.rotation.x += (Math.min(speed / 42, 1) * 0.16 - cube.rotation.x) * smoothing(7, dt);
+      cube.rotation.z += (bank - cube.rotation.z) * smoothing(6, dt);
     } else {
-      cube.rotation.z *= 0.9;
-      cube.rotation.x *= 0.9;
+      cube.rotation.x *= 1 - smoothing(6, dt);
+      cube.rotation.z *= 1 - smoothing(6, dt);
+    }
+    if (!wasGrounded && playerState.grounded && fallSpeed < -6 && !reducedMotion.matches)
+      squash = Math.min(0.2, -fallSpeed / 130);
+    if (squash > 0.001) {
+      squash *= 1 - smoothing(8, dt);
+      player.scale.set(1 + squash * 0.5, 1 - squash, 1 + squash * 0.5);
+      dirty = true;
+    } else if (squash) {
+      squash = 0;
+      player.scale.setScalar(1);
+    }
+    if (!reducedMotion.matches) {
+      const fov = 54 + THREE.MathUtils.clamp((speed - 22) / 18, 0, 1) * 7;
+      if (Math.abs(camera.fov - fov) > 0.01) {
+        camera.fov += (fov - camera.fov) * smoothing(5, dt);
+        camera.updateProjectionMatrix();
+        dirty = true;
+      }
     }
     const playerLot = lots.find((lot) => Math.abs(lot.position.x - player.position.x) < 7.35 && Math.abs(lot.position.z - player.position.z) < 7.35);
     const centerDistance = Math.hypot(player.position.x, player.position.z);
-    const shadowHeight = playerLot ? 0.455 : centerDistance < 23.7 ? 0.205 : centerDistance < 30.8 ? 0.015 : centerDistance < 43 && Math.min(Math.abs(player.position.x), Math.abs(player.position.z)) > 4 ? -0.045 : 0.15;
+    const groundHeight = playerLot ? 0.455 : centerDistance < 23.7 ? 0.205 : centerDistance < 30.8 ? 0.015 : centerDistance < 43 && Math.min(Math.abs(player.position.x), Math.abs(player.position.z)) > 4 ? -0.045 : 0.15;
+    // On a roof the soft shadow sits on the roof, not on the street far below.
+    const shadowHeight = Math.max(groundHeight, solids.heightAt(player.position.x, player.position.z) + 0.03);
+    const hover = player.position.y - shadowHeight;
     playerShadow.position.set(player.position.x, shadowHeight, player.position.z);
-    playerShadow.material.opacity = Math.max(0.025, 0.32 - player.position.y * 0.007);
-    playerShadow.scale.setScalar(
-      Math.max(0.4, 1 - (player.position.y - 2) * 0.01),
-    );
+    playerShadow.material.opacity = Math.max(0.025, 0.33 - hover * 0.007);
+    playerShadow.scale.setScalar(Math.max(0.4, 1 - (hover - 1.5) * 0.01));
     const controlsMoved = controls.update();
     dirty ||= controlsMoved;
-    if (moved || now - lastStatus > 220) updateStatus(now);
+    if (moved || now - lastStatus > 100) updateStatus(now);
     if (!reducedMotion.matches) {
       time += dt;
       visuals.update(time, false);
@@ -956,18 +1141,22 @@ export function createWorld({
       sun.position.copy(sun.target.position).add(sunDirection);
       renderer.shadowMap.needsUpdate = true;
     }
-    if (dirty && now - lastRendered >= (reducedMotion.matches ? 0 : 33)) {
+    if (dirty) {
+      orbitPosition.copy(camera.position);
+      const easing = clearCamera(dt);
       renderer.render(scene, camera);
       updateLabels();
-      dirty = false;
-      lastRendered = now;
+      camera.position.copy(orbitPosition);
+      dirty = easing;
       if (!ready) {
         ready = true;
+        readyAt = now;
         canvas.dataset.ready = "true";
         onReady?.();
         updateStatus(now);
       }
     }
+    adaptQuality(now, dt);
     rendering = false;
     frame = requestAnimationFrame(tick);
   }
@@ -1063,13 +1252,15 @@ export function createWorld({
   canvas.addEventListener("pointerup", pointerUp);
   canvas.addEventListener("pointercancel", pointerCancel);
 
-  function teleport(position, selected = null) {
+  function teleport(position, selected = null, view) {
     Object.assign(playerState.position, position);
     Object.assign(playerState.velocity, { x: 0, y: 0, z: 0 });
-    playerPosition.set(position.x, position.y, position.z);
+    // Settle onto whatever is underneath (a roof, a ledge) before framing the shot.
+    stepFlight(playerState, zeroInput, 1e-4, 0, city.bounds || DEFAULT_BOUNDS, solids);
+    playerPosition.set(playerState.position.x, playerState.position.y, playerState.position.z);
     player.position.copy(playerPosition);
-    controls.target.copy(playerPosition).add(new THREE.Vector3(0, 1, 0));
-    camera.position.copy(playerPosition).add(new THREE.Vector3(14, 12, 21));
+    controls.target.copy(playerPosition).add(cameraLift);
+    frameCamera(view);
     selectedId = selected;
     dirty = true;
     renderer.shadowMap.needsUpdate = true;
@@ -1128,7 +1319,7 @@ export function createWorld({
       start();
     },
     reset() {
-      teleport({ x: 0, y: 2.2, z: 36 });
+      teleport({ x: 0, y: 2.2, z: 36 }, null, { yaw: 0.62, elevation: 0.35, distance: 31 });
     },
     setPaused(value) {
       paused = Boolean(value);

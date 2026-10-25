@@ -105,10 +105,9 @@
         </button>
       </aside>
       <aside class="minimap" id="minimap" aria-label="City minimap">
-        <div id="minimap-districts"></div>
-        <span class="map-center" title="Nothatcher's Beacon">N</span
-        ><span id="minimap-player" class="map-player" aria-hidden="true"></span
-        ><span class="map-label">MYCITY / 96 LOTS</span>
+        <canvas id="minimap-canvas" class="minimap-canvas" aria-hidden="true"></canvas>
+        <div id="minimap-districts" class="minimap-districts"></div>
+        <span class="map-label" id="minimap-label">MYCITY / 96 LOTS</span>
       </aside>
       <section class="nearby-card" id="nearby-card" aria-label="Nearby lot">
         <span id="nearby-number" class="nearby-number">N</span>
@@ -253,11 +252,24 @@
           role="group"
           aria-label="Filter neighborhoods"
         ></div>
-        <div id="project-grid" class="project-grid"></div>
-        <p id="empty-state" class="empty-state" hidden>
-          No places match your search. Try a different neighborhood or name.
-        </p>
-        <p id="result-count" class="result-count" aria-live="polite"></p>
+        <div class="library-body">
+          <figure class="city-map" id="city-map">
+            <canvas id="city-map-canvas" class="city-map-canvas" aria-hidden="true"></canvas>
+            <span id="city-map-tip" class="city-map-tip" hidden></span>
+            <figcaption class="city-map-legend">
+              <span><i class="legend-built"></i>Creation</span
+              ><span><i class="legend-open"></i>Open lot</span
+              ><span><i class="legend-you"></i>You</span>
+            </figcaption>
+          </figure>
+          <div class="library-results">
+            <div id="project-grid" class="project-grid"></div>
+            <p id="empty-state" class="empty-state" hidden>
+              No places match your search. Try a different neighborhood or name.
+            </p>
+            <p id="result-count" class="result-count" aria-live="polite"></p>
+          </div>
+        </div>
       </section>
       <aside
         id="project-details"

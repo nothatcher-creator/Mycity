@@ -63,7 +63,17 @@ Remove `source` if there is no public source repository. Keep Astraforge as the 
 
 Use `embed: false` for sites that block frames, downloads, and pages intended to open in their own tab. The player always offers an external-open link for embedded apps. Test the app in the frame before considering it integrated.
 
-## 3. Check it locally
+## 3. Render its library picture
+
+Library cards and the detail panel show a picture of the lot's real city building. After adding or restyling a project, render the pictures again:
+
+```bash
+node scripts/render-thumbnails.mjs
+```
+
+This renders each project's original exterior or chosen `lotStyle` building into `public/thumbnails/` and updates `public/thumbnails/index.json`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to use an existing Chromium. A project without a picture keeps the generic card artwork.
+
+## 4. Check it locally
 
 ```bash
 npm ci

@@ -1,5 +1,5 @@
 {
-  "description": "Downloaded city buildings, instanced street furniture and trees, photographed PBR asphalt and HDR sky. Original Project 0 lots retain their own models.",
+  "description": "Downloaded city buildings, instanced street furniture and trees, PBR asphalt/paving/grass and HDR skies. Warm sunset lighting uses Qwantani Sunset; original Project 0 lots retain their own models.",
   "assets": [
     {
       "path": "./assets/city-upgrade/styles/studio.glb",
@@ -232,6 +232,83 @@
       "creator": "Poly Haven",
       "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_rough_1k.jpg",
       "listing": "https://polyhaven.com/a/asphalt_02",
+      "licenseUrl": "https://polyhaven.com/license"
+    },
+    {
+      "path": "./assets/city-upgrade/surfaces/qwantani_sunset_puresky_1k.hdr",
+      "bytes": 1061624,
+      "sha256": "e90f2130848de0364b76d2b3da7a72ce31bbb95d66bd86d5b4f85f0626421b8d",
+      "license": "CC0-1.0",
+      "creator": "Greg Zaal, Jarod Guest / Poly Haven",
+      "source": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/qwantani_sunset_puresky_1k.hdr",
+      "listing": "https://polyhaven.com/a/qwantani_sunset_puresky",
+      "metadata": "https://api.polyhaven.com/info/qwantani_sunset_puresky",
+      "licenseUrl": "https://polyhaven.com/license"
+    },
+    {
+      "path": "./assets/city-upgrade/surfaces/concrete_pavers_diff_1k.jpg",
+      "bytes": 757968,
+      "sha256": "eea1fb8b498154754f4961ce0792092ef56cadc3d210becbb0dc3bf6c96c261d",
+      "license": "CC0-1.0",
+      "creator": "Amal Kumar / Poly Haven",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_diff_1k.jpg",
+      "listing": "https://polyhaven.com/a/concrete_pavers",
+      "metadata": "https://api.polyhaven.com/info/concrete_pavers",
+      "licenseUrl": "https://polyhaven.com/license"
+    },
+    {
+      "path": "./assets/city-upgrade/surfaces/concrete_pavers_nor_gl_1k.jpg",
+      "bytes": 918300,
+      "sha256": "761c8332b4b53ab06931adf83f5f8f4fa5b7559a1a8267bc7ef865f890b17894",
+      "license": "CC0-1.0",
+      "creator": "Amal Kumar / Poly Haven",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_nor_gl_1k.jpg",
+      "listing": "https://polyhaven.com/a/concrete_pavers",
+      "metadata": "https://api.polyhaven.com/info/concrete_pavers",
+      "licenseUrl": "https://polyhaven.com/license"
+    },
+    {
+      "path": "./assets/city-upgrade/surfaces/concrete_pavers_rough_1k.jpg",
+      "bytes": 324326,
+      "sha256": "27fb26837b95523b4ff8d663745466005ac6ae9797e6f5ced1192eaebf6c1469",
+      "license": "CC0-1.0",
+      "creator": "Amal Kumar / Poly Haven",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete_pavers/concrete_pavers_rough_1k.jpg",
+      "listing": "https://polyhaven.com/a/concrete_pavers",
+      "metadata": "https://api.polyhaven.com/info/concrete_pavers",
+      "licenseUrl": "https://polyhaven.com/license"
+    },
+    {
+      "path": "./assets/city-upgrade/surfaces/grass_ground_diff_1k.jpg",
+      "bytes": 876584,
+      "sha256": "a79cc5ed65af0f80261b39a383b64a8c5272c5144d724deb43dbc29f0e4cd19b",
+      "license": "CC0-1.0",
+      "creator": "Charlotte Baglioni / Poly Haven",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/grass_ground/grass_ground_diff_1k.jpg",
+      "listing": "https://polyhaven.com/a/grass_ground",
+      "metadata": "https://api.polyhaven.com/info/grass_ground",
+      "licenseUrl": "https://polyhaven.com/license"
+    },
+    {
+      "path": "./assets/city-upgrade/surfaces/grass_ground_nor_gl_1k.jpg",
+      "bytes": 1310516,
+      "sha256": "7000e2ccd479bb7b66dcdf4faef7b47554324566886314ca620cbf03e274e826",
+      "license": "CC0-1.0",
+      "creator": "Charlotte Baglioni / Poly Haven",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/grass_ground/grass_ground_nor_gl_1k.jpg",
+      "listing": "https://polyhaven.com/a/grass_ground",
+      "metadata": "https://api.polyhaven.com/info/grass_ground",
+      "licenseUrl": "https://polyhaven.com/license"
+    },
+    {
+      "path": "./assets/city-upgrade/surfaces/grass_ground_rough_1k.jpg",
+      "bytes": 328190,
+      "sha256": "111341f948b7e073edf7ac6add8777e1bf10df8959400df3863243e89bbc8c08",
+      "license": "CC0-1.0",
+      "creator": "Charlotte Baglioni / Poly Haven",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/grass_ground/grass_ground_rough_1k.jpg",
+      "listing": "https://polyhaven.com/a/grass_ground",
+      "metadata": "https://api.polyhaven.com/info/grass_ground",
       "licenseUrl": "https://polyhaven.com/license"
     }
   ]

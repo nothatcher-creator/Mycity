@@ -28,7 +28,12 @@ export function createCityVisuals({ scene, city }) {
     materials.add(value);
     return value;
   };
-  const stone = material(0xc1cfc9, { roughness: 0.78 });
+  const stone = material(0xb9b4a5, { roughness: 0.88, metalness: 0 });
+  const paving = material(0xc4bdac, { roughness: 0.88, metalness: 0 });
+  const lawn = material(0x596c3b, { roughness: 0.98, metalness: 0 });
+  const foliage = material(0x556342, { roughness: 0.96, metalness: 0 });
+  const sage = material(0x788064, { roughness: 0.94, metalness: 0 });
+  const gravel = material(0x9b9786, { roughness: 0.96, metalness: 0 });
   const dark = material(0x233847, { roughness: 0.47, metalness: 0.4 });
   const pale = material(0xe8e3ce, { roughness: 0.35, metalness: 0.28 });
   const bronze = material(0xbc9870, { metalness: 0.73, roughness: 0.3 });
@@ -54,6 +59,19 @@ export function createCityVisuals({ scene, city }) {
   const cylinder = geometry(new THREE.CylinderGeometry(1, 1, 1, 32));
   const cone = geometry(new THREE.ConeGeometry(1, 1, 20));
   const sphere = geometry(new THREE.SphereGeometry(1, 12, 8));
+  const pavedMeshes = [], grassMeshes = [];
+
+  function surfaceUV(shape, scale = 4, transform = null) {
+    const points = shape.getAttribute("position");
+    const uv = shape.getAttribute("uv");
+    const point = new THREE.Vector3();
+    for (let i = 0; i < points.count; i++) {
+      point.fromBufferAttribute(points, i);
+      if (transform) point.applyMatrix4(transform);
+      uv.setXY(i, point.x / scale, point.z / scale);
+    }
+    return shape;
+  }
 
   function mesh(
     shape,
@@ -95,25 +113,84 @@ export function createCityVisuals({ scene, city }) {
       [-Math.PI / 2, 0, 0],
     );
     value.castShadow = false;
+    surfaceUV(value.geometry, surface === lawn ? 5 : 4, value.matrix.makeRotationX(-Math.PI / 2));
+    if (surface === paving) pavedMeshes.push(value);
+    if (surface === lawn) grassMeshes.push(value);
     return value;
   }
 
   // A circular water garden unites the five avenues around the city center.
   mesh(cylinder, dark, [0, -0.28, 0], [35.5, 0.5, 35.5]);
-  mesh(cylinder, stone, [0, 0.02, 0], [23.7, 0.35, 23.7]);
-  ring(30.8, 35.4, 0.04, stone);
-  ring(22.5, 23.6, 0.22, dark);
-  const water = material(0x285666, {
-    roughness: 0.12,
-    metalness: 0.78,
-    emissive: 0x0a263a,
-    emissiveIntensity: 0.25,
-    transparent: true,
-    opacity: 0.94,
-  });
-  ring(23.7, 30.8, -0.01, water);
-  ring(24.2, 24.3, 0.035, mint);
-  ring(30.2, 30.3, 0.035, violet);
+  const islandGeometry = geometry(new THREE.CylinderGeometry(23.7, 23.7, 0.35, 96));
+  surfaceUV(islandGeometry);
+  const island = mesh(islandGeometry, paving, [0, 0.02, 0]);
+  pavedMeshes.push(island);
+  ring(31.1, 35.4, 0.04, paving);
+  ring(34.95, 35.4, 0.07, gravel);
+  ring(22.9, 23.8, 0.23, stone);
+  ring(30.35, 31.1, 0.19, stone);
+  ring(23.7, 30.8, -0.17, material(0x304b46, { roughness: 1, metalness: 0 }));
+  const water = material(0x254c4d, { roughness: 0.18, metalness: 0.08, envMapIntensity: 1.5 });
+  const waterTime = { value: 0 };
+  water.onBeforeCompile = (shader) => {
+    shader.uniforms.uPondTime = waterTime;
+    shader.vertexShader = "varying vec3 vPondPosition;\n" + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\nvPondPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+    shader.fragmentShader = "varying vec3 vPondPosition; uniform float uPondTime;\n" + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace("#include <normal_fragment_begin>", `#include <normal_fragment_begin>
+      float rippleX = cos(vPondPosition.x * 3.2 + vPondPosition.z * 2.4 + uPondTime * .42) * .014 + cos(vPondPosition.x * 1.8 - vPondPosition.z * 2.5 - uPondTime * .31) * .01;
+      float rippleZ = sin(vPondPosition.x * 2.3 - vPondPosition.z * 3.8 + uPondTime * .36) * .016;
+      normal = normalize(mat3(viewMatrix) * vec3(rippleX, 1.0, rippleZ));`);
+  };
+  water.customProgramCacheKey = () => "beacon-pond-ripples-v1";
+  ring(23.8, 30.35, -0.015, water);
+  ring(24.05, 24.11, 0.035, bronze);
+  ring(30.12, 30.18, 0.035, bronze);
+
+  // Four garden rooms break up the plaza, keeping all sculpture approaches open.
+  const gardenShrubs = [], gardenSage = [], gardenFlowers = [], gravelStones = [];
+  const innerCurb = stone.clone();
+  innerCurb.side = THREE.BackSide;
+  materials.add(innerCurb);
+  for (let quadrant = 0; quadrant < 4; quadrant++) {
+    const start = quadrant * Math.PI / 2 + 0.36;
+    const length = Math.PI / 2 - 0.72;
+    const rimGeometry = geometry(new THREE.RingGeometry(11.6, 22.15, 28, 1, start, length));
+    const rim = mesh(rimGeometry, stone, [0, 0.37, 0], [1, 1, 1], [-Math.PI / 2, 0, 0]);
+    rim.castShadow = false;
+    mesh(geometry(new THREE.CylinderGeometry(22.15, 22.15, .28, 28, 1, true, start + Math.PI / 2, length)), stone, [0, .23, 0]);
+    mesh(geometry(new THREE.CylinderGeometry(11.6, 11.6, .175, 28, 1, true, start + Math.PI / 2, length)), innerCurb, [0, .2825, 0]);
+    for (const angle of [start, start + length]) {
+      mesh(box, stone, [Math.cos(angle) * 16.875, .23, -Math.sin(angle) * 16.875], [10.55, .28, .16], [0, angle, 0]);
+    }
+    const bedGeometry = geometry(new THREE.RingGeometry(12, 21.75, 28, 1, start + 0.018, length - 0.036));
+    const bed = mesh(bedGeometry, lawn, [0, 0.40, 0], [1, 1, 1], [-Math.PI / 2, 0, 0]);
+    surfaceUV(bed.geometry, 5, bed.matrix.makeRotationX(-Math.PI / 2));
+    grassMeshes.push(bed);
+    bed.castShadow = false;
+    for (let i = 0; i < 8; i++) {
+      const angle = start + 0.12 + i * (length - 0.24) / 7;
+      const radius = 19.8 + Math.sin(i * 1.7 + quadrant) * 0.6;
+      const x = Math.cos(angle) * radius, z = -Math.sin(angle) * radius;
+      gardenShrubs.push({ position: [x, 0.78, z], scale: [0.73, 0.65, 0.66], rotation: [0, i, 0] });
+      gardenSage.push({ position: [x * .91, 0.67, z * .91], scale: [.43, .44, .43], rotation: [0, i, .13] });
+      if (i % 2 === 0) gardenFlowers.push({ position: [x * .96, 1.04, z * .96], scale: [.13, .18, .13] });
+    }
+    for (let i = 0; i < 4; i++) {
+      const angle = start + 0.16 + i * (length - 0.32) / 3;
+      gravelStones.push({ position: [Math.cos(angle) * 13, .49, -Math.sin(angle) * 13], scale: [.4 + i * .08, .2, .3], rotation: [.1, i * .8, .2] });
+    }
+  }
+  const shrubGeometry = geometry(new THREE.IcosahedronGeometry(1, 1));
+  instances(shrubGeometry, foliage, gardenShrubs);
+  instances(shrubGeometry, sage, gardenSage);
+  instances(sphere, material(0xb5a274, { roughness: .9, metalness: 0 }), gardenFlowers);
+  instances(shrubGeometry, gravel, gravelStones);
+
+  // Low broad steps and narrow inlays give the beacon a deliberate foreground.
+  ring(9.4, 10.05, 0.34, stone);
+  ring(10.05, 10.55, 0.20, gravel);
+  ring(10.55, 10.64, 0.21, bronze);
   const bridges = [];
   const bridgeStripes = [];
   for (let i = 0; i < 4; i++) {
@@ -131,7 +208,7 @@ export function createCityVisuals({ scene, city }) {
       rotation: [0, angle, 0],
     });
   }
-  instances(box, dark, bridges);
+  instances(box, stone, bridges);
   instances(box, mint, bridgeStripes);
 
   // The beacon is a lighthouse, a creator's cube, and a personal N monogram.
@@ -152,7 +229,7 @@ export function createCityVisuals({ scene, city }) {
   mesh(cylinder, bronze, [0, 7.8, 0], [3.5, 0.36, 3.5]);
   const cubeMaterial = material(0x2d6572, {
     transparent: true,
-    opacity: 0.28,
+    opacity: 0.15,
     roughness: 0.08,
     metalness: 0.5,
     depthWrite: false,
@@ -211,16 +288,16 @@ export function createCityVisuals({ scene, city }) {
   group.add(beams);
   const beamMaterial = basic(0x9df1db, {
     transparent: true,
-    opacity: 0.035,
+    opacity: 0.012,
     depthWrite: false,
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
   });
-  const beamGeometry = geometry(new THREE.ConeGeometry(7, 45, 20, 1, true));
+  const beamGeometry = geometry(new THREE.ConeGeometry(3.5, 28, 16, 1, true));
   const beamA = mesh(
     beamGeometry,
     beamMaterial,
-    [22.5, 0, 0],
+    [14, 0, 0],
     [1, 1, 1],
     [0, 0, Math.PI / 2],
     beams,
@@ -228,7 +305,7 @@ export function createCityVisuals({ scene, city }) {
   const beamB = mesh(
     beamGeometry,
     beamMaterial,
-    [-22.5, 0, 0],
+    [-14, 0, 0],
     [1, 1, 1],
     [0, 0, -Math.PI / 2],
     beams,
@@ -287,14 +364,14 @@ export function createCityVisuals({ scene, city }) {
     [0, -16],
     [-16, 0],
     [16, 0],
-    [0, 16],
+    [0, 19],
   ];
   instances(
     cylinder,
     dark,
     motifs.map(([x, z]) => ({
       position: [x, 0.7, z],
-      scale: [4.5, 0.85, 4.5],
+      scale: [z === 19 ? 3.9 : 4.5, 0.85, z === 19 ? 3.9 : 4.5],
     })),
   );
   // Castle: keep, four watchtowers, twelve crenellations.
@@ -388,15 +465,15 @@ export function createCityVisuals({ scene, city }) {
 
   // A luminous waveform is Astraforge's music/video counterpart.
   mesh(
-    geometry(new THREE.TorusGeometry(3.2, 0.11, 6, 48)),
+    geometry(new THREE.TorusGeometry(2.55, 0.095, 6, 48)),
     bronze,
-    [0, 4.4, 16],
+    [0, 3.6, 19],
   );
   const waveform = [];
   for (let i = 0; i < 17; i++) {
-    const x = (i - 8) * 0.29;
-    const height = 0.5 + Math.pow(Math.sin(i * 0.77), 2) * 3.4;
-    waveform.push({ position: [x, 4.4, 16], scale: [0.14, height, 0.18] });
+    const x = (i - 8) * 0.235;
+    const height = 0.4 + Math.pow(Math.sin(i * 0.77), 2) * 2.65;
+    waveform.push({ position: [x, 3.6, 19], scale: [0.12, height, 0.16] });
   }
   instances(box, mint, waveform);
 
@@ -414,16 +491,16 @@ export function createCityVisuals({ scene, city }) {
   instances(cylinder, dark, bollards);
   instances(sphere, gold, lamps);
 
-  // A shader sky and a single batched hill ring give the city a distant horizon.
+  // A fallback sky and low rolling ridges frame the neighborhoods without dominating them.
   const skyMaterial = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
     toneMapped: false,
     uniforms: {
-      top: { value: new THREE.Color(0x111d37) },
-      horizon: { value: new THREE.Color(0x5d8c9b) },
-      bottom: { value: new THREE.Color(0x9db09d) },
+      top: { value: new THREE.Color(0x7299b6) },
+      horizon: { value: new THREE.Color(0xe2c7a0) },
+      bottom: { value: new THREE.Color(0x8f9a83) },
     },
     vertexShader:
       "varying vec3 vDirection; void main(){vDirection=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
@@ -444,22 +521,32 @@ export function createCityVisuals({ scene, city }) {
   sky.receiveShadow = false;
   sky.renderOrder = -100;
   const hills = [];
-  for (let i = 0; i < 48; i++) {
-    const angle = (i / 48) * Math.PI * 2;
-    const radius = 420 + Math.sin(i * 1.9) * 40;
+  const distantHills = [];
+  for (let i = 0; i < 18; i++) {
+    const angle = (i / 18) * Math.PI * 2;
+    const radius = 510 + Math.sin(i * 1.9) * 22;
     hills.push({
-      position: [Math.cos(angle) * radius, 8, Math.sin(angle) * radius],
-      scale: [45 + Math.sin(i * 2.3) * 13, 45 + Math.cos(i * 1.4) * 24, 42],
+      position: [Math.cos(angle) * radius, -8, Math.sin(angle) * radius],
+      scale: [128 + Math.sin(i * 2.3) * 28, 18 + Math.cos(i * 1.4) * 7, 105],
       rotation: [0, i * 0.41, 0],
     });
+    distantHills.push({
+      position: [Math.cos(angle + .1) * (radius + 160), -11, Math.sin(angle + .1) * (radius + 160)],
+      scale: [175 + Math.sin(i) * 30, 26 + Math.sin(i * .8) * 9, 145],
+      rotation: [0, i * .61, 0],
+    });
   }
-  const hillMaterial = material(0x233e4c, { roughness: 1 });
+  const hillMaterial = material(0x6f7d68, { roughness: 1, metalness: 0 });
+  const distantHillMaterial = material(0x97a18c, { roughness: 1, metalness: 0 });
+  const hillGeometry = geometry(new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2));
   const hillMesh = instances(
-    geometry(new THREE.ConeGeometry(1, 1, 5)),
+    hillGeometry,
     hillMaterial,
     hills,
   );
-  hillMesh.castShadow = false;
+  const distantHillMesh = instances(hillGeometry, distantHillMaterial, distantHills);
+  hillMesh.castShadow = distantHillMesh.castShadow = false;
+  hillMesh.receiveShadow = distantHillMesh.receiveShadow = false;
   const positions = new Float32Array(360 * 3);
   let seed = 5831;
   const random = () => {
@@ -493,9 +580,14 @@ export function createCityVisuals({ scene, city }) {
   let disposed = false;
   return {
     group,
+    setSurfaceMaterials({ pavers, grass } = {}) {
+      if (pavers) for (const value of pavedMeshes) value.material = pavers;
+      if (grass) for (const value of grassMeshes) value.material = grass;
+    },
     setPhotographicSky(enabled) {
       sky.visible = stars.visible = !enabled;
-      hillMaterial.color.set(enabled ? 0x607a7a : 0x233e4c);
+      hillMaterial.color.set(enabled ? 0x71816b : 0x647665);
+      distantHillMaterial.color.set(enabled ? 0x9ba58e : 0x8c9c88);
     },
     update(time, reducedMotion = false) {
       if (disposed || reducedMotion) return;
@@ -503,6 +595,7 @@ export function createCityVisuals({ scene, city }) {
       orbit2.rotation.y = 0.6 + time * 0.055;
       beams.rotation.y = time * 0.13;
       lens.emissiveIntensity = 1.15 + Math.sin(time * 0.7) * 0.12;
+      waterTime.value = time;
     },
     dispose() {
       if (disposed) return;

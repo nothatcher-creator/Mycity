@@ -46,5 +46,11 @@ https://polyhaven.com/a/asphalt_02
 https://polyhaven.com/a/kloppenheim_06_puresky
 https://polyhaven.com/license
 
+Additional original CC0 Poly Haven surfaces and sky:
+Concrete Pavers by Amal Kumar: https://polyhaven.com/a/concrete_pavers
+Grass Ground by Charlotte Baglioni: https://polyhaven.com/a/grass_ground
+Qwantani Sunset Pure Sky by Greg Zaal and Jarod Guest:
+https://polyhaven.com/a/qwantani_sunset_puresky
+
 Exact source URLs, sizes and SHA-256 hashes:
 assets/city-upgrade/manifest.json

@@ -7,11 +7,12 @@ import { buildCityLots, getDistrictAtPosition } from "./city-layout.js";
 import { createFlightState, stepFlight } from "./flight.js";
 import { createCityVisuals } from "./city-visuals.js";
 import { createCityResources, cityBuildingSource } from "./city-resources.js";
+import { CITY_LOOK } from "./city-look.js";
 
 const COLORS = {
-  ground: 0x536a64,
-  stone: 0xc9d3ce,
-  cream: 0xe5e2d2,
+  ground: 0x606e54,
+  stone: 0xc4bda9,
+  cream: 0xdfd3ba,
   road: 0x293b44,
   mint: 0x9ee7d2,
   gold: 0xe2bd79,
@@ -40,14 +41,14 @@ export function createWorld({
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.94;
+  renderer.toneMappingExposure = CITY_LOOK.exposure;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = false;
   renderer.shadowMap.needsUpdate = true;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x243b52);
-  scene.fog = new THREE.FogExp2(0xaabdc6, 0.0022);
+  scene.fog = new THREE.FogExp2(CITY_LOOK.fog.color, CITY_LOOK.fog.density);
   const camera = new THREE.PerspectiveCamera(54, 1, 0.2, 900);
   const playerState = createFlightState({ x: 0, y: 2.2, z: 36 });
   const playerPosition = new THREE.Vector3(0, 2.2, 36);
@@ -200,39 +201,41 @@ export function createWorld({
   const room = new RoomEnvironment();
   const environmentTarget = environmentGenerator.fromScene(room, 0.04);
   scene.environment = environmentTarget.texture;
-  scene.environmentIntensity = 0.72;
+  scene.environmentIntensity = CITY_LOOK.environment.intensity;
   room.dispose();
   environmentGenerator.dispose();
-  scene.add(new THREE.HemisphereLight(0xbfe4ef, 0x3d5353, 0.95));
-  const sun = new THREE.DirectionalLight(0xffdfb0, 2.2);
-  sun.position.set(35, 72, 61);
+  scene.add(new THREE.HemisphereLight(CITY_LOOK.ambient.sky, CITY_LOOK.ambient.ground, CITY_LOOK.ambient.intensity));
+  const sun = new THREE.DirectionalLight(CITY_LOOK.sun.color, CITY_LOOK.sun.intensity);
+  const sunDirection = new THREE.Vector3(...CITY_LOOK.sun.direction);
   sun.target.position.set(0, 0, 36);
+  sun.position.copy(sun.target.position).add(sunDirection);
   sun.castShadow = true;
   sun.shadow.mapSize.set(
     innerWidth < 760 ? 1024 : 2048,
     innerWidth < 760 ? 1024 : 2048,
   );
   Object.assign(sun.shadow.camera, {
-    left: -56,
-    right: 56,
-    top: 56,
-    bottom: -56,
-    near: 10,
-    far: 150,
+    left: -64,
+    right: 64,
+    top: 64,
+    bottom: -64,
+    near: 1,
+    far: 350,
   });
-  sun.shadow.normalBias = 0.045;
-  sun.shadow.bias = -0.00012;
+  sun.shadow.normalBias = 0.028;
+  sun.shadow.bias = -0.00008;
   scene.add(sun, sun.target);
-  const rim = new THREE.DirectionalLight(0x9fb9ec, 0.65);
+  const rim = new THREE.DirectionalLight(CITY_LOOK.fill.color, CITY_LOOK.fill.intensity);
   rim.position.set(-80, 28, -100);
   scene.add(rim);
 
-  mesh(scene, "box", COLORS.ground, [0, -1.3, 0], [650, 2.2, 650]);
+  // The downloaded surfaces use world-scale UVs rather than stretched tile textures.
+  const groundTransform = { p: [0, -1.3, 0], s: [1800, 2.2, 1800] };
   const plazaSurface = mesh(
     scene,
     "cylinder",
-    0xc8d5d0,
-    [0, -0.06, 0],
+    COLORS.stone,
+    [0, -0.23, 0],
     [43, 0.32, 43],
   );
   plazaSurface.castShadow = false;
@@ -249,6 +252,20 @@ export function createWorld({
       start();
     },
   });
+  cityResources.surface("grass", [groundTransform], { uvScale: 8 });
+  plazaSurface.material = cityResources.material("pavers");
+  // Cylindrical default UVs cover the whole disk; use the plaza's actual meter scale.
+  const plazaGeometry = plazaSurface.geometry.clone();
+  const plazaPositions = plazaGeometry.getAttribute("position");
+  const plazaNormals = plazaGeometry.getAttribute("normal");
+  const plazaUV = plazaGeometry.getAttribute("uv");
+  for (let i = 0; i < plazaPositions.count; i++) {
+    if (Math.abs(plazaNormals.getY(i)) > 0.5)
+      plazaUV.setXY(i, plazaPositions.getX(i) * 43 / 3, plazaPositions.getZ(i) * 43 / 3);
+  }
+  plazaSurface.geometry = plazaGeometry;
+  resources.geometries.add(plazaGeometry);
+  visuals.setSurfaceMaterials({ pavers: cityResources.material("pavers"), grass: cityResources.material("grass") });
   const tileTransforms = [],
     grassTransforms = [],
     stakeTransforms = [],
@@ -325,9 +342,11 @@ export function createWorld({
       crowns.push({ p: [tx, 3.1, cz + depth / 2 + 9], s: [1.5, 1.8, 1.5] });
     }
   }
-  // Keep the centerpiece's pedestrian avenues wide and readable at cube height.
-  road(0, 0, 95, 8);
-  road(0, 0, 8, 95);
+  // Avenues stop at the promenade; the water garden and beacon remain pedestrian.
+  for (const side of [-1, 1]) {
+    road(side * 41.25, 0, 12.5, 8);
+    road(0, side * 41.25, 8, 12.5);
+  }
 
   function fallbackBuilding(project, parent) {
     const group = new THREE.Group();
@@ -533,7 +552,7 @@ export function createWorld({
     });
   }
   instances("box", COLORS.stone, tileTransforms);
-  instances("box", 0x789f80, grassTransforms);
+  cityResources.surface("grass", grassTransforms, { uvScale: 5 });
   instances("box", COLORS.mint, stakeTransforms, "glow");
   const fallbackLamps = instances("box", COLORS.ink, lampBases);
   const fallbackLampHeads = instances("box", 0xf2d6a8, lampHeads, "glow");
@@ -543,9 +562,49 @@ export function createWorld({
     city, lots, trunks, crowns,
     fallbackTrees, fallbackCrowns, fallbackLamps, fallbackLampHeads,
   });
-  instances("box", 0xadb8ad, pavements);
+  cityResources.surface("pavers", pavements, { uvScale: 3 });
   cityResources.roads(roads);
   instances("box", 0xc7dcb8, lanes, "glow");
+
+  // A shared radial contact shade anchors props even outside the local sun shadow.
+  const shadowCanvas = document.createElement("canvas");
+  shadowCanvas.width = shadowCanvas.height = 96;
+  const shadowContext = shadowCanvas.getContext("2d");
+  const shadowGradient = shadowContext.createRadialGradient(48, 48, 4, 48, 48, 48);
+  shadowGradient.addColorStop(0, "rgba(255,255,255,.82)");
+  shadowGradient.addColorStop(0.4, "rgba(255,255,255,.5)");
+  shadowGradient.addColorStop(1, "rgba(255,255,255,0)");
+  shadowContext.fillStyle = shadowGradient;
+  shadowContext.fillRect(0, 0, 96, 96);
+  const contactTexture = new THREE.CanvasTexture(shadowCanvas);
+  contactTexture.colorSpace = THREE.SRGBColorSpace;
+  resources.textures.add(contactTexture);
+  const contactMaterial = new THREE.MeshBasicMaterial({
+    map: contactTexture, color: 0x172619, opacity: 0.27,
+    transparent: true, depthWrite: false, alphaTest: 0.002,
+    polygonOffset: true, polygonOffsetFactor: -1,
+  });
+  resources.materials.add(contactMaterial);
+  const contactGeometry = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  resources.geometries.add(contactGeometry);
+  const contactTransforms = [
+    ...lots.filter((lot) => lot.project).map((lot) => ({
+      p: [lot.position.x, 0.453, lot.position.z], s: [13.5, 1, 11.5],
+    })),
+    ...trunks.map((tree) => ({ p: [tree.p[0], tree.p[1] > 1.08 ? 0.454 : 0.035, tree.p[2]], s: [2.5, 1, 2.5] })),
+  ];
+  const contactShadows = new THREE.InstancedMesh(contactGeometry, contactMaterial, contactTransforms.length);
+  const contactTransform = new THREE.Object3D();
+  for (const [index, transform] of contactTransforms.entries()) {
+    contactTransform.position.set(...transform.p);
+    contactTransform.scale.set(...transform.s);
+    contactTransform.updateMatrix();
+    contactShadows.setMatrixAt(index, contactTransform.matrix);
+  }
+  contactShadows.name = "Soft-contact-shading";
+  contactShadows.renderOrder = 1;
+  contactShadows.computeBoundingSphere();
+  scene.add(contactShadows);
 
   const player = new THREE.Group();
   scene.add(player);
@@ -589,19 +648,12 @@ export function createWorld({
     "glow",
   );
   halo.rotation.x = Math.PI / 2;
-  const playerShadow = mesh(
-    scene,
-    "cylinder",
-    0x304c4b,
-    [0, 0.32, 36],
-    [1.3, 0.015, 1.3],
-  );
-  playerShadow.material = new THREE.MeshBasicMaterial({
-    color: 0x183537,
-    transparent: true,
-    opacity: 0.28,
-    depthWrite: false,
-  });
+  const playerShadowGeometry = new THREE.PlaneGeometry(3.1, 3.1).rotateX(-Math.PI / 2);
+  resources.geometries.add(playerShadowGeometry);
+  const playerShadow = new THREE.Mesh(playerShadowGeometry, contactMaterial.clone());
+  playerShadow.position.set(0, 0.15, 36);
+  playerShadow.renderOrder = 1;
+  scene.add(playerShadow);
   resources.materials.add(playerShadow.material);
 
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -880,7 +932,11 @@ export function createWorld({
       cube.rotation.z *= 0.9;
       cube.rotation.x *= 0.9;
     }
-    playerShadow.position.set(player.position.x, 0.32, player.position.z);
+    const playerLot = lots.find((lot) => Math.abs(lot.position.x - player.position.x) < 7.35 && Math.abs(lot.position.z - player.position.z) < 7.35);
+    const centerDistance = Math.hypot(player.position.x, player.position.z);
+    const shadowHeight = playerLot ? 0.455 : centerDistance < 23.7 ? 0.205 : centerDistance < 30.8 ? 0.015 : centerDistance < 43 && Math.min(Math.abs(player.position.x), Math.abs(player.position.z)) > 4 ? -0.045 : 0.15;
+    playerShadow.position.set(player.position.x, shadowHeight, player.position.z);
+    playerShadow.material.opacity = Math.max(0.025, 0.32 - player.position.y * 0.007);
     playerShadow.scale.setScalar(
       Math.max(0.4, 1 - (player.position.y - 2) * 0.01),
     );
@@ -894,10 +950,10 @@ export function createWorld({
         if (entry.mixer && entry.high?.visible) entry.mixer.update(dt);
       dirty = true;
     }
-    if (player.position.distanceToSquared(lastShadow) > 324) {
+    if (player.position.distanceToSquared(lastShadow) > 144) {
       lastShadow.copy(player.position);
-      sun.position.set(player.position.x + 35, 72, player.position.z + 25);
       sun.target.position.set(player.position.x, 0, player.position.z);
+      sun.position.copy(sun.target.position).add(sunDirection);
       renderer.shadowMap.needsUpdate = true;
     }
     if (dirty && now - lastRendered >= (reducedMotion.matches ? 0 : 33)) {

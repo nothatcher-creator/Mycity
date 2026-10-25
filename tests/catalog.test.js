@@ -132,3 +132,10 @@ test("search combines words, tags and category while preserving plot order", () 
   assert.deepEqual(filterProjects(catalog, "games", "AI"), []);
   assert.deepEqual(filterProjects(catalog, "all", ""), catalog);
 });
+
+
+test("lot styles accept curated local presets and reject arbitrary model locations", () => {
+  assert.equal(validateCatalog([{ ...first, lotStyle: "garden" }])[0].lotStyle, "garden");
+  for (const lotStyle of ["unknown", "https://example.com/model.glb", ["garden"], null])
+    assert.throws(() => validateCatalog([{ ...first, lotStyle }]), /lot style/i);
+});

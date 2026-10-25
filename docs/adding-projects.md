@@ -2,6 +2,8 @@
 
 Every entry in [`public/projects.json`](../public/projects.json) becomes a 3D plot and a searchable library card. Add an entry when a game, tool, or experiment is ready to visit.
 
+For a project already online, the easiest route is **Add to city** on the [live world](https://nothatcher-creator.github.io/Mycity/): paste its link, check the name and neighborhood, choose a building, and send the prefilled request through GitHub. No JSON editing is needed. See [community submissions and owner approval](community-lots.md). The instructions below are for adding locally hosted files or editing the catalog directly.
+
 ## 1. Choose where the project lives
 
 For a static browser game hosted in this site, copy its files into:
@@ -56,6 +58,7 @@ Remove `source` if there is no public source repository. Keep Astraforge as the 
 | `source` | Optional HTTPS link to public source. |
 | `embed` | `true` to open the app inside the district; `false` to open its destination in a new tab. |
 | `theme` | Plot artwork: `forge`, `benchmark`, `lighthouse`, `castle`, `blackbox`, `cards`, `workshop`, or `terminal`. |
+| `lotStyle` | Optional downloaded building: `studio`, `arcade`, `gallery`, `workshop`, `tower`, or `garden`. Original exterior models take precedence. |
 | `tags` | An array of searchable text labels. Use `[]` if none are needed. |
 
 Use `embed: false` for sites that block frames, downloads, and pages intended to open in their own tab. The player always offers an external-open link for embedded apps. Test the app in the frame before considering it integrated.

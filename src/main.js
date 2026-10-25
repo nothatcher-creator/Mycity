@@ -3,7 +3,7 @@ import { validateCatalog, filterProjects, safeProjectUrl } from "./catalog.js";
 import { buildCityLots, validateCity } from "./city-layout.js";
 import { createFlightInput } from "./flight.js";
 import { createDeviceJournal } from "./journal.js";
-import { buildContributionUrl } from "./community.js";
+import { createAddProjectFlow } from "./add-project.js";
 
 const $ = (id) => document.getElementById(id);
 document.body.dataset.touchMode = "buttons";
@@ -34,6 +34,7 @@ let worldAvailable = true,
   currentPlayer = null,
   lastFocus = null,
   pendingTravel = null;
+let addProjectFlow = null;
 const names = {
   tools: "Creative tools",
   games: "Game",
@@ -64,7 +65,7 @@ function toast(message) {
   toast.timeout = setTimeout(() => ($("toast").hidden = true), 4500);
 }
 function syncInput() {
-  const overlay = $("project-player").open || $("journal-dialog").open;
+  const overlay = $("project-player").open || $("journal-dialog").open || $("add-project-dialog").open;
   flightInput?.setEnabled(
     view === "world" && !overlay && $("project-details").hidden,
   );
@@ -280,7 +281,7 @@ function selectLot(id, updateHash = true) {
         : p.embed
           ? "Opens inside Mycity."
           : "Opens the project in a new tab.";
-  } else $("contribution-form").reset();
+  }
   $("project-details").hidden = false;
   if (updateHash)
     history.replaceState(
@@ -508,9 +509,8 @@ $("library-toggle").addEventListener("click", () => {
 });
 $("library-close").addEventListener("click", () => setView("world"));
 $("build-toggle").addEventListener("click", () => {
-  contents = "open";
-  setView("library");
-  renderCards();
+  closeDetails(false);
+  addProjectFlow?.open();
 });
 $("show-projects").addEventListener("click", () => {
   contents = "projects";
@@ -531,27 +531,11 @@ $("interact-button").addEventListener("click", interact);
 $("nearby-details").addEventListener("click", () => {
   if (nearest) selectLot(nearest.id);
 });
-$("contribution-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (!selected || selected.project) return;
-  try {
-    const url = $("contribution-url").value.trim();
-    safeProjectUrl(url);
-    if (!url.startsWith("https://"))
-      throw new Error("Please use a public HTTPS project link.");
-    const target = buildContributionUrl(selected, {
-      title: $("contribution-title").value.trim(),
-      url,
-      description: $("contribution-description").value.trim(),
-    });
-    journal.record("submission-start", { slotId: selected.slotId });
-    window.open(target, "_blank", "noopener,noreferrer");
-    toast(
-      "Continue on GitHub to submit. Your lot will publish after owner approval.",
-    );
-  } catch (error) {
-    toast(error.message);
-  }
+$("contribution-submit").addEventListener("click", () => {
+  const lot = selected;
+  if (!lot || lot.project) return;
+  closeDetails(false);
+  addProjectFlow?.open({ lot });
 });
 $("player-close").addEventListener("click", () => $("project-player").close());
 $("project-player").addEventListener("close", closePlayer);
@@ -594,7 +578,8 @@ document.addEventListener("keydown", (event) => {
   if (
     event.code === "KeyM" &&
     !$("project-player").open &&
-    !$("journal-dialog").open
+    !$("journal-dialog").open &&
+    !$("add-project-dialog").open
   ) {
     event.preventDefault();
     closeDetails(false);
@@ -603,7 +588,8 @@ document.addEventListener("keydown", (event) => {
   if (
     event.key === "Escape" &&
     !$("project-player").open &&
-    !$("journal-dialog").open
+    !$("journal-dialog").open &&
+    !$("add-project-dialog").open
   ) {
     if (!$("project-details").hidden) closeDetails();
     else if (view === "library") setView("world");
@@ -630,6 +616,13 @@ async function init() {
     projects = validateCatalog(catalog);
     city = validateCity(configuration);
     lots = buildCityLots(projects, city);
+    addProjectFlow = createAddProjectFlow({
+      dialog: $("add-project-dialog"), projects, city,
+      onOpen: syncInput, onClose: syncInput,
+      onSelectExisting: selectLot,
+      onSubmit: (lot) => journal.record("submission-start", { slotId: lot.slotId }),
+    });
+    $("build-toggle").disabled = false;
     const count = lots.filter((l) => !l.project).length;
     $("project-count").textContent = projects.length;
     $("all-count").textContent = projects.length;
@@ -698,5 +691,7 @@ async function init() {
       selectLot(decodeURIComponent(match[1]), false);
     } catch {}
   }
+  const addDistrict = new URL(location.href).searchParams.get("add");
+  if (addDistrict !== null) addProjectFlow?.open({ district: addDistrict });
 }
 init();

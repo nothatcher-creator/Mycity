@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-/** The owner's central landmark and distant atmosphere; no network assets. */
+/** The owner's central landmark and procedural fallback atmosphere. */
 export function createCityVisuals({ scene, city }) {
   const group = new THREE.Group();
   group.name = "Nothatchers-Beacon";
@@ -487,11 +487,16 @@ export function createCityVisuals({ scene, city }) {
     depthWrite: false,
   });
   materials.add(starMaterial);
-  group.add(new THREE.Points(starGeometry, starMaterial));
+  const stars = new THREE.Points(starGeometry, starMaterial);
+  group.add(stars);
 
   let disposed = false;
   return {
     group,
+    setPhotographicSky(enabled) {
+      sky.visible = stars.visible = !enabled;
+      hillMaterial.color.set(enabled ? 0x607a7a : 0x233e4c);
+    },
     update(time, reducedMotion = false) {
       if (disposed || reducedMotion) return;
       orbit.rotation.z = time * 0.035;

@@ -1,8 +1,8 @@
 # Friends and empty lots
 
-Select an empty lot and choose **Continue with GitHub to submit this lot**. GitHub signs you in, or uses your existing GitHub session, and opens the city's project form. Your public GitHub account identifies the submission. There is no separate Mycity password or simulated in-world account.
+Choose **Add to city** at the top of the world. Paste a live HTTPS project link and check the suggested name and neighborhood. Choose one of six downloaded buildings and preview it in 3D. The city selects an empty lot automatically; **Choose a specific lot** lets you pick another. You can also select an empty lot on the map and choose **Add a project here**. Unfinished drafts stay on this device; **Start fresh** clears the draft.
 
-Enter a project title, its deployed HTTPS address, and a short description. The selected slot and neighborhood are prefilled. Submitting creates a public request, rather than immediately reserving or publishing the lot. Existing published lots remain in place until the city owner approves a new request.
+Add an optional short description, then choose **Continue with GitHub**. A fully filled request opens on GitHub. GitHub signs you in, or uses your existing session; press **Submit new issue** there to finish. Your public GitHub account identifies the submission. There is no separate Mycity password or simulated in-world account. A prepared or submitted request does not reserve or publish a lot; existing published lots stay in place until the city owner approves a request. The form checks for links already published in the city.
 
 The source app keeps its original hosting. A published community lot opens its project in a new tab. The submission pipeline imports text and links; it does not download, run, or publish submitted source code.
 
@@ -22,3 +22,5 @@ If another request already filled the slot, validation stops the workflow. If a 
 Published contributions are recorded in `public/city-activity.json`, including the project's title, slot, approval timestamp, public GitHub username, and source issue link. This is a shared publication history, not a count of live players or a recording of everyone's movements. Browser-local visits can appear separately in the world's local activity panel.
 
 Titles are limited to 80 characters and descriptions to 500. Destinations must be HTTPS URLs without embedded credentials, on public domain names; local/network IP addresses and `.local` hosts are rejected. Submitted content is treated as data and must be displayed with text-safe DOM methods.
+
+The optional **Lot style** section accepts only `studio`, `arcade`, `gallery`, `workshop`, `tower`, and `garden`, which select reviewed local CC0 models. Older requests without this field remain valid. No submitted model URL or script is loaded. See [asset sources and licenses](city-assets.md).

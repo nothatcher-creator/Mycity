@@ -82,24 +82,48 @@ test("friends are handed to real GitHub sign-in with a vacant lot and their proj
   );
   await page.goto("./");
   await page.locator("#build-toggle").click();
-  await page.locator("#project-search").fill("art-02");
-  await page.locator(".project-card[data-slot=art-02]").click();
-  await expect(page.locator("#contribution-form")).toBeVisible();
-  await page.locator("#contribution-title").fill("A friend’s art");
-  await page.locator("#contribution-url").fill("https://example.com/gallery/");
-  await page
-    .locator("#contribution-description")
-    .fill("An original collection for the art district.");
+  await expect(page.locator("#add-project-dialog")).toBeVisible();
+  await page.locator("#add-url").fill("https://example.com/gallery/");
+  await page.locator("#add-title").fill("A friend’s art");
+  await page.locator("#add-district").selectOption("art");
+  await page.locator("[data-style=garden]").click();
+  await page.locator("#add-description").fill("An original collection for the art district.");
   const popupPromise = page.waitForEvent("popup");
-  await page.locator("#contribution-submit").click();
+  await page.locator("#add-submit").click();
   const popup = await popupPromise;
   const target = new URL(popup.url());
   expect(target.origin).toBe("https://github.com");
   expect(target.pathname).toBe("/nothatcher-creator/Mycity/issues/new");
-  expect(target.searchParams.get("slot")).toBe("art-02");
-  expect(target.searchParams.get("project_title")).toBe("A friend’s art");
+  expect(target.searchParams.get("body")).toContain("### Lot slot\n\nart-02");
+  expect(target.searchParams.get("body")).toContain("### Project title\n\nA friend’s art");
+  expect(target.searchParams.get("body")).toContain("### Lot style\n\ngarden");
+  expect(target.searchParams.get("labels")).toBe("city:submission");
+  await expect(page.locator("#add-handoff")).toBeVisible();
   expect(await page.locator("#open-count").textContent()).toBe("73");
   await popup.close();
+});
+
+test("add flow keeps drafts, detects existing links, and previews downloaded buildings", async ({ page }) => {
+  await page.goto("./");
+  await page.locator("#build-toggle").click();
+  await page.locator("#add-url").fill("https://a-friend.itch.io/moon-garden");
+  await expect(page.locator("#add-title")).toHaveValue("Moon Garden");
+  await expect(page.locator("#add-district")).toHaveValue("games");
+  await expect(page.locator("#add-lot-summary")).toContainText("G17");
+  await expect(page.locator("#add-preview-canvas")).toHaveAttribute("data-preview-state", "ready", { timeout: 30000 });
+  await page.screenshot({ path: "test-results/city-add-desktop.png" });
+  await page.locator("[data-style=tower]").click();
+  await expect(page.locator("#add-preview-canvas")).toHaveAttribute("data-preview-style", "tower");
+  await page.locator("#add-close").click();
+  await page.locator("#build-toggle").click();
+  await expect(page.locator("#add-url")).toHaveValue("https://a-friend.itch.io/moon-garden");
+  await expect(page.locator("[data-style=tower]")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#add-preview-canvas")).toHaveAttribute("data-preview-state", "ready", { timeout: 30000 });
+  await page.locator("#add-url").fill("https://nothatcher-creator.github.io/Astraforge/?utm_source=friend");
+  await expect(page.locator("#add-duplicate")).toBeVisible();
+  await expect(page.locator("#add-submit")).toBeDisabled();
+  await page.locator("#add-visit-existing").click();
+  await expect(page.locator("#detail-title")).toHaveText("Astraforge");
 });
 
 test("Astraforge remains the first integration and closes back to the cube", async ({

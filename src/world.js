@@ -6,6 +6,7 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { buildCityLots, getDistrictAtPosition } from "./city-layout.js";
 import { createFlightState, stepFlight } from "./flight.js";
 import { createCityVisuals } from "./city-visuals.js";
+import { createCityResources, cityBuildingSource } from "./city-resources.js";
 
 const COLORS = {
   ground: 0x536a64,
@@ -39,14 +40,14 @@ export function createWorld({
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.02;
+  renderer.toneMappingExposure = 0.94;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = false;
   renderer.shadowMap.needsUpdate = true;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x243b52);
-  scene.fog = new THREE.FogExp2(0x6e98a3, 0.0035);
+  scene.fog = new THREE.FogExp2(0xaabdc6, 0.0022);
   const camera = new THREE.PerspectiveCamera(54, 1, 0.2, 900);
   const playerState = createFlightState({ x: 0, y: 2.2, z: 36 });
   const playerPosition = new THREE.Vector3(0, 2.2, 36);
@@ -202,8 +203,8 @@ export function createWorld({
   scene.environmentIntensity = 0.72;
   room.dispose();
   environmentGenerator.dispose();
-  scene.add(new THREE.HemisphereLight(0xbfe4ef, 0x3d5353, 1.45));
-  const sun = new THREE.DirectionalLight(0xffe1bd, 2.4);
+  scene.add(new THREE.HemisphereLight(0xbfe4ef, 0x3d5353, 0.95));
+  const sun = new THREE.DirectionalLight(0xffdfb0, 2.2);
   sun.position.set(35, 72, 61);
   sun.target.position.set(0, 0, 36);
   sun.castShadow = true;
@@ -222,7 +223,7 @@ export function createWorld({
   sun.shadow.normalBias = 0.045;
   sun.shadow.bias = -0.00012;
   scene.add(sun, sun.target);
-  const rim = new THREE.DirectionalLight(0x8fa7ff, 1.25);
+  const rim = new THREE.DirectionalLight(0x9fb9ec, 0.65);
   rim.position.set(-80, 28, -100);
   scene.add(rim);
 
@@ -238,6 +239,16 @@ export function createWorld({
   const visuals = createCityVisuals({ scene, city });
   const lots = buildCityLots(projects, city),
     entries = new Map();
+  const cityResources = createCityResources({
+    renderer,
+    scene,
+    visuals,
+    onChange: () => {
+      dirty = true;
+      renderer.shadowMap.needsUpdate = true;
+      start();
+    },
+  });
   const tileTransforms = [],
     grassTransforms = [],
     stakeTransforms = [],
@@ -524,12 +535,16 @@ export function createWorld({
   instances("box", COLORS.stone, tileTransforms);
   instances("box", 0x789f80, grassTransforms);
   instances("box", COLORS.mint, stakeTransforms, "glow");
-  instances("box", COLORS.ink, lampBases);
-  instances("box", 0xf2d6a8, lampHeads, "glow");
-  instances("box", 0x605b4a, trunks);
-  instances("sphere", 0x7caa94, crowns);
+  const fallbackLamps = instances("box", COLORS.ink, lampBases);
+  const fallbackLampHeads = instances("box", 0xf2d6a8, lampHeads, "glow");
+  const fallbackTrees = instances("box", 0x605b4a, trunks);
+  const fallbackCrowns = instances("sphere", 0x7caa94, crowns);
+  cityResources.decorate({
+    city, lots, trunks, crowns,
+    fallbackTrees, fallbackCrowns, fallbackLamps, fallbackLampHeads,
+  });
   instances("box", 0xadb8ad, pavements);
-  instances("box", COLORS.road, roads);
+  cityResources.roads(roads);
   instances("box", 0xc7dcb8, lanes, "glow");
 
   const player = new THREE.Group();
@@ -655,7 +670,7 @@ export function createWorld({
   async function loadModel(entry, high = false) {
     const source = high
       ? entry.lot.project?.exterior?.highModel
-      : entry.lot.project?.exterior?.model;
+      : cityBuildingSource(entry.lot.project);
     if (
       !source ||
       disposed ||
@@ -746,12 +761,12 @@ export function createWorld({
         slotId: nearbyKey || null,
       });
     }
-    // Prioritize the closest original lots, not the entire city's downloads.
+    // Prioritize nearby exteriors and reviewed prefabs over distant downloads.
     [...entries.values()]
       .filter(
         (entry) =>
           entry.distance < 115 &&
-          entry.lot.project?.exterior?.model &&
+          cityBuildingSource(entry.lot.project) &&
           !entry.model &&
           !entry.loading,
       )
@@ -1084,6 +1099,7 @@ export function createWorld({
       canvas.removeEventListener("pointercancel", pointerCancel);
       entries.forEach((entry) => entry.button.remove());
       mixers.forEach((mixer) => mixer.stopAllAction());
+      cityResources.dispose();
       visuals.dispose();
       resources.geometries.forEach((value) => value.dispose());
       resources.materials.forEach((value) => value.dispose());

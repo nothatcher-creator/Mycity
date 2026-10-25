@@ -1,7 +1,6 @@
 import "./gallery.css";
 import { safeProjectUrl } from "./catalog.js";
 import { buildCityLots } from "./city-layout.js";
-import { buildContributionUrl } from "./community.js";
 const root = new URL(import.meta.env.BASE_URL, location.origin);
 const $ = (id) => document.getElementById(id);
 function fullView(item) {
@@ -56,7 +55,7 @@ try {
   const vacant = buildCityLots(projects, city).find(
     (l) => l.district === "art" && !l.project,
   );
-  if (vacant) $("add-art").href = buildContributionUrl(vacant);
+  if (vacant) $("add-art").href = new URL("?add=art", root).href;
   else $("add-art").hidden = true;
 } catch (error) {
   $("gallery-notice").textContent = error.message;

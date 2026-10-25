@@ -30,3 +30,21 @@ DM Sans and Manrope
 Google Fonts / original font authors
 Licensed under the SIL Open Font License 1.1.
 Full notices are included in fonts/dm-sans-OFL.txt and fonts/manrope-OFL.txt.
+
+Downloaded city scenery (CC0-1.0)
+Kay Lousberg / KayKit — City Builder Bits 1.0:
+https://kaylousberg.itch.io/city-builder-bits
+https://github.com/KayKit-Game-Assets/KayKit-City-Builder-Bits-1.0
+License: assets/city-upgrade/licenses/kaykit.txt
+
+Kenney — Nature Kit 2.1:
+https://kenney.nl/assets/nature-kit
+License: assets/city-upgrade/licenses/kenney-nature.txt
+
+Poly Haven — Asphalt 02 and Kloppenheim 06 Pure Sky:
+https://polyhaven.com/a/asphalt_02
+https://polyhaven.com/a/kloppenheim_06_puresky
+https://polyhaven.com/license
+
+Exact source URLs, sizes and SHA-256 hashes:
+assets/city-upgrade/manifest.json

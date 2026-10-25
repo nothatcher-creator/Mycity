@@ -1,3 +1,5 @@
+import { isLotStyle } from "./lot-styles.js";
+
 const REPOSITORY = "nothatcher-creator/Mycity";
 const REPOSITORY_OWNER = "nothatcher-creator";
 const DISTRICTS = new Set(["games", "tools", "art", "android", "mods"]);
@@ -14,7 +16,9 @@ const FORM_FIELDS = new Map([
   ["project title", "title"],
   ["project url", "url"],
   ["description", "description"],
+  ["lot style", "lotStyle"],
 ]);
+const REQUIRED_FIELDS = ["slot", "district", "title", "url", "description"];
 
 function requireValue(condition, message) {
   if (!condition) throw new Error(message);
@@ -38,7 +42,7 @@ function validateSlot(slot, district) {
   return Number(match[2]);
 }
 
-function publicProjectUrl(raw) {
+export function publicProjectUrl(raw) {
   requireValue(
     typeof raw === "string" &&
       raw === raw.trim() &&
@@ -70,13 +74,34 @@ function publicProjectUrl(raw) {
 }
 
 /** GitHub supplies the real authentication. This creates no in-world session. */
-export function buildContributionUrl(lot, { title, url, description } = {}) {
+export function buildContributionUrl(lot, { title, url, description, lotStyle, direct = false } = {}) {
   requireValue(
     lot && lot.project === null,
     "Choose a vacant lot to submit a project",
   );
   validateSlot(lot.slotId, lot.district);
   const destination = new URL(`https://github.com/${REPOSITORY}/issues/new`);
+  if (direct) {
+    requireValue(typeof title === "string" && title.trim() !== "_No response_" && title.trim().length > 0 &&
+      title.trim().length <= 80 && !/[\u0000-\u001f\u007f]/.test(title),
+      "Project title must be at most 80 characters on one line");
+    const projectUrl = publicProjectUrl(url);
+    requireValue(lotStyle === undefined || isLotStyle(lotStyle), "Unknown lot style");
+    requireValue(description === undefined || typeof description === "string", "Invalid project description");
+    const text = (description?.trim() || "A project shared with the city.")
+      .replace(/^### /gm, "\\### ");
+    requireValue(text !== "_No response_" && text.length <= 500 && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text),
+      "Project description must be at most 500 characters");
+    const sections = [
+      ["Lot slot", lot.slotId], ["Neighborhood", lot.district],
+      ["Project title", title.trim()], ["Project URL", projectUrl], ["Description", text],
+    ];
+    if (lotStyle) sections.push(["Lot style", lotStyle]);
+    destination.searchParams.set("title", `[City lot] ${lot.slotId}: ${title.trim()}`);
+    destination.searchParams.set("labels", "city:submission");
+    destination.searchParams.set("body", sections.map(([heading, value]) => `### ${heading}\n\n${value}`).join("\n\n") + "\n");
+    return destination.href;
+  }
   destination.searchParams.set("template", "city-lot.yml");
   destination.searchParams.set(
     "title",
@@ -92,6 +117,7 @@ export function buildContributionUrl(lot, { title, url, description } = {}) {
       "description",
       String(description).slice(0, 500),
     );
+  if (lotStyle && isLotStyle(lotStyle)) destination.searchParams.set("lot_style", lotStyle);
   return destination.href;
 }
 
@@ -104,24 +130,27 @@ export function parseIssueForm(body) {
   const text = body.replace(/\r\n/g, "\n");
   const headings = [...text.matchAll(/^### ([^\n]+)\n/gm)];
   const result = {};
+  const seen = new Set();
   for (let index = 0; index < headings.length; index++) {
     const heading = headings[index];
     const field = FORM_FIELDS.get(heading[1].trim().toLowerCase());
     requireValue(field, `Unknown issue form section: ${heading[1].trim()}`);
     requireValue(
-      !Object.hasOwn(result, field),
+      !seen.has(field),
       `Duplicate issue form section: ${heading[1].trim()}`,
     );
+    seen.add(field);
     const start = heading.index + heading[0].length;
     const end = headings[index + 1]?.index ?? text.length;
     const value = text.slice(start, end).trim();
+    if (field === "lotStyle" && (!value || value === "_No response_")) continue;
     requireValue(
       value && value !== "_No response_",
       `Missing issue form field: ${field}`,
     );
     result[field] = value;
   }
-  for (const field of FORM_FIELDS.values()) {
+  for (const field of REQUIRED_FIELDS) {
     requireValue(
       Object.hasOwn(result, field),
       `Missing issue form field: ${field}`,
@@ -209,6 +238,7 @@ export function publishSubmission({
     "Project description must be at most 500 characters",
   );
   const destination = publicProjectUrl(fields.url);
+  requireValue(fields.lotStyle === undefined || isLotStyle(fields.lotStyle), "Unknown lot style");
   const projectId = `community-${issue.number}`;
   requireValue(
     !catalog.some((project) => project.id === projectId),
@@ -236,6 +266,7 @@ export function publishSubmission({
     url: destination,
     embed: false,
     theme: THEMES[fields.district],
+    ...(fields.lotStyle ? { lotStyle: fields.lotStyle } : {}),
     tags: ["Community", login],
     owner: { login, url: `https://github.com/${login}` },
     submission: {

@@ -318,3 +318,36 @@ test("the CLI imports its approved snapshot and writes a deterministic no-op on 
     await rm(temporary, { recursive: true, force: true });
   }
 });
+
+test('guided submission prepares the entire GitHub issue and safely round-trips optional building style', () => {
+  const lot = { slotId: fields.slot, district: fields.district, project: null };
+  const destination = new URL(buildContributionUrl(lot, {
+    direct: true, title: fields.title, url: fields.url,
+    description: 'Welcome.\n### Lot slot\nNot a new field.', lotStyle: 'garden',
+  }));
+  assert.equal(destination.searchParams.has('template'), false);
+  assert.equal(destination.searchParams.get('labels'), 'city:submission');
+  const parsed = parseIssueForm(destination.searchParams.get('body'));
+  assert.equal(parsed.slot, fields.slot);
+  assert.equal(parsed.lotStyle, 'garden');
+  assert.equal(parsed.description, 'Welcome.\n\\### Lot slot\nNot a new field.');
+  const result = publish({ issue: issue({ body: destination.searchParams.get('body') }) });
+  assert.equal(result.project.lotStyle, 'garden');
+});
+test('guided submission validates destinations and supplies an optional-description default', () => {
+  const lot = { slotId: fields.slot, district: fields.district, project: null };
+  const destination = new URL(buildContributionUrl(lot, { direct: true, title: fields.title, url: fields.url }));
+  assert.equal(parseIssueForm(destination.searchParams.get('body')).description, 'A project shared with the city.');
+  for (const url of ['http://example.com/', 'https://localhost/', 'https://me:secret@example.com/']) {
+    assert.throws(() => buildContributionUrl(lot, { direct: true, title: fields.title, url }), /URL/i);
+  }
+  assert.throws(() => buildContributionUrl(lot, { direct: true, title: 'hello\n### Lot slot', url: fields.url }), /title/i);
+  assert.throws(() => buildContributionUrl(lot, { direct: true, title: '_No response_', url: fields.url }), /title/i);
+  assert.throws(() => buildContributionUrl(lot, { direct: true, title: fields.title, url: fields.url, description: '_No response_' }), /description/i);
+  assert.throws(() => buildContributionUrl(lot, { direct: true, title: fields.title, url: fields.url, lotStyle: 'https://example.com/model.glb' }), /style/i);
+});
+test('legacy issue forms remain valid and only known optional styles can publish', () => {
+  assert.deepEqual(parseIssueForm(body() + '\n### Lot style\n\n_No response_\n'), fields);
+  assert.throws(() => publish({ issue: issue({ body: body() + '\n### Lot style\n\nremote-model\n' }) }), /style/i);
+  assert.throws(() => parseIssueForm(body() + '\n### Lot style\n\n_No response_\n\n### Lot style\n\ngarden\n'), /duplicate/i);
+});

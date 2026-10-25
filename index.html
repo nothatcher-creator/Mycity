@@ -64,8 +64,9 @@
             id="build-toggle"
             class="hud-button mint-button"
             type="button"
+            disabled
           >
-            Build here <span aria-hidden="true">+</span>
+            Add to city <span aria-hidden="true">+</span>
           </button>
         </nav>
       </header>
@@ -306,37 +307,17 @@
           >
           <p id="detail-destination" class="detail-destination"></p>
         </div>
-        <form id="contribution-form" hidden>
+        <div id="contribution-form" hidden>
           <p class="submission-note">
             Make this place yours. Sign in through GitHub to submit a project;
             Nothatcher reviews it before it joins the shared city.
           </p>
-          <label
-            >Project name<input
-              id="contribution-title"
-              maxlength="80"
-              required
-              placeholder="What are you making?" /></label
-          ><label
-            >Project link<input
-              id="contribution-url"
-              type="url"
-              required
-              placeholder="https://your-project.example/" /></label
-          ><label
-            >A few words about it<textarea
-              id="contribution-description"
-              rows="3"
-              maxlength="500"
-              required
-              placeholder="Tell us what people can explore here."
-            ></textarea></label
-          ><button
+          <button
             id="contribution-submit"
             class="primary-button"
-            type="submit"
+            type="button"
           >
-            Continue with GitHub →
+            Add a project here →
           </button>
           <p class="detail-destination">
             Your lot becomes shared after approval and publication. Submissions
@@ -349,9 +330,41 @@
             rel="noopener noreferrer"
             >See submitted projects →</a
           >
-        </form>
+        </div>
       </aside>
     </main>
+    <dialog id="add-project-dialog" class="add-project-dialog" aria-labelledby="add-heading">
+      <header class="add-heading">
+        <div><p class="eyebrow">A LITTLE SPACE FOR YOUR NEXT IDEA</p><h2 id="add-heading">Make yourself at home.</h2><p>Paste a project link. Pick a look. We’ll find you a lot.</p></div>
+        <button id="add-close" class="add-close" type="button" aria-label="Close add project">×</button>
+      </header>
+      <form id="add-project-form">
+        <div class="add-layout">
+          <div class="add-fields">
+            <label>Project link<input id="add-url" type="url" required maxlength="2000" placeholder="https://your-project.example/" autocomplete="url" inputmode="url"/><small>A live game, app, gallery, mod, or project page.</small></label>
+            <label>Project name<input id="add-title" required maxlength="80" placeholder="Give your place a name" autocomplete="off"/></label>
+            <label>Neighborhood<select id="add-district"></select></label>
+            <label>A few words <small>Optional · up to 500 characters</small><textarea id="add-description" rows="2" maxlength="500" placeholder="What can people do here?"></textarea></label>
+            <details><summary>Choose a specific lot</summary><label>Empty lot<select id="add-slot"></select></label><p>Automatic selection picks an empty lot in your neighborhood. Availability is checked again when the owner publishes your request.</p></details>
+            <div id="add-duplicate" class="add-duplicate" role="status" hidden><p id="add-duplicate-name"></p><button id="add-visit-existing" type="button">See the existing lot →</button></div>
+          </div>
+          <aside class="add-preview-panel" aria-label="Your lot preview">
+            <div class="add-preview-stage"><canvas id="add-preview-canvas" aria-label="Interactive building preview"></canvas><div id="add-preview-fallback" class="add-preview-fallback">Loading your building…</div></div>
+            <h3 id="add-preview-title">Your next big idea</h3><p id="add-lot-summary" class="add-lot-summary"></p>
+            <div class="add-style-heading"><strong>Choose your building</strong><span id="add-style-name">Studio</span></div>
+            <div id="add-styles" class="add-styles" role="group" aria-label="Building styles"></div>
+            <p class="add-preview-credit">Drag the preview to look around. Buildings by Kay Lousberg / KayKit, CC0. <a href="./assets/city-upgrade/manifest.json" target="_blank" rel="noopener">Asset credits ↗</a></p>
+          </aside>
+        </div>
+        <footer class="add-footer">
+          <div id="add-error" class="add-error" role="alert" hidden></div>
+          <div class="add-footer-actions"><button id="add-reset" class="add-reset" type="button">Start fresh</button><button id="add-submit" class="primary-button" type="submit">Continue with GitHub →</button></div>
+          <p>Your request opens fully filled in on GitHub. Sign in and press Submit new issue; Nothatcher reviews it before it joins the city. Your project stays on its existing hosting.</p>
+          <p id="add-draft-note">Your unfinished draft stays on this device.</p>
+          <div id="add-handoff" class="add-handoff" role="status" hidden><strong>Your request is ready on GitHub.</strong><p>Finish submitting in the new tab. This preview hasn’t reserved or published a lot.</p><a id="add-handoff-link" target="_blank" rel="noopener noreferrer">Open the prepared request again →</a></div>
+        </footer>
+      </form>
+    </dialog>
     <dialog
       id="project-player"
       class="project-player"

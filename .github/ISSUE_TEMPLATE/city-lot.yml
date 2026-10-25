@@ -49,3 +49,17 @@ body:
       description: Explain what visitors can do, in up to 500 characters. This is displayed as plain text.
     validations:
       required: true
+  - type: dropdown
+    id: lot_style
+    attributes:
+      label: Lot style
+      description: Optional city building style. Leave blank to use the neighborhood default.
+      options:
+        - studio
+        - arcade
+        - gallery
+        - workshop
+        - tower
+        - garden
+    validations:
+      required: false

@@ -1,3 +1,5 @@
+import { isLotStyle } from "./lot-styles.js";
+
 const CATEGORIES = new Set([
   "tools",
   "games",
@@ -75,6 +77,8 @@ export function validateCatalog(projects) {
         `Invalid project catalog entry: ${project.id || "unnamed"}`,
       );
     }
+    if (project.lotStyle !== undefined && !isLotStyle(project.lotStyle))
+      throw new Error("Invalid project lot style");
     safeProjectUrl(project.url);
     if (project.source) safeProjectUrl(project.source);
     if (

@@ -12,11 +12,22 @@ export function createFlightState(position = { x: 0, y: 2.2, z: 22 }) {
     },
     velocity: { x: 0, y: 0, z: 0 },
     heading: 0,
+    grounded: false,
   };
 }
 
-/** Mutate the shared state with camera-relative, speed-normalized flight. */
-export function stepFlight(state, input, dt, cameraYaw, bounds = {}) {
+/** Half the cube's width; the collision footprint matches what you see. */
+export const PLAYER_RADIUS = 0.7;
+// Ledges lower than this are climbed automatically instead of stopping the cube.
+const STEP_HEIGHT = 0.5;
+
+/**
+ * Mutate the shared state with camera-relative, speed-normalized flight.
+ * `obstacles` is an optional height field (see collision.js): walls block each
+ * horizontal axis separately, so the cube slides along them, and the tallest
+ * surface underneath becomes the floor, so roofs can be landed on.
+ */
+export function stepFlight(state, input, dt, cameraYaw, bounds = {}, obstacles = null) {
   if (typeof dt !== "number" || !Number.isFinite(dt) || dt <= 0) return state;
   const elapsed = Math.min(dt, 0.05);
   const commands = input || {};
@@ -44,13 +55,23 @@ export function stepFlight(state, input, dt, cameraYaw, bounds = {}) {
     state.position[coordinate] = finite(state.position[coordinate]);
     state.velocity[coordinate] +=
       (target[coordinate] - state.velocity[coordinate]) * blend;
-    state.position[coordinate] += state.velocity[coordinate] * elapsed;
   }
+  const solid = typeof obstacles?.maxHeightIn === "function" ? obstacles : null;
+  const r = PLAYER_RADIUS;
+  const surfaceAt = (x, z) => finite(solid.maxHeightIn(x - r, z - r, x + r, z + r));
+  for (const coordinate of ["x", "z"]) {
+    const next = state.position[coordinate] + state.velocity[coordinate] * elapsed;
+    const x = coordinate === "x" ? next : state.position.x;
+    const z = coordinate === "z" ? next : state.position.z;
+    if (solid && surfaceAt(x, z) > state.position.y - r + STEP_HEIGHT) {
+      state.velocity[coordinate] = 0;
+    } else state.position[coordinate] = next;
+  }
+  state.position.y += state.velocity.y * elapsed;
 
   const safeBounds = bounds || {};
   const radius = Math.max(1, finite(safeBounds.radius, 320));
-  const floor = finite(safeBounds.floor, 1.6);
-  const ceiling = Math.max(floor, finite(safeBounds.ceiling, 55));
+  const ceiling = finite(safeBounds.ceiling, 55);
   const distance = Math.hypot(state.position.x, state.position.z);
   if (distance > radius) {
     const nx = state.position.x / distance,
@@ -64,11 +85,17 @@ export function stepFlight(state, input, dt, cameraYaw, bounds = {}) {
       state.velocity.z -= nz * outward;
     }
   }
+  // Roofs and ledges raise the floor; a teleport into a wall pops out on top.
+  const floor = Math.max(
+    finite(safeBounds.floor, 1.6),
+    solid ? surfaceAt(state.position.x, state.position.z) + r : -Infinity,
+  );
+  state.grounded = state.position.y <= floor;
   if (state.position.y <= floor) {
     state.position.y = floor;
     state.velocity.y = Math.max(0, state.velocity.y);
-  } else if (state.position.y >= ceiling) {
-    state.position.y = ceiling;
+  } else if (state.position.y >= Math.max(floor, ceiling)) {
+    state.position.y = Math.max(floor, ceiling);
     state.velocity.y = Math.min(0, state.velocity.y);
   }
   if (Math.hypot(state.velocity.x, state.velocity.z) > 0.05) {

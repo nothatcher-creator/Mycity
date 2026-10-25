@@ -4,6 +4,7 @@ import { buildCityLots, validateCity } from "./city-layout.js";
 import { createFlightInput } from "./flight.js";
 import { createDeviceJournal } from "./journal.js";
 import { createAddProjectFlow } from "./add-project.js";
+import { createCityMap } from "./city-map.js";
 
 const $ = (id) => document.getElementById(id);
 document.body.dataset.touchMode = "buttons";
@@ -34,7 +35,11 @@ let worldAvailable = true,
   currentPlayer = null,
   lastFocus = null,
   pendingTravel = null;
-let addProjectFlow = null;
+let addProjectFlow = null,
+  minimap = null,
+  cityMap = null,
+  lastLocation = null,
+  thumbnails = new Map();
 const names = {
   tools: "Creative tools",
   games: "Game",
@@ -84,7 +89,10 @@ function setView(next) {
     view === "library" ? "Back to cube " : "City map ";
   $("library-toggle").setAttribute("aria-pressed", String(view === "library"));
   $("welcome-card").hidden = welcomeDismissed || view !== "world";
-  if (view === "library") renderCards();
+  if (view === "library") {
+    renderCards();
+    if (lastLocation) cityMap?.update(lastLocation);
+  }
   syncInput();
   if (view === "world") {
     $("world-canvas").focus({ preventScroll: true });
@@ -147,8 +155,7 @@ function createTravel() {
     const pin = document.createElement("button");
     pin.type = "button";
     pin.className = "map-district";
-    pin.style.left = `${50 + (d.center[0] / 440) * 100}%`;
-    pin.style.top = `${50 + (d.center[1] / 440) * 100}%`;
+    pin.dataset.mapDistrict = d.id;
     pin.style.background = d.color;
     pin.title = d.name;
     pin.setAttribute("aria-label", `Travel to ${d.name}`);
@@ -156,6 +163,47 @@ function createTravel() {
     pin.addEventListener("click", () => teleport(d.id));
     $("minimap-districts").append(pin);
   }
+  minimap = createCityMap({ canvas: $("minimap-canvas"), lots, city });
+  $("minimap-label").textContent = `MYCITY / ${lots.length} LOTS`;
+  // Pins sit on each neighborhood's corner nearest the plaza, which is always open street.
+  minimap.onLayout((projection) => {
+    for (const pin of $("minimap-districts").children) {
+      const d = city.districts.find((item) => item.id === pin.dataset.mapDistrict);
+      const halfWidth = (d.columns * d.spacing) / 2 + 2;
+      const halfDepth = (Math.ceil(d.slotCount / d.columns) * d.spacing) / 2 + 2;
+      const place = projection.toPercent(
+        d.center[0] - Math.sign(d.center[0]) * halfWidth,
+        d.center[1] - Math.sign(d.center[1]) * halfDepth,
+      );
+      pin.style.left = `${place.left}%`;
+      pin.style.top = `${place.top}%`;
+    }
+  });
+  // The full map in the City map view. Cards below remain the accessible equivalent.
+  cityMap = createCityMap({ canvas: $("city-map-canvas"), lots, city, labels: true, padding: 10 });
+  const mapCanvas = $("city-map-canvas"),
+    tip = $("city-map-tip");
+  mapCanvas.addEventListener("pointermove", (event) => {
+    const lot = cityMap.lotAt(event.clientX, event.clientY);
+    cityMap.setHovered(lot);
+    mapCanvas.style.cursor = lot ? "pointer" : "";
+    tip.hidden = !lot;
+    if (!lot) return;
+    tip.textContent = `${lot.displayNumber} · ${lot.project ? lot.title : `Open lot in ${districtName(lot.district)}`}`;
+    const rect = $("city-map").getBoundingClientRect();
+    const half = tip.offsetWidth / 2 + 6;
+    tip.style.left = `${Math.min(Math.max(event.clientX - rect.left, half), rect.width - half)}px`;
+    tip.style.top = `${event.clientY - rect.top}px`;
+    tip.classList.toggle("below", event.clientY - rect.top < 44);
+  });
+  mapCanvas.addEventListener("pointerleave", () => {
+    cityMap.setHovered(null);
+    tip.hidden = true;
+  });
+  mapCanvas.addEventListener("click", (event) => {
+    const lot = cityMap.lotAt(event.clientX, event.clientY);
+    if (lot) selectLot(lot.id);
+  });
   $("district-filters").append(filters);
   $("district-filters").addEventListener("click", (event) => {
     const button = event.target.closest("[data-district]");
@@ -163,6 +211,20 @@ function createTravel() {
     district = button.dataset.district;
     renderCards();
   });
+}
+/** Pre-rendered pictures of each lot's city building (scripts/render-thumbnails.mjs). */
+function addThumbnail(art, project) {
+  const source = project && thumbnails.get(project.id);
+  art.classList.toggle("has-thumb", Boolean(source));
+  art.querySelector(".lot-thumb")?.remove();
+  if (!source) return;
+  const image = document.createElement("img");
+  image.className = "lot-thumb";
+  image.src = source;
+  image.alt = "";
+  image.decoding = "async";
+  image.loading = "lazy";
+  art.append(image);
 }
 function renderCards() {
   const query = $("project-search").value.toLowerCase().trim();
@@ -202,6 +264,7 @@ function renderCards() {
     number.className = "card-plot";
     number.textContent = `${lot.project?.originalLot ? "ORIGINAL LOT" : "LOT"} ${lot.displayNumber}`;
     art.append(number);
+    addThumbnail(art, lot.project);
     const copy = document.createElement("div");
     copy.className = "card-copy";
     const type = document.createElement("span");
@@ -226,6 +289,7 @@ function renderCards() {
     fragment.append(card);
   }
   $("project-grid").replaceChildren(fragment);
+  cityMap?.highlight(visible.map((lot) => lot.id));
   $("empty-state").hidden = visible.length !== 0;
   $("result-count").textContent =
     `${visible.length} ${contents === "open" ? "open lots" : "creations"}`;
@@ -245,6 +309,7 @@ function selectLot(id, updateHash = true) {
   if (!lot) return;
   lastFocus = document.activeElement;
   selected = lot;
+  cityMap?.setSelected(lot);
   $("detail-plot").textContent =
     `${lot.project?.originalLot ? "ORIGINAL PROJECT 0 LOT" : "CITY LOT"} ${lot.displayNumber} / ${lot.slotId}`;
   $("detail-category").textContent = districtName(lot.district);
@@ -256,6 +321,7 @@ function selectLot(id, updateHash = true) {
     lot.project?.description ||
     `A permanent place in ${districtName(lot.district)}. Send a project link, sign in with GitHub, and let Nothatcher know what you want to build.`;
   $("detail-art").dataset.theme = lot.project?.theme || "vacant";
+  addThumbnail($("detail-art"), lot.project);
   $("detail-tags").replaceChildren(
     ...(lot.project?.tags || ["Open lot", "Friend contributions"]).map((t) => {
       const e = document.createElement("span");
@@ -295,6 +361,7 @@ function selectLot(id, updateHash = true) {
 function closeDetails(restore = true) {
   $("project-details").hidden = true;
   selected = null;
+  cityMap?.setSelected(null);
   if (/^#(?:plot|lot)\//.test(location.hash))
     history.replaceState(null, "", location.pathname + location.search);
   syncInput();
@@ -332,10 +399,9 @@ function updateLocation(value) {
   $("location-name").textContent = districtName(current);
   $("player-coordinates").textContent =
     `${Math.round(pos.x)} · ${Math.round(pos.y)} · ${Math.round(pos.z)}`;
-  $("minimap-player").style.left =
-    `${Math.max(4, Math.min(96, 50 + (pos.x / 440) * 100))}%`;
-  $("minimap-player").style.top =
-    `${Math.max(4, Math.min(96, 50 + (pos.z / 440) * 100))}%`;
+  lastLocation = { position: pos, heading: value.heading, view: value.view };
+  minimap?.update(lastLocation);
+  if (view === "library") cityMap?.update(lastLocation);
   if (current !== previousDistrict) {
     if (city.districts.some((d) => d.id === current))
       journal.record("district", { district: districtName(current) });
@@ -631,6 +697,14 @@ async function init() {
     createTravel();
     renderCards();
     journal.record("arrival");
+    loadJSON("./thumbnails/index.json")
+      .then((data) => {
+        for (const [id, path] of Object.entries(data || {}))
+          if (/^\.\/thumbnails\/[a-z0-9-]+\.webp$/.test(path)) thumbnails.set(id, path);
+        if (view === "library") renderCards();
+        if (selected) addThumbnail($("detail-art"), selected.project);
+      })
+      .catch(() => {});
     loadJSON("./city-activity.json")
       .then((data) => {
         if (Array.isArray(data)) sharedHistory = data;

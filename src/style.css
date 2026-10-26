@@ -330,7 +330,8 @@ main {
 }
 .welcome-stats {
   display: flex;
-  gap: 21px;
+  flex-wrap: wrap;
+  gap: 8px 21px;
   font-size: 9px;
   color: #96b4c5;
   margin: 20px 0;
@@ -2402,4 +2403,9 @@ body.touch-enabled .nearby-card {
   .viewer-tools {
     bottom: 10px;
   }
+}
+
+/* Photos are of the 3D view, so the camera button only appears there. */
+body[data-view="library"] #photo-button {
+  display: none;
 }

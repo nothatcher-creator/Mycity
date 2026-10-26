@@ -442,7 +442,7 @@ export function createWorld({
       distance: Infinity,
     });
   }
-  instances("box", COLORS.stone, plinths);
+  const plinthMesh = instances("box", COLORS.stone, plinths);
   cityResources.surface("grass", insets, { uvScale: 5 });
   instances("box", COLORS.hedge, hedges);
   instances("box", COLORS.ink, signPosts);
@@ -465,7 +465,8 @@ export function createWorld({
   for (const entry of entries.values()) rebuildSolids(entry);
 
   // ---------------- The Model Showcase island ----------------
-  const pedestals = new Map();
+  const pedestals = new Map(),
+    showcaseSurfaces = [];
   const showcaseColor = new THREE.Color(plan.showcase?.color || "#c8b6ff");
   if (plan.showcase) {
     const area = plan.showcase;
@@ -481,6 +482,7 @@ export function createWorld({
       const path = new THREE.Mesh(shape, pavers);
       path.receiveShadow = true;
       scene.add(path);
+      showcaseSurfaces.push(path);
     }
     const bases = [], caps = [], rings = [];
     const hologramMaterial = new THREE.MeshBasicMaterial({ color: showcaseColor, wireframe: true, transparent: true, opacity: 0.55, toneMapped: false });
@@ -538,7 +540,7 @@ export function createWorld({
     resources.materials.add(pedestalStone).add(capStone).add(ringGlow);
     if (bases.length) {
       instances("cylinder", 0, bases, "standard", pedestalStone);
-      instances("cylinder", 0, caps, "standard", capStone);
+      showcaseSurfaces.push(instances("cylinder", 0, caps, "standard", capStone));
       const ringMesh = new THREE.InstancedMesh(geometry("ring"), ringGlow, rings.length);
       rings.forEach((ring, i) => {
         instanceObject.position.set(...ring.p);
@@ -641,12 +643,16 @@ export function createWorld({
   scene.add(playerShadow);
   resources.materials.add(playerShadow.material);
   // The soft shadow lands on whatever is underneath: lawn, street, bridge, roof or sea.
-  const groundMeshes = [];
-  scene.traverse((object) => {
-    if ((object.isMesh || object.isInstancedMesh) && !object.isSkinnedMesh && object !== playerShadow && object.material !== contactMaterial && !object.parent?.isGroup)
-      groundMeshes.push(object);
-  });
-  for (const object of scenery.group.children) if (object.isMesh) groundMeshes.push(object);
+  // Only walkable surfaces: lawns, beaches, sea, bridges, streets, plinths and paths.
+  const groundMeshes = [
+    promenade,
+    plinthMesh,
+    ...showcaseSurfaces,
+    ...scene.children.filter((object) => object.isMesh && object.name.startsWith("Downloaded-PBR-")),
+    ...scenery.group.children.filter((object) => object.isMesh),
+    // The Beacon's plaza, pond and sculptures (the sky dome is beyond the ray's reach).
+    ...visuals.group.children.filter((object) => object.isMesh),
+  ];
   const groundRay = new THREE.Raycaster();
   groundRay.far = 120;
   const down = new THREE.Vector3(0, -1, 0), rayOrigin = new THREE.Vector3();
@@ -774,6 +780,10 @@ export function createWorld({
       trackModel(gltf.scene);
       if (disposed) return;
       const { size, featured } = entry.pedestal;
+      // Full-resolution models are heavy: only the featured one draws into the sun's shadow map.
+      gltf.scene.traverse((part) => {
+        if (part.isMesh) part.castShadow = featured;
+      });
       const fitted = fitModel(gltf.scene, size * 0.88, size * (featured ? 1.15 : 1.25));
       await prepare(fitted);
       if (disposed) return;
@@ -833,6 +843,12 @@ export function createWorld({
     }
     for (const entry of pedestals.values()) {
       entry.distance = Math.hypot(px - entry.pedestal.position.x, pz - entry.pedestal.position.z);
+      // From across the bay a pedestal model is a few pixels: skip drawing it.
+      if (entry.loaded) {
+        const show = entry.distance < 230 || entry.pedestal.featured;
+        if (entry.loaded.visible !== show) dirty = true;
+        entry.loaded.visible = show;
+      }
       // A pedestal is "near" from closer in than a whole lot, in proportion to its size.
       const distance = Math.hypot(entry.distance * (13 / (entry.pedestal.size + 5)), (py - 3) * 0.3);
       if (distance < best) {
@@ -1192,8 +1208,9 @@ export function createWorld({
         { yaw: pedestal.angle + 0.35, elevation: 0.32, distance: 15 + pedestal.size },
       );
     } else {
-      const gate = area.frame.toWorld(0, area.radius - 4);
-      teleport({ x: gate.x, y: 2.4, z: gate.z }, null, { yaw: area.frame.angle, elevation: 0.42, distance: 24 });
+      // Arrive well inside the arch, with the camera high enough to look over its sign.
+      const avenue = area.frame.toWorld(0, area.radius - 20);
+      teleport({ x: avenue.x, y: 2.4, z: avenue.z }, null, { yaw: area.frame.angle, elevation: 0.62, distance: 26 });
     }
   }
   resize();

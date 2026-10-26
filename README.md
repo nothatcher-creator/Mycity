@@ -1,10 +1,10 @@
-# Mycity — Nothatcher's world
+# Mycity — Nothatcher Bay
 
-[Enter the city](https://nothatcher-creator.github.io/Mycity/) · [Friend submissions](docs/community-lots.md) · [Add a project](docs/adding-projects.md)
+[Enter the city](https://nothatcher-creator.github.io/Mycity/) · [Add things](#add-things) · [Friend submissions](docs/community-lots.md) · [Model Showcase](docs/showcase.md)
 
-Play as a little flying cube in a city of games, tools, art, Android projects, and mods. **Nothatcher's Beacon** stands in the center, with lighthouse, castle, card, and creative-tool motifs from the owner's projects.
+Play as a little flying cube in an island city of games, tools, art, Android projects, mods and 3D models. **Nothatcher's Beacon** stands on the central island, with lighthouse, castle, card, and creative-tool motifs from the owner's projects. Every neighborhood is its own island, facing the Beacon and joined to it by a bridge.
 
-The city has **96 physical lots**, initially containing **23 projects and 73 open lots**. Empty lots have stable addresses so friends can choose a place for their own work. Astraforge remains project **001**, in Tools & AI, and its existing LyricForge editor opens inside Mycity.
+The neighborhoods hold **96 lots**, initially **23 projects and 73 open lots**. Empty lots have stable addresses, so friends can choose a place for their own work. Astraforge remains project **001**, in Tools & AI, and its existing LyricForge editor opens inside Mycity. The **Model Showcase** island puts 3D models on pedestals.
 
 ## Explore
 
@@ -14,12 +14,14 @@ The city has **96 physical lots**, initially containing **23 projects and 73 ope
 | Drag the world | Look around the cube |
 | Space / C | Rise / descend |
 | Shift | Boost |
-| E | Enter a nearby project or inspect an empty lot |
+| E | Enter a nearby project, inspect a model, or open an empty lot |
 | M | Open the city map |
 
-Buildings are solid: the cube slides along walls and can land on roofs, and the camera pulls in rather than ending up inside a wall. Every building is visible from anywhere in the city; exteriors stream in nearest-first after the first frame and pause while a game or dialog is open. Rendering follows the display's refresh rate and lowers resolution only when frames run long.
+Buildings and the Beacon are solid: the cube slides along walls, rides over the bridges and can land on roofs, and the camera pulls in rather than ending up inside a wall. Every building is visible from anywhere; exteriors stream in nearest-first and pause while a game or dialog is open. The camera button saves a photo of the current view.
 
-Phones and tablets show directional movement buttons by default, including in landscape. Hold the arrows to fly; the right-side up/down and boost buttons can be held together. **Use joystick** switches movement modes, and **On-screen controls** restores hidden controls on any screen. Neighborhood buttons and the minimap provide quick travel. The City map view draws every lot, built or open, beside the cards: hover a lot for its name, click it for details, and the neighborhood and search filters highlight what matches. Cards show a picture of each lot's real building. The map works when WebGL is unavailable.
+Phones and tablets show directional movement buttons by default, including in landscape. Hold the arrows to fly; the right-side up/down and boost buttons can be held together. **Use joystick** switches movement modes, and **On-screen controls** restores hidden controls on any screen.
+
+Neighborhood buttons and the minimap provide quick travel. The **City map** view draws the whole bay beside the cards: hover a lot or pedestal for its name, click it for details, and filters highlight what matches. Its **Models** tab lists the showcase. Cards show a picture of each lot's real building. The map works when WebGL is unavailable.
 
 ## Neighborhoods
 
@@ -28,10 +30,19 @@ Phones and tablets show directional movement buttons by default, including in la
 - **Art & Images:** an original-art gallery, including The Castaway card and Crownstone artwork, with open neighboring plots for friends.
 - **Android District:** the Balatro Android modpack release and space for Android apps and downloads.
 - **Mod Row, beside the Game Quarter:** [Nothatcher on Nexus Mods](https://www.nexusmods.com/profile/Nothatcher), with space for more mods.
+- **Model Showcase:** 3D models on pedestals, each openable in a viewer with orbit controls, wireframe, animation clips and real statistics. It opens with twelve of the original builds at full resolution. Share a model with a `#model/<id>` link.
 
 Guest games use Project 0's hosted sandbox/runtime and public game assets. Guest saves and scores belong to this browser. The original lot link remains available for Project 0 accounts, multiplayer, official boards, items, and rewards. Startup checks are not full playthroughs of every game.
 
 Bench Lab evaluates pasted model responses through visible, deterministic checks. Results stay in the browser and can be exported; no model calls or API keys are involved.
+
+## Add things
+
+| To add | Easiest way |
+| --- | --- |
+| **A 3D model** | On GitHub, open `public/showcase/models/`, choose **Add file → Upload files**, drop your `.glb`, and commit. It gets its own pedestal after the site rebuilds. Details: [Model Showcase](docs/showcase.md). |
+| **Your project** | `npm run add` — paste the link and answer a few questions. It picks an empty lot and plot number, checks the link isn't already in the city, writes the entry and renders its card picture. Details: [Add a project](docs/adding-projects.md). |
+| **A friend's project** | They choose **Add to city** in the world and continue with GitHub; you approve the request with the `city:approved` label. See [friend submissions](docs/community-lots.md). |
 
 ## Friends and city history
 
@@ -47,12 +58,14 @@ Use Node.js 22 or newer.
 
 ```bash
 npm ci
-npm run dev
+npm run dev          # also builds the showcase manifest
 npm test
 npm run build
+npm run add          # add a project
+npm run thumbnails   # render missing card pictures (needs Chromium)
 ```
 
-The production base is `/Mycity/`. GitHub Actions tests and deploys `dist/` from `main`.
+The production base is `/Mycity/`. GitHub Actions tests and deploys `dist/` from `main`; the build generates `public/showcase/index.json` and copies the model decoders into `public/vendor/`, so neither is committed.
 
 ```bash
 npx playwright install chromium
@@ -62,4 +75,4 @@ npm run test:browser
 
 Use `PLAYWRIGHT_CHROMIUM_EXECUTABLE` for an existing Chromium binary. `DISTRICT_TEST_URL` can point the browser tests at a deployed city.
 
-`public/projects.json` defines creations; `public/city.json` defines stable neighborhood slots; `public/city-activity.json` records published changes. Static games hosted here can live under `public/games/<slug>/`. GitHub Pages serves browser assets; apps requiring a private backend keep their own server. Never publish credentials, private user data, or paid game binaries in this public repository.
+`public/projects.json` defines creations; `public/city.json` defines the islands and their stable lots; `public/showcase/` holds the showcase; `public/city-activity.json` records published changes. The layout itself is computed by `src/city-layout.js` and `src/city-plan.js`. Static games hosted here can live under `public/games/<slug>/`. GitHub Pages serves browser assets; apps requiring a private backend keep their own server. Never publish credentials, private user data, paid game binaries, or models you don't have the right to share in this public repository.

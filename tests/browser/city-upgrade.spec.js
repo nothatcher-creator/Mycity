@@ -101,3 +101,45 @@ test("library cards show pictures of the real buildings", async ({ page }) => {
   await page.locator('.project-card[data-project="astraforge"]').click();
   await expect(page.locator("#detail-art img.lot-thumb")).toHaveAttribute("src", "./thumbnails/astraforge.webp");
 });
+
+test("the Model Showcase: a pedestal is inspected with E, and the viewer shows real statistics", async ({ page }) => {
+  test.setTimeout(180000);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("./");
+  await ready(page);
+  await expect(page.locator("#welcome-model-count")).toHaveText("12");
+  await page.locator("#start-flying").click();
+  await page.locator("[data-travel=showcase]").click();
+  await expect(page.locator("#location-name")).toHaveText("Model Showcase");
+  // From the library, fly to a pedestal, then inspect it with E like any lot.
+  await page.locator("#library-toggle").click();
+  await page.locator("#show-models").click();
+  await expect(page.locator(".model-card")).toHaveCount(12);
+  await page.locator('.model-card[data-model="skybound-build"]').click();
+  await expect(page.locator("#viewer-canvas")).toHaveAttribute("data-state", "ready", { timeout: 90000 });
+  await expect(page.locator("#viewer-stats")).toContainText("65,953");
+  await expect(page.locator("#viewer-clips button")).toHaveCount(2);
+  expect(await page.evaluate(() => location.hash)).toBe("#model/skybound-build");
+  await page.locator("#viewer-fly").click();
+  await expect(page.locator("#model-viewer")).not.toBeVisible();
+  await expect(page.locator("#nearby-title")).toHaveText("Skybound: Beaconfall");
+  await expect(page.locator("#interact-label")).toHaveText("Inspect");
+  await page.locator("#world-canvas").focus();
+  await page.keyboard.press("e");
+  await expect(page.locator("#viewer-title")).toHaveText("Skybound: Beaconfall");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#model-viewer")).not.toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("a shared #model link opens the viewer, and any lot's building can be viewed in 3D", async ({ page }) => {
+  await page.goto("./#model/abyssal-relic-build");
+  await expect(page.locator("#viewer-title")).toHaveText("Abyssal Relic", { timeout: 60000 });
+  await page.locator("#viewer-close").click();
+  await page.locator("#library-toggle").click();
+  await page.locator('.project-card[data-project="meridian-ironwatch"]').click();
+  await page.locator("#detail-model").click();
+  await expect(page.locator("#viewer-title")).toHaveText("Meridian Ironwatch");
+  await expect(page.locator("#viewer-canvas")).toHaveAttribute("data-state", "ready", { timeout: 90000 });
+});

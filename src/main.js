@@ -854,6 +854,8 @@ async function init() {
     $("vacancy-count").textContent = count;
     $("open-count").textContent = count;
     $("models-count").textContent = models.length;
+    $("welcome-model-count").textContent = models.length;
+    $("welcome-models").hidden = !models.length;
     $("show-models").hidden = !models.length;
     createTravel();
     renderCards();

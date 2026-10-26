@@ -66,16 +66,16 @@
       "ownerId": 113,
       "ownerName": "Nothatcher",
       "title": "Meridian Ironwatch",
-      "exteriorName": "One More Floor — The Meridian",
-      "description": "A monumental Meshy sunburst, deep fluted limestone entrance, planted terraces, bronze balustrades and a widened astrolabe crown transform the Meridian.",
+      "exteriorName": "Meridian Ironwatch",
+      "description": "A neon fortress tower guarding the Meridian reactor. Hover tanks patrol the base while raider saucers circle; the crown core flares when you tap it. Enter to play: a twin-stick tank defence across three sectors, three bosses and endless Overtime.",
       "originalLotUrl": "https://project0.city/#643",
-      "originalExteriorVersion": "b9b820ec20536585-ce77c2da96535576",
+      "originalExteriorVersion": "8905fd31419f39da-0d909d11fd6232cb",
       "models": {
         "lod1": {
-          "sourceUrl": "https://files.project0.city/lots/643/b9b820ec20536585-lod1.glb",
+          "sourceUrl": "https://files.project0.city/lots/643/8905fd31419f39da-lod1.glb",
           "path": "./assets/original-lots/643/lod1.glb",
-          "sha256": "e024c61bdb83a3efc69c8484d4172cced396daee9cdb3125cf5daf31017a33d4",
-          "sizeBytes": 255188,
+          "sha256": "26ec10947541e928cff4b3b0a357bb6a5f53e9586ff856ed8f403dc7c9220988",
+          "sizeBytes": 42532,
           "asset": {
             "generator": "glTF-Transform v4.5.1",
             "version": "2.0"
@@ -83,7 +83,6 @@
           "extensionsUsed": [
             "EXT_meshopt_compression",
             "EXT_texture_webp",
-            "KHR_materials_emissive_strength",
             "KHR_mesh_quantization"
           ],
           "extensionsRequired": [
@@ -93,18 +92,18 @@
           ],
           "animationCount": 0,
           "animationNames": [],
-          "meshCount": 3,
-          "nodeCount": 3,
-          "imageCount": 1,
+          "meshCount": 2,
+          "nodeCount": 2,
+          "imageCount": 2,
           "materialCount": 2,
-          "positionAccessorBoundsAvailable": 3,
+          "positionAccessorBoundsAvailable": 2,
           "externalAssetReferences": []
         },
         "lod0": {
-          "sourceUrl": "https://files.project0.city/lots/643/b9b820ec20536585-lod0.glb",
+          "sourceUrl": "https://files.project0.city/lots/643/8905fd31419f39da-lod0.glb",
           "path": "./assets/original-lots/643/lod0.glb",
-          "sha256": "cf76ffedb37cf93757d69277f325b08e1a413469d61801ae960d7faa729776ac",
-          "sizeBytes": 1701204,
+          "sha256": "4a80787e7bc5550c352158dbaa0479dcd166558ab20b1796bfe2dbd8fdbbd182",
+          "sizeBytes": 174120,
           "asset": {
             "generator": "glTF-Transform v4.5.1",
             "version": "2.0"
@@ -112,31 +111,30 @@
           "extensionsUsed": [
             "EXT_meshopt_compression",
             "EXT_texture_webp",
-            "KHR_materials_emissive_strength",
-            "KHR_mesh_quantization",
-            "KHR_texture_transform"
+            "KHR_mesh_quantization"
           ],
           "extensionsRequired": [
             "EXT_meshopt_compression",
             "EXT_texture_webp",
-            "KHR_mesh_quantization",
-            "KHR_texture_transform"
+            "KHR_mesh_quantization"
           ],
-          "animationCount": 0,
-          "animationNames": [],
-          "meshCount": 7,
-          "nodeCount": 7,
-          "imageCount": 6,
+          "animationCount": 1,
+          "animationNames": [
+            "loop"
+          ],
+          "meshCount": 10,
+          "nodeCount": 18,
+          "imageCount": 3,
           "materialCount": 4,
-          "positionAccessorBoundsAvailable": 7,
+          "positionAccessorBoundsAvailable": 11,
           "externalAssetReferences": []
         }
       },
       "experience": {
-        "version": "2c64b9167d50394c",
+        "version": "7c6cb7c998c19e55",
         "title": "Meridian Ironwatch",
         "maxPlayers": 8,
-        "baseUrl": "https://files.project0.city/x/643/2c64b9167d50394c/",
+        "baseUrl": "https://files.project0.city/x/643/7c6cb7c998c19e55/",
         "filesUrl": "https://project0.city/api/lots/643/experience/files",
         "entry": "bundle.js"
       }
@@ -1312,7 +1310,7 @@
   "totals": {
     "lots": 16,
     "models": 32,
-    "lod1Bytes": 3714336,
-    "lod0Bytes": 18898464
+    "lod1Bytes": 3501680,
+    "lod0Bytes": 17371380
   }
 }

@@ -6,9 +6,11 @@ The complete public provenance record is [`public/original-lots-source.json`](..
 
 ## Exterior models
 
+Lot 643 was rebuilt by the owner on October 26, 2026: the Meridian Ironwatch tower (version `8905fd31419f39da`) replaced the earlier "One More Floor — The Meridian" exterior, and its game moved to experience version `7c6cb7c998c19e55`. The row below and the provenance record describe the current published files.
+
 | Original lot | Current game | LOD1 | LOD0 | LOD0 clips |
 | ---: | --- | ---: | ---: | ---: |
-| 643 | Meridian Ironwatch | 255,188 B | 1,701,204 B | 0 |
+| 643 | Meridian Ironwatch | 42,532 B | 174,120 B | 1 |
 | 987 | Convoy Chaos — Golden Routes v0.8 | 164,172 B | 804,724 B | 1 |
 | 1003 | BLACKBOX: Recovery Protocol | 18,132 B | 55,800 B | 0 |
 | 1043 | Crownfall: The Ashen March | 193,572 B | 919,996 B | 0 |
@@ -25,9 +27,9 @@ The complete public provenance record is [`public/original-lots-source.json`](..
 | 3671 | Beaconfall — The Lantern Frontier v0.9 | 254,080 B | 720,976 B | 1 |
 | 3672 | RELICFALL: Beneath the Beacon v0.8 | 268,636 B | 1,067,060 B | 1 |
 
-All **32** files were downloaded and parsed as self-contained glTF 2.0 GLBs. LOD1 totals **3,714,336 bytes**; LOD0 totals **18,898,464 bytes**. No GLB refers to an external image or buffer URI.
+All **32** files were downloaded and parsed as self-contained glTF 2.0 GLBs. LOD1 totals **3,501,680 bytes**; LOD0 totals **17,371,380 bytes**. No GLB refers to an external image or buffer URI.
 
-Use `GLTFLoader` with Three.js `MeshoptDecoder`. The models use `EXT_meshopt_compression`, `KHR_mesh_quantization`, and sometimes embedded WebP textures. LOD1 is a lighter static representation. LOD0 retains authored animation clips for lot 987 and lighthouse lots 3665, 3667–3672; lot 3666 has no clips. Original exterior JavaScript and custom shader packages are not copied or evaluated by this model import.
+Use `GLTFLoader` with Three.js `MeshoptDecoder`. The models use `EXT_meshopt_compression`, `KHR_mesh_quantization`, and sometimes embedded WebP textures. LOD1 is a lighter static representation. LOD0 retains authored animation clips for lots 643 and 987 and lighthouse lots 3665, 3667–3672; lot 3666 has no clips. Original exterior JavaScript and custom shader packages are not copied or evaluated by this model import.
 
 The user owns these existing Project 0 lot builds and asked to reuse their original exteriors. This import does not relicense complete builds or assign a license to unknown individual components. It does not include full game bundles, platform code, paid game binaries, or credentials. Game destinations and native-platform services remain distinct from these exterior assets.
 

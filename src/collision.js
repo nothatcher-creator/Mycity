@@ -4,7 +4,7 @@ const finite = (value, fallback = 0) =>
 
 /**
  * A coarse top-down height field: every cell stores the tallest solid surface
- * above it. Buildings become walls you slide along and roofs you can land on,
+ * above it. Buildings become walls you slide along and roofs you hover over,
  * and the follow camera uses the same data to stay out of walls. Coordinates
  * are plain numbers so the field can be built and tested without WebGL.
  * Triangles entirely lower than `ignoreBelow` (ground plates, water) are skipped.

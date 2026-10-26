@@ -140,7 +140,9 @@ test("Astraforge remains the first integration and closes back to the cube", asy
   ).toContainText(/LyricForge/i, { timeout: 45000 });
   await page.locator("#player-close").click();
   await expect(page.locator("#project-player")).not.toBeVisible();
-  await expect(page.locator("#project-frame")).not.toHaveAttribute("src");
+  // The city resumes rendering as the player closes; under software rendering
+  // one frame can take seconds, so allow the check time to run between frames.
+  await expect(page.locator("#project-frame")).not.toHaveAttribute("src", { timeout: 30000 });
 });
 
 test("the original RELICFALL game boots inside the sandbox guest player", async ({

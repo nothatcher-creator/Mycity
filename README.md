@@ -17,7 +17,7 @@ The neighborhoods hold **96 lots**, initially **23 projects and 73 open lots**. 
 | E | Enter a nearby project, inspect a model, or open an empty lot |
 | M | Open the city map |
 
-Buildings and the Beacon are solid: the cube slides along walls, rides over the bridges and can land on roofs, and the camera pulls in rather than ending up inside a wall. Every building is visible from anywhere; exteriors stream in nearest-first and pause while a game or dialog is open. The camera button saves a photo of the current view.
+The cube is always flying: it hovers on a cushion of air over streets, water, bridges and roofs, and bobs gently while it waits. Buildings and the Beacon are solid: the cube slides along walls, and the camera pulls in rather than ending up inside a wall. Every building is visible from anywhere; exteriors stream in nearest-first and pause while a game or dialog is open. The camera button saves a photo of the current view.
 
 Phones and tablets show directional movement buttons by default, including in landscape. Hold the arrows to fly; the right-side up/down and boost buttons can be held together. **Use joystick** switches movement modes, and **On-screen controls** restores hidden controls on any screen.
 

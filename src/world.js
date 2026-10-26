@@ -23,7 +23,9 @@ const COLORS = {
   glass: 0x7bb7c8,
   hedge: 0x4f6c45,
 };
-const SPAWN = { x: 0, y: 2.2, z: 36 };
+// The cube always flies; this is its height over streets and water.
+const FLY_HEIGHT = 2.6;
+const SPAWN = { x: 0, y: FLY_HEIGHT, z: 36 };
 const SPAWN_VIEW = { yaw: 0.62, elevation: 0.35, distance: 31 };
 // Showcase models are fetched when the cube comes within this distance of the island.
 const SHOWCASE_RANGE = 170;
@@ -927,7 +929,7 @@ export function createWorld({
     dirty = true;
     start();
   }
-  const DEFAULT_BOUNDS = { radius: 340, floor: 1.6, ceiling: 70 };
+  const DEFAULT_BOUNDS = { radius: 340, floor: FLY_HEIGHT, ceiling: 70 };
   const smoothing = (rate, dt) => 1 - Math.exp(-rate * dt);
   const shortestTurn = (from, to) => Math.atan2(Math.sin(to - from), Math.cos(to - from));
   // The orbit keeps its chosen distance; only the rendered camera is pulled in
@@ -936,8 +938,7 @@ export function createWorld({
     cameraOffset = new THREE.Vector3(),
     cameraLift = new THREE.Vector3(0, 1, 0),
     sideTarget = new THREE.Vector3();
-  let cameraReach = 1,
-    squash = 0;
+  let cameraReach = 1;
   function clearCamera(dt) {
     cameraOffset.copy(camera.position).sub(controls.target);
     const distance = cameraOffset.length();
@@ -1009,8 +1010,6 @@ export function createWorld({
     lastTime = now;
     const input = flightInput?.getState?.() || zeroInput;
     const before = { ...playerState.position };
-    const wasGrounded = playerState.grounded,
-      fallSpeed = playerState.velocity.y;
     const yaw = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     // Retain real movement speed on slower devices using bounded physics steps.
     for (let remaining = dt; remaining > 0; remaining -= 0.05)
@@ -1022,7 +1021,9 @@ export function createWorld({
       controls.target.add(tempVector);
       dirty = true;
     }
-    player.position.set(playerState.position.x, playerState.position.y, playerState.position.z);
+    // A gentle bob keeps the cube visibly airborne, even while it waits.
+    const bob = reducedMotion.matches ? 0 : Math.sin(time * 2.1) * 0.12;
+    player.position.set(playerState.position.x, playerState.position.y + bob, playerState.position.z);
     const speed = Math.hypot(playerState.velocity.x, playerState.velocity.z);
     if (moved) {
       // Turn the short way round, lean into travel and bank into turns.
@@ -1034,16 +1035,6 @@ export function createWorld({
     } else {
       cube.rotation.x *= 1 - smoothing(6, dt);
       cube.rotation.z *= 1 - smoothing(6, dt);
-    }
-    if (!wasGrounded && playerState.grounded && fallSpeed < -6 && !reducedMotion.matches)
-      squash = Math.min(0.2, -fallSpeed / 130);
-    if (squash > 0.001) {
-      squash *= 1 - smoothing(8, dt);
-      player.scale.set(1 + squash * 0.5, 1 - squash, 1 + squash * 0.5);
-      dirty = true;
-    } else if (squash) {
-      squash = 0;
-      player.scale.setScalar(1);
     }
     if (!reducedMotion.matches) {
       const fov = 54 + THREE.MathUtils.clamp((speed - 22) / 18, 0, 1) * 7;
@@ -1194,7 +1185,7 @@ export function createWorld({
   /** Stand at a lot's entrance with the camera out over its street. */
   function visitLot(entry) {
     const { lot } = entry;
-    teleport({ x: lot.entrance.x, y: 2.2, z: lot.entrance.z }, lot.id, { yaw: Math.atan2(lot.forward.x, lot.forward.z) + 0.42 });
+    teleport({ x: lot.entrance.x, y: FLY_HEIGHT, z: lot.entrance.z }, lot.id, { yaw: Math.atan2(lot.forward.x, lot.forward.z) + 0.42 });
   }
   function visitShowcase(entry) {
     const area = plan.showcase;
@@ -1203,14 +1194,14 @@ export function createWorld({
       const reach = pedestal.size * 0.5 + 4.5;
       const facing = { x: Math.sin(pedestal.angle), z: Math.cos(pedestal.angle) };
       teleport(
-        { x: pedestal.position.x + facing.x * reach, y: 2.4, z: pedestal.position.z + facing.z * reach },
+        { x: pedestal.position.x + facing.x * reach, y: FLY_HEIGHT, z: pedestal.position.z + facing.z * reach },
         `model:${entry.model.id}`,
         { yaw: pedestal.angle + 0.35, elevation: 0.32, distance: 15 + pedestal.size },
       );
     } else {
       // Arrive well inside the arch, with the camera high enough to look over its sign.
       const avenue = area.frame.toWorld(0, area.radius - 20);
-      teleport({ x: avenue.x, y: 2.4, z: avenue.z }, null, { yaw: area.frame.angle, elevation: 0.62, distance: 26 });
+      teleport({ x: avenue.x, y: FLY_HEIGHT, z: avenue.z }, null, { yaw: area.frame.angle, elevation: 0.62, distance: 26 });
     }
   }
   resize();
@@ -1241,7 +1232,7 @@ export function createWorld({
       if (first) visitLot(first);
       else {
         const gate = island.frame.toWorld(0, island.front - 4);
-        teleport({ x: gate.x, y: 3, z: gate.z }, null, { yaw: island.frame.angle, elevation: 0.5, distance: 26 });
+        teleport({ x: gate.x, y: FLY_HEIGHT, z: gate.z }, null, { yaw: island.frame.angle, elevation: 0.5, distance: 26 });
       }
     },
     getPlayerPosition() {

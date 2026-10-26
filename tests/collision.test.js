@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHeightField } from "../src/collision.js";
-import { createFlightState, stepFlight, PLAYER_RADIUS } from "../src/flight.js";
+import { createFlightState, stepFlight, PLAYER_RADIUS, HOVER_GAP } from "../src/flight.js";
 
 // A closed 4 x 4 m box, 10 m tall, centred on the origin, as triangles.
 function boxTriangles(half = 2, top = 10) {
@@ -83,17 +83,26 @@ test("walls stop the cube and it slides along them instead of sticking", () => {
   assert.ok(state.position.z < -2, `never got past at z=${state.position.z}`);
 });
 
-test("roofs become the floor: the cube lands on top of a building", () => {
+test("the cube always flies: it hovers over a roof and never touches it", () => {
   const field = createHeightField();
   field.addTriangles(boxTriangles());
+  const roof = 10 + PLAYER_RADIUS;
   const state = createFlightState({ x: 0, y: 20, z: 0 });
-  fly(state, { rise: -1 }, field, 3);
-  assert.ok(Math.abs(state.position.y - (10 + PLAYER_RADIUS)) < 1e-9);
-  assert.equal(state.velocity.y, 0);
+  // Holding "down" only pushes it partway into its cushion of air.
+  for (let i = 0; i < 180; i++) {
+    stepFlight(state, { rise: -1 }, 1 / 60, 0, undefined, field);
+    assert.ok(state.position.y >= roof, `touched the roof at ${state.position.y}`);
+  }
+  assert.ok(state.position.y < roof + HOVER_GAP);
   assert.equal(state.grounded, true);
-  // Flying off the edge drops back down to the street floor.
+  // Let go and it settles at flying height above the roof.
+  fly(state, {}, field, 1);
+  assert.ok(Math.abs(state.position.y - (roof + HOVER_GAP)) < 1e-3);
+  assert.equal(state.velocity.y, 0);
+  // Flying off the edge brings it back to flying height over the ground (y = 0).
   fly(state, { strafe: 1, rise: -1 }, field, 3);
-  assert.equal(state.position.y, 1.6);
+  fly(state, {}, field, 1);
+  assert.ok(Math.abs(state.position.y - Math.max(1.6, PLAYER_RADIUS + HOVER_GAP)) < 1e-3);
 });
 
 test("low ledges are climbed, and a teleport inside a wall pops out on top", () => {
@@ -107,7 +116,9 @@ test("low ledges are climbed, and a teleport inside a wall pops out on top", () 
   const wall = createHeightField();
   wall.addTriangles(boxTriangles());
   stepFlight(inside, {}, 1 / 60, 0, undefined, wall);
-  assert.equal(inside.position.y, 10 + PLAYER_RADIUS);
+  assert.ok(inside.position.y >= 10 + PLAYER_RADIUS);
+  fly(inside, {}, wall, 1);
+  assert.ok(Math.abs(inside.position.y - (10 + PLAYER_RADIUS + HOVER_GAP)) < 1e-3);
 });
 
 test("camera sight lines are shortened by walls and clear above them", () => {

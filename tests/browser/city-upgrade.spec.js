@@ -33,7 +33,7 @@ function closestToCentre(path) {
   return best;
 }
 
-test("the beacon is solid: the cube goes around it on the ground and over it in the air", async ({ page }) => {
+test("the beacon is solid: the cube goes around its tower at street height and over it from above", async ({ page }) => {
   test.setTimeout(240000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -45,7 +45,8 @@ test("the beacon is solid: the cube goes around it on the ground and over it in 
   // From the front of the plaza, W + D heads at the beacon, about 6 m off its centre.
   const ground = await holdUntil(page, ["w", "d"], ([, , z]) => z < -12);
   expect(ground.at(-1)[2], "the cube got stuck instead of sliding round").toBeLessThan(-12);
-  expect(closestToCentre(ground), "the cube flew through the beacon").toBeGreaterThan(7);
+  // Flying, the cube clears the low stone drum but never enters the 3.5 m tower.
+  expect(closestToCentre(ground), "the cube flew through the beacon").toBeGreaterThan(4.5);
   await page.locator("#reset-camera").click();
   await page.locator("#world-canvas").focus();
   await holdUntil(page, ["Space"], ([, y]) => y >= 24);

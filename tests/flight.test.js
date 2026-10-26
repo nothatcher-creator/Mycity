@@ -55,8 +55,12 @@ test("floor, ceiling and circular city edge keep the cube in bounds", () => {
   assert.equal(state.velocity.y, 0);
   for (let i = 0; i < 600; i++) {
     stepFlight(state, { rise: -1 }, 1 / 60, 0);
+    assert.ok(state.position.y >= 1.0, "pressed through the cushion of air");
   }
-  assert.equal(state.position.y, 1.6);
+  assert.ok(state.position.y < 1.6);
+  // Released, it floats back up to the flying floor; it never rests on the ground.
+  for (let i = 0; i < 60; i++) stepFlight(state, {}, 1 / 60, 0);
+  assert.ok(Math.abs(state.position.y - 1.6) < 1e-3);
   assert.equal(state.velocity.y, 0);
 });
 

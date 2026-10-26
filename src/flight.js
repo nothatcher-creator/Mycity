@@ -18,14 +18,19 @@ export function createFlightState(position = { x: 0, y: 2.2, z: 22 }) {
 
 /** Half the cube's width; the collision footprint matches what you see. */
 export const PLAYER_RADIUS = 0.7;
+/** The cube always flies: this much air stays between it and any roof or bridge below. */
+export const HOVER_GAP = 1.2;
 // Ledges lower than this are climbed automatically instead of stopping the cube.
 const STEP_HEIGHT = 0.5;
+// How far pressing down can push the cube into its cushion of air over open ground.
+const GROUND_CUSHION = 0.6;
 
 /**
  * Mutate the shared state with camera-relative, speed-normalized flight.
  * `obstacles` is an optional height field (see collision.js): walls block each
- * horizontal axis separately, so the cube slides along them, and the tallest
- * surface underneath becomes the floor, so roofs can be landed on.
+ * horizontal axis separately, so the cube slides along them. The cube never
+ * rests on anything: it floats on a springy cushion of air above `bounds.floor`
+ * and HOVER_GAP above the tallest surface below, gliding up over roofs.
  */
 export function stepFlight(state, input, dt, cameraYaw, bounds = {}, obstacles = null) {
   if (typeof dt !== "number" || !Number.isFinite(dt) || dt <= 0) return state;
@@ -85,17 +90,20 @@ export function stepFlight(state, input, dt, cameraYaw, bounds = {}, obstacles =
       state.velocity.z -= nz * outward;
     }
   }
-  // Roofs and ledges raise the floor; a teleport into a wall pops out on top.
-  const floor = Math.max(
-    finite(safeBounds.floor, 1.6),
-    solid ? surfaceAt(state.position.x, state.position.z) + r : -Infinity,
-  );
-  state.grounded = state.position.y <= floor;
-  if (state.position.y <= floor) {
-    state.position.y = floor;
+  // Hover on a cushion: never inside a surface (a teleport into a wall pops out
+  // on top), and eased back up to flying height whenever it dips below.
+  const ground = finite(safeBounds.floor, 1.6);
+  const surface = solid ? surfaceAt(state.position.x, state.position.z) + r : -Infinity;
+  const hover = Math.max(ground, surface + HOVER_GAP);
+  const lowest = Math.max(ground - GROUND_CUSHION, surface);
+  if (state.position.y < lowest) state.position.y = lowest;
+  if (state.position.y < hover) {
+    state.position.y += (hover - state.position.y) * (1 - Math.exp(-12 * elapsed));
     state.velocity.y = Math.max(0, state.velocity.y);
-  } else if (state.position.y >= Math.max(floor, ceiling)) {
-    state.position.y = Math.max(floor, ceiling);
+  }
+  state.grounded = state.position.y <= hover + 0.02;
+  if (state.position.y >= Math.max(hover, ceiling)) {
+    state.position.y = Math.max(hover, ceiling);
     state.velocity.y = Math.min(0, state.velocity.y);
   }
   if (Math.hypot(state.velocity.x, state.velocity.z) > 0.05) {

@@ -1,6 +1,9 @@
 import "./style.css";
 import { validateCatalog, filterProjects, safeProjectUrl } from "./catalog.js";
-import { buildCityLots, validateCity } from "./city-layout.js";
+import { validateCity } from "./city-layout.js";
+import { buildCityPlan } from "./city-plan.js";
+import { validateShowcase, showcaseNumber } from "./showcase.js";
+import { cityBuildingSource } from "./lot-sources.js";
 import { createFlightInput } from "./flight.js";
 import { createDeviceJournal } from "./journal.js";
 import { createAddProjectFlow } from "./add-project.js";
@@ -39,7 +42,11 @@ let addProjectFlow = null,
   minimap = null,
   cityMap = null,
   lastLocation = null,
-  thumbnails = new Map();
+  thumbnails = new Map(),
+  plan = null,
+  models = [],
+  viewer = null,
+  viewerRequest = 0;
 const names = {
   tools: "Creative tools",
   games: "Game",
@@ -51,7 +58,10 @@ const names = {
 const districtName = (id) =>
   id === "center"
     ? city?.identity.landmark || "Nothatcher's Beacon"
-    : city?.districts.find((d) => d.id === id)?.name || "City streets";
+    : id === "showcase"
+      ? city?.showcase?.name || "Model Showcase"
+      : city?.districts.find((d) => d.id === id)?.name || city?.bay?.name || "The bay";
+const modelNumber = (model) => showcaseNumber(models.indexOf(model));
 const resolveLot = (id) =>
   lots.find((l) => l.id === id || l.slotId === id || l.project?.id === id);
 const actionName = (p) =>
@@ -70,7 +80,7 @@ function toast(message) {
   toast.timeout = setTimeout(() => ($("toast").hidden = true), 4500);
 }
 function syncInput() {
-  const overlay = $("project-player").open || $("journal-dialog").open || $("add-project-dialog").open;
+  const overlay = $("project-player").open || $("journal-dialog").open || $("add-project-dialog").open || $("model-viewer").open;
   flightInput?.setEnabled(
     view === "world" && !overlay && $("project-details").hidden,
   );
@@ -163,33 +173,60 @@ function createTravel() {
     pin.addEventListener("click", () => teleport(d.id));
     $("minimap-districts").append(pin);
   }
-  minimap = createCityMap({ canvas: $("minimap-canvas"), lots, city });
+  if (city.showcase) {
+    const travel = document.createElement("button");
+    travel.type = "button";
+    travel.dataset.travel = "showcase";
+    travel.style.setProperty("--district-color", city.showcase.color);
+    const dot = document.createElement("i");
+    dot.className = "district-dot";
+    const title = document.createElement("span");
+    title.textContent = city.showcase.name;
+    const count = document.createElement("small");
+    count.textContent = models.length;
+    travel.append(dot, title, count);
+    travel.addEventListener("click", () => teleport("showcase"));
+    $("district-travel").append(travel);
+    const pin = document.createElement("button");
+    pin.type = "button";
+    pin.className = "map-district";
+    pin.dataset.mapDistrict = "showcase";
+    pin.style.background = city.showcase.color;
+    pin.title = city.showcase.name;
+    pin.setAttribute("aria-label", `Travel to ${city.showcase.name}`);
+    pin.textContent = city.showcase.prefix || "S";
+    pin.addEventListener("click", () => teleport("showcase"));
+    $("minimap-districts").append(pin);
+  }
+  minimap = createCityMap({ canvas: $("minimap-canvas"), plan });
   $("minimap-label").textContent = `MYCITY / ${lots.length} LOTS`;
-  // Pins sit on each neighborhood's corner nearest the plaza, which is always open street.
+  // Pins sit on each island's back verge, between its lots and the shore.
   minimap.onLayout((projection) => {
     for (const pin of $("minimap-districts").children) {
-      const d = city.districts.find((item) => item.id === pin.dataset.mapDistrict);
-      const halfWidth = (d.columns * d.spacing) / 2 + 2;
-      const halfDepth = (Math.ceil(d.slotCount / d.columns) * d.spacing) / 2 + 2;
-      const place = projection.toPercent(
-        d.center[0] - Math.sign(d.center[0]) * halfWidth,
-        d.center[1] - Math.sign(d.center[1]) * halfDepth,
-      );
+      const island = plan.islands.find((item) => item.district.id === pin.dataset.mapDistrict);
+      const point = island
+        ? island.frame.toWorld(0, -island.back + 4)
+        : plan.showcase.frame.toWorld(0, -plan.showcase.radius + 7);
+      const place = projection.toPercent(point.x, point.z);
       pin.style.left = `${place.left}%`;
       pin.style.top = `${place.top}%`;
     }
   });
-  // The full map in the City map view. Cards below remain the accessible equivalent.
-  cityMap = createCityMap({ canvas: $("city-map-canvas"), lots, city, labels: true, padding: 10 });
+  // The full map in the City map view. Cards beside it remain the accessible equivalent.
+  cityMap = createCityMap({ canvas: $("city-map-canvas"), plan, labels: true, padding: 10 });
   const mapCanvas = $("city-map-canvas"),
     tip = $("city-map-tip");
   mapCanvas.addEventListener("pointermove", (event) => {
-    const lot = cityMap.lotAt(event.clientX, event.clientY);
-    cityMap.setHovered(lot);
-    mapCanvas.style.cursor = lot ? "pointer" : "";
-    tip.hidden = !lot;
-    if (!lot) return;
-    tip.textContent = `${lot.displayNumber} · ${lot.project ? lot.title : `Open lot in ${districtName(lot.district)}`}`;
+    const target = cityMap.targetAt(event.clientX, event.clientY);
+    cityMap.setHovered(target);
+    mapCanvas.style.cursor = target ? "pointer" : "";
+    tip.hidden = !target;
+    if (!target) return;
+    const lot = target.lot;
+    tip.textContent =
+      target.kind === "model"
+        ? `${modelNumber(target.model)} · ${target.model.title}`
+        : `${lot.displayNumber} · ${lot.project ? lot.title : `Open lot in ${districtName(lot.district)}`}`;
     const rect = $("city-map").getBoundingClientRect();
     const half = tip.offsetWidth / 2 + 6;
     tip.style.left = `${Math.min(Math.max(event.clientX - rect.left, half), rect.width - half)}px`;
@@ -201,8 +238,9 @@ function createTravel() {
     tip.hidden = true;
   });
   mapCanvas.addEventListener("click", (event) => {
-    const lot = cityMap.lotAt(event.clientX, event.clientY);
-    if (lot) selectLot(lot.id);
+    const target = cityMap.targetAt(event.clientX, event.clientY);
+    if (target?.kind === "model") openModel(target.model);
+    else if (target) selectLot(target.lot.id);
   });
   $("district-filters").append(filters);
   $("district-filters").addEventListener("click", (event) => {
@@ -213,8 +251,8 @@ function createTravel() {
   });
 }
 /** Pre-rendered pictures of each lot's city building (scripts/render-thumbnails.mjs). */
-function addThumbnail(art, project) {
-  const source = project && thumbnails.get(project.id);
+function addThumbnail(art, project, explicit) {
+  const source = explicit || (project && thumbnails.get(project.id));
   art.classList.toggle("has-thumb", Boolean(source));
   art.querySelector(".lot-thumb")?.remove();
   if (!source) return;
@@ -226,8 +264,58 @@ function addThumbnail(art, project) {
   image.loading = "lazy";
   art.append(image);
 }
+function renderModelCards(query) {
+  const words = query.split(/\s+/).filter(Boolean);
+  const visible = models.filter((model) => {
+    const text = `${model.title} ${model.description || ""} ${model.credit || ""} ${modelNumber(model)} model 3d`.toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+  const fragment = document.createDocumentFragment();
+  for (const model of visible) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "project-card model-card";
+    card.dataset.model = model.id;
+    card.dataset.theme = "model";
+    card.style.setProperty("--district-color", city.showcase?.color || "#c8b6ff");
+    const art = document.createElement("div");
+    art.className = "card-art";
+    art.setAttribute("aria-hidden", "true");
+    for (const tag of ["span", "i", "b"]) art.append(document.createElement(tag));
+    const number = document.createElement("span");
+    number.className = "card-plot";
+    number.textContent = `${model.featured ? "FEATURED · " : ""}${modelNumber(model)}`;
+    art.append(number);
+    addThumbnail(art, null, model.thumbnail);
+    const copy = document.createElement("div");
+    copy.className = "card-copy";
+    const type = document.createElement("span");
+    type.className = "card-category";
+    type.textContent = districtName("showcase");
+    const title = document.createElement("h2");
+    title.textContent = model.title;
+    const subtitle = document.createElement("p");
+    const triangles = model.stats?.triangles ? `${model.stats.triangles.toLocaleString()} triangles` : "3D model";
+    subtitle.textContent = model.credit ? `${model.credit} · ${triangles}` : triangles;
+    const link = document.createElement("span");
+    link.className = "card-enter";
+    link.textContent = "INSPECT IN 3D";
+    copy.append(type, title, subtitle, link);
+    card.append(art, copy);
+    card.addEventListener("click", () => openModel(model));
+    fragment.append(card);
+  }
+  $("project-grid").replaceChildren(fragment);
+  cityMap?.highlight(visible.map((model) => `model:${model.id}`));
+  $("empty-state").hidden = visible.length !== 0;
+  $("result-count").textContent = `${visible.length} model${visible.length === 1 ? "" : "s"}`;
+}
 function renderCards() {
   const query = $("project-search").value.toLowerCase().trim();
+  for (const [id, value] of [["show-projects", "projects"], ["show-open", "open"], ["show-models", "models"]])
+    $(id).setAttribute("aria-pressed", String(contents === value));
+  $("district-filters").hidden = contents === "models";
+  if (contents === "models") return renderModelCards(query);
   let visible;
   if (contents === "open")
     visible = lots.filter(
@@ -293,11 +381,6 @@ function renderCards() {
   $("empty-state").hidden = visible.length !== 0;
   $("result-count").textContent =
     `${visible.length} ${contents === "open" ? "open lots" : "creations"}`;
-  $("show-projects").setAttribute(
-    "aria-pressed",
-    String(contents === "projects"),
-  );
-  $("show-open").setAttribute("aria-pressed", String(contents === "open"));
   document
     .querySelectorAll("[data-district]")
     .forEach((b) =>
@@ -309,7 +392,7 @@ function selectLot(id, updateHash = true) {
   if (!lot) return;
   lastFocus = document.activeElement;
   selected = lot;
-  cityMap?.setSelected(lot);
+  cityMap?.setSelected({ kind: "lot", lot });
   $("detail-plot").textContent =
     `${lot.project?.originalLot ? "ORIGINAL PROJECT 0 LOT" : "CITY LOT"} ${lot.displayNumber} / ${lot.slotId}`;
   $("detail-category").textContent = districtName(lot.district);
@@ -330,6 +413,7 @@ function selectLot(id, updateHash = true) {
     }),
   );
   $("occupied-actions").hidden = !lot.project;
+  $("detail-model").hidden = !(lot.project && cityBuildingSource(lot.project, true));
   $("contribution-form").hidden = !!lot.project;
   if (lot.project) {
     const p = lot.project;
@@ -370,11 +454,22 @@ function closeDetails(restore = true) {
 }
 function interact() {
   if (!nearest) return;
-  if (nearest.project) launch(nearest.project);
+  if (nearest.kind === "model") openModel(nearest.model, { fromWorld: true });
+  else if (nearest.project) launch(nearest.project);
   else selectLot(nearest.slotId);
 }
 function updateNearby(lot) {
   nearest = lot;
+  if (lot?.kind === "model") {
+    $("interact-button").hidden = false;
+    $("nearby-details").hidden = true;
+    $("nearby-number").textContent = lot.displayNumber;
+    $("nearby-type").textContent = `${districtName("showcase").toUpperCase()}${lot.model.featured ? " · FEATURED" : ""}`;
+    $("nearby-title").textContent = lot.title;
+    $("nearby-subtitle").textContent = lot.model.credit ? `By ${lot.model.credit}` : "A 3D model on display.";
+    $("interact-label").textContent = "Inspect";
+    return;
+  }
   $("interact-button").hidden = !lot;
   $("nearby-details").hidden = !lot;
   $("nearby-number").textContent = lot?.displayNumber || "N";
@@ -395,7 +490,7 @@ function updateNearby(lot) {
 }
 function updateLocation(value) {
   const pos = value.position || value;
-  const current = value.district || "streets";
+  const current = value.district || "bay";
   $("location-name").textContent = districtName(current);
   $("player-coordinates").textContent =
     `${Math.round(pos.x)} · ${Math.round(pos.y)} · ${Math.round(pos.z)}`;
@@ -543,6 +638,68 @@ function renderJournal() {
   }
   $("journal-events").replaceChildren(fragment);
 }
+/** Open a showcase model (or a lot's building) in the 3D viewer. */
+async function openModel(model, { fromWorld = false } = {}) {
+  if (!model) return;
+  const request = ++viewerRequest;
+  journal.record("model-open", { title: model.title });
+  try {
+    if (!viewer) {
+      const { createModelViewer } = await import("./model-viewer.js");
+      if (request !== viewerRequest) return;
+      viewer ||= createModelViewer({
+        dialog: $("model-viewer"),
+        onVisitProject: (id) => {
+          const lot = resolveLot(id);
+          if (lot) teleport(lot.slotId, true);
+        },
+        onFlyToModel: (target) => {
+          dismissWelcome();
+          closeDetails(false);
+          setView("world");
+          world?.focusModel(target.id);
+        },
+        onClose: () => {
+          if (/^#model\//.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
+          syncInput();
+          if (view === "world") $("world-canvas").focus({ preventScroll: true });
+        },
+      });
+    }
+    const index = models.indexOf(model);
+    await viewer.open(model, { number: index >= 0 ? showcaseNumber(index) : "", canFly: index >= 0 && Boolean(world) && !fromWorld });
+    if (index >= 0) history.replaceState(null, "", `#model/${encodeURIComponent(model.id)}`);
+  } catch (error) {
+    toast(`The model viewer could not open. ${error?.message || ""}`);
+  }
+  syncInput();
+}
+function openLotBuilding(lot) {
+  const source = lot?.project && cityBuildingSource(lot.project, true);
+  if (!source) return;
+  openModel({
+    id: `${lot.project.id}-building`,
+    title: lot.project.title,
+    file: source,
+    description: lot.project.originalLot
+      ? `The exterior of original Project 0 lot ${lot.project.originalLot}.`
+      : "The building that stands on this lot in the city.",
+    credit: lot.project.originalLot ? `Nothatcher, original Project 0 lot ${lot.project.originalLot}` : undefined,
+  });
+}
+async function takePhoto() {
+  if (!world) return toast("Photos need the 3D city.");
+  const blob = await world.capture();
+  if (!blob) return toast("This browser couldn't save the photo.");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `mycity-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.png`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  journal.record("photo", {});
+  toast("Photo saved to your downloads.");
+}
 function worldFallback(error) {
   if (!worldAvailable) return;
   console.info("Using city map:", error?.message || "3D unavailable");
@@ -586,6 +743,12 @@ $("show-open").addEventListener("click", () => {
   contents = "open";
   renderCards();
 });
+$("show-models").addEventListener("click", () => {
+  contents = "models";
+  renderCards();
+});
+$("detail-model").addEventListener("click", () => openLotBuilding(selected));
+$("photo-button").addEventListener("click", takePhoto);
 $("project-search").addEventListener("input", renderCards);
 $("reset-camera").addEventListener("click", () => teleport("center"));
 $("detail-close").addEventListener("click", () => closeDetails());
@@ -641,22 +804,13 @@ document.addEventListener("keydown", (event) => {
     event.target.isContentEditable
   )
     return;
-  if (
-    event.code === "KeyM" &&
-    !$("project-player").open &&
-    !$("journal-dialog").open &&
-    !$("add-project-dialog").open
-  ) {
+  const dialogOpen = $("project-player").open || $("journal-dialog").open || $("add-project-dialog").open || $("model-viewer").open;
+  if (event.code === "KeyM" && !dialogOpen) {
     event.preventDefault();
     closeDetails(false);
     setView(view === "world" ? "library" : "world");
   }
-  if (
-    event.key === "Escape" &&
-    !$("project-player").open &&
-    !$("journal-dialog").open &&
-    !$("add-project-dialog").open
-  ) {
+  if (event.key === "Escape" && !dialogOpen) {
     if (!$("project-details").hidden) closeDetails();
     else if (view === "library") setView("world");
   }
@@ -681,7 +835,12 @@ async function init() {
     ]);
     projects = validateCatalog(catalog);
     city = validateCity(configuration);
-    lots = buildCityLots(projects, city);
+    // The showcase is optional: a missing or broken manifest leaves its island empty.
+    models = await loadJSON("./showcase/index.json")
+      .then(validateShowcase)
+      .catch(() => []);
+    plan = buildCityPlan(projects, city, { models });
+    lots = plan.lots;
     addProjectFlow = createAddProjectFlow({
       dialog: $("add-project-dialog"), projects, city,
       onOpen: syncInput, onClose: syncInput,
@@ -694,6 +853,10 @@ async function init() {
     $("all-count").textContent = projects.length;
     $("vacancy-count").textContent = count;
     $("open-count").textContent = count;
+    $("models-count").textContent = models.length;
+    $("welcome-model-count").textContent = models.length;
+    $("welcome-models").hidden = !models.length;
+    $("show-models").hidden = !models.length;
     createTravel();
     renderCards();
     journal.record("arrival");
@@ -742,8 +905,10 @@ async function init() {
       labelsContainer: $("plot-labels"),
       projects,
       city,
+      models,
       flightInput,
       onSelect: selectLot,
+      onSelectModel: (model) => openModel(model, { fromWorld: true }),
       onReady: () => {
         $("world-loading").hidden = true;
         if (pendingTravel) {
@@ -763,6 +928,13 @@ async function init() {
   if (match) {
     try {
       selectLot(decodeURIComponent(match[1]), false);
+    } catch {}
+  }
+  const shared = /^#model\/(.+)$/.exec(location.hash);
+  if (shared) {
+    try {
+      const model = models.find((item) => item.id === decodeURIComponent(shared[1]));
+      if (model) openModel(model);
     } catch {}
   }
   const addDistrict = new URL(location.href).searchParams.get("add");

@@ -2,20 +2,13 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { LOT_STYLES, defaultLotStyle } from './lot-styles.js';
 import { CITY_LOOK } from './city-look.js';
 
 const BASE = './assets/city-upgrade/';
 const assetUrl = (path) => new URL(BASE + path, document.baseURI).href;
 
-/** Only local, reviewed prefab paths are accepted. Original exteriors always win. */
-export function cityBuildingSource(project) {
-  if (!project) return null;
-  if (project.exterior?.model) return project.exterior.model;
-  const style = LOT_STYLES.find((entry) => entry.id === project.lotStyle)
-    || LOT_STYLES.find((entry) => entry.id === defaultLotStyle(project.district));
-  return style?.model || null;
-}
+// Only local, reviewed prefab paths are accepted. Original exteriors always win.
+export { cityBuildingSource } from './lot-sources.js';
 
 /** Optional downloaded scenery. Procedural fallbacks survive network/graphics failures. */
 export function createCityResources({ renderer, scene, visuals, onChange }) {
@@ -182,52 +175,28 @@ export function createCityResources({ renderer, scene, visuals, onChange }) {
     material,
     surface,
     roads: (transforms) => surface('road', transforms),
-    decorate({ city, lots, trunks, crowns, fallbackTrees, fallbackCrowns, fallbackLamps, fallbackLampHeads }) {
+    /** Replace procedural stand-ins with downloaded props at the plan's positions. */
+    decorate({ trees, lamps, benches, bushes, bins, cars, fallbackTrees, fallbackCrowns, fallbackLamps, fallbackLampHeads }) {
       const fraction = (value) => value - Math.floor(value);
-      const trees = trunks.map((tree, i) => {
+      const placed = trees.map((tree, i) => {
         const seed = fraction(Math.sin(tree.p[0] * 12.9898 + tree.p[2] * 78.233) * 43758.5453);
-        const secondary = fraction(seed * 17.37 + 0.31);
-        return {
-          p: [tree.p[0] + (seed - .5) * .28, tree.p[1] > 1.075 ? .45 : .03, tree.p[2] + (secondary - .5) * .28],
-          r: i * 2.399 + seed * .6,
-          scale: (crowns[i]?.s[1] / 1.6 || 1) * (.9 + secondary * .2),
-          species: seed > .46 ? 'oak' : 'pine',
-        };
+        return { p: tree.p, r: i * 2.399 + seed * 0.6, scale: tree.scale || 1, species: seed > 0.46 ? 'oak' : 'pine' };
       });
       // Both downloaded species replace the shared fallback only after both are ready.
-      Promise.all([props('tree_oak', trees.filter((tree) => tree.species === 'oak'), { height: 4.4, width: 3.2 }), props('tree_pineRoundA', trees.filter((tree) => tree.species === 'pine'), { height: 4.4, width: 3.2 })]).then(() => {
+      Promise.all([props('tree_oak', placed.filter((tree) => tree.species === 'oak'), { height: 4.4, width: 3.2 }), props('tree_pineRoundA', placed.filter((tree) => tree.species === 'pine'), { height: 4.4, width: 3.2 })]).then(() => {
         // Failure keeps the procedural canopy, so every lot still has vegetation.
         if (!disposed && [...groups].filter((group) => group.name.startsWith('Downloaded-tree_')).length === 2) {
           fallbackTrees.visible = fallbackCrowns.visible = false; changed();
         }
       });
-      props('streetlight', lots.map((lot) => ({ p: [lot.position.x - 6.5, 0.45, lot.position.z + 6.5], r: Math.PI / 2 })), { height: 4.6, width: 2.1 }).then(() => {
+      props('streetlight', lamps, { height: 4.6, width: 2.1 }).then(() => {
         if (!disposed && [...groups].some((group) => group.name === 'Downloaded-streetlight')) {
           fallbackLamps.visible = fallbackLampHeads.visible = false; changed();
         }
       });
-      const benches = [], bushes = [], bins = [], hydrants = [], cars = [];
-      for (const district of city.districts) {
-        const [cx, cz] = district.center, width = district.columns * district.spacing + 6;
-        const depth = Math.ceil(district.slotCount / district.columns) * district.spacing + 6;
-        for (let i = 0; i < 4; i++) {
-          const x = cx + (i - 1.5) * Math.min(width / 5, 18), z = cz + depth / 2 + 8.8;
-          benches.push({ p: [x, 0.03, z], r: Math.PI });
-          bushes.push({ p: [x - 2.8, 0.03, z], r: i });
-          bins.push({ p: [x + 2.7, 0.03, z], r: 0 });
-        }
-        hydrants.push({ p: [cx - width / 2 - 0.5, 0.14, cz + depth / 2 + 1], r: 0 });
-        for (let i = 0; i < 3; i++) cars.push({ p: [cx - width / 2 - 5.8, 0.14, cz + (i - 1) * 12], r: 0 });
-      }
-      for (let i = 0; i < 8; i++) {
-        const angle = (i + 0.5) / 8 * Math.PI * 2;
-        benches.push({ p: [Math.sin(angle) * 32.8, 0.06, Math.cos(angle) * 32.8], r: angle + Math.PI });
-        bushes.push({ p: [Math.sin(angle) * 37.6, -0.06, Math.cos(angle) * 37.6], r: angle });
-      }
       props('bench', benches, { height: 1.25, width: 3.5 });
       props('bush', bushes, { height: 1.4, width: 2.7 });
       props('trash_A', bins, { height: 1.15, width: 1 });
-      props('firehydrant', hydrants, { height: 0.95, width: 0.65 });
       props('car_sedan', cars.filter((_, i) => i % 2 === 0), { height: 1.5, width: 4.4 });
       props('car_taxi', cars.filter((_, i) => i % 2 === 1), { height: 1.5, width: 4.4 });
     },

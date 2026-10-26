@@ -61,6 +61,10 @@ function defaultMessage(type, details) {
       return `Opened ${details.title || details.project || "a project"}.`;
     case "submission-start":
       return `Started a lot submission${details.slotId ? ` for ${details.slotId}` : ""}.`;
+    case "model-open":
+      return `Inspected ${details.title || "a model"} in 3D.`;
+    case "photo":
+      return "Saved a photo of the city.";
     default:
       return "World activity recorded on this device.";
   }

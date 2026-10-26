@@ -61,6 +61,14 @@
           ><button id="journal-toggle" class="hud-button" type="button">
             Journal</button
           ><button
+            id="photo-button"
+            class="hud-button icon-hud"
+            type="button"
+            aria-label="Save a photo of this view"
+            title="Save a photo of this view"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.6" /></svg></button
+          ><button
             id="build-toggle"
             class="hud-button mint-button"
             type="button"
@@ -85,7 +93,8 @@
         </p>
         <div class="welcome-stats">
           <span><strong id="project-count">23</strong> creations</span
-          ><span><strong id="vacancy-count">73</strong> open lots</span>
+          ><span><strong id="vacancy-count">73</strong> open lots</span
+          ><span id="welcome-models" hidden><strong id="welcome-model-count">0</strong> models</span>
         </div>
         <button id="start-flying" class="primary-button" type="button">
           Let's fly <span aria-hidden="true">→</span></button
@@ -233,7 +242,9 @@
             <button id="show-projects" type="button" aria-pressed="true">
               Creations <span id="all-count">23</span></button
             ><button id="show-open" type="button" aria-pressed="false">
-              Open lots <span id="open-count">73</span>
+              Open lots <span id="open-count">73</span></button
+            ><button id="show-models" type="button" aria-pressed="false" hidden>
+              Models <span id="models-count">0</span>
             </button>
           </div>
           <label class="search-box"
@@ -303,6 +314,8 @@
             Enter project →</button
           ><button id="detail-fly" class="secondary-button" type="button">
             Fly to this lot</button
+          ><button id="detail-model" class="secondary-button" type="button" hidden>
+            View the building in 3D</button
           ><a
             id="detail-source"
             class="subtle-link"
@@ -415,6 +428,40 @@
         ></iframe>
         <p id="player-status" class="player-status" hidden></p>
       </div>
+    </dialog>
+    <dialog id="model-viewer" class="model-viewer" aria-labelledby="viewer-title">
+      <div class="viewer-stage">
+        <canvas id="viewer-canvas" aria-label="3D model. Drag to turn it, scroll or pinch to zoom."></canvas>
+        <p id="viewer-status" class="viewer-status" role="status" hidden></p>
+        <div class="viewer-tools" role="toolbar" aria-label="Viewer controls">
+          <button id="viewer-rotate" type="button" aria-pressed="true">Auto-rotate</button
+          ><button id="viewer-wireframe" type="button" aria-pressed="false">Wireframe</button
+          ><button id="viewer-reset" type="button">Reset view</button>
+        </div>
+      </div>
+      <aside class="viewer-panel">
+        <header class="viewer-heading">
+          <div>
+            <p id="viewer-number" class="eyebrow">MODEL SHOWCASE</p>
+            <h2 id="viewer-title"></h2>
+          </div>
+          <button id="viewer-close" type="button" class="icon-button" aria-label="Close the model viewer">×</button>
+        </header>
+        <p id="viewer-credit" class="viewer-credit"></p>
+        <p id="viewer-description" class="viewer-description"></p>
+        <p id="viewer-license" class="viewer-credit" hidden></p>
+        <dl id="viewer-stats" class="viewer-stats"></dl>
+        <div id="viewer-animations" class="viewer-animations" hidden>
+          <p class="eyebrow">ANIMATIONS</p>
+          <div id="viewer-clips" class="viewer-clips" role="group" aria-label="Animations"></div>
+        </div>
+        <div class="viewer-actions">
+          <button id="viewer-visit" class="primary-button" type="button" hidden>Visit its lot →</button
+          ><button id="viewer-fly" class="secondary-button" type="button" hidden>Fly to its pedestal</button
+          ><a id="viewer-download" class="subtle-link" download hidden>Download .glb</a
+          ><a id="viewer-source" class="subtle-link" target="_blank" rel="noopener noreferrer" hidden>Source and credits →</a>
+        </div>
+      </aside>
     </dialog>
     <dialog
       id="journal-dialog"

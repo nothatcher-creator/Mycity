@@ -1,16 +1,22 @@
-const LOT_SIZE = 15.4;
-const PLAZA_RADIUS = 35.4;
+import { islandShore, circleOutline, BEACH_WIDTH } from "./city-plan.js";
+import { LOT_SIZE } from "./city-layout.js";
 
-/** World-space extent of every lot, the plaza and their streets. */
-export function cityExtent(lots) {
-  let minX = -PLAZA_RADIUS, maxX = PLAZA_RADIUS, minZ = -PLAZA_RADIUS, maxZ = PLAZA_RADIUS;
-  for (const { position } of lots) {
-    minX = Math.min(minX, position.x - LOT_SIZE);
-    maxX = Math.max(maxX, position.x + LOT_SIZE);
-    minZ = Math.min(minZ, position.z - LOT_SIZE);
-    maxZ = Math.max(maxZ, position.z + LOT_SIZE);
+/** World-space extent of every island and its beach. */
+export function cityExtent(plan) {
+  const points = [
+    ...plan.islands.flatMap((island) => islandShore(island, BEACH_WIDTH + 4)),
+    ...circleOutline(plan.center.radius, BEACH_WIDTH + 4, 16),
+  ];
+  if (plan.showcase) {
+    const { x, z } = plan.showcase.frame.center;
+    points.push(...circleOutline(plan.showcase.radius, BEACH_WIDTH + 4, 16).map((p) => ({ x: p.x + x, z: p.z + z })));
   }
-  return { minX, maxX, minZ, maxZ };
+  return {
+    minX: Math.min(...points.map((p) => p.x)),
+    maxX: Math.max(...points.map((p) => p.x)),
+    minZ: Math.min(...points.map((p) => p.z)),
+    maxZ: Math.max(...points.map((p) => p.z)),
+  };
 }
 
 /**
@@ -21,10 +27,7 @@ export function mapProjection(extent, width, height, padding = 4) {
   const spanX = extent.maxX - extent.minX, spanZ = extent.maxZ - extent.minZ;
   const scale = Math.max(1e-6, Math.min((width - padding * 2) / spanX, (height - padding * 2) / spanZ));
   const offsetX = (width - spanX * scale) / 2, offsetY = (height - spanZ * scale) / 2;
-  const toPixel = (x, z) => ({
-    x: offsetX + (x - extent.minX) * scale,
-    y: offsetY + (z - extent.minZ) * scale,
-  });
+  const toPixel = (x, z) => ({ x: offsetX + (x - extent.minX) * scale, y: offsetY + (z - extent.minZ) * scale });
   return {
     scale,
     toPixel,
@@ -38,126 +41,186 @@ export function mapProjection(extent, width, height, padding = 4) {
   };
 }
 
-/** The lot under a world position, if any. */
+/** The lot under a world position, if any (lots are rotated with their island). */
 export function lotAtPosition(lots, x, z) {
-  return lots.find((lot) =>
-    Math.abs(lot.position.x - x) <= LOT_SIZE / 2 && Math.abs(lot.position.z - z) <= LOT_SIZE / 2,
-  ) || null;
+  return (
+    lots.find((lot) => {
+      const dx = x - lot.position.x, dz = z - lot.position.z;
+      return Math.abs(dx * lot.forward.z - dz * lot.forward.x) <= LOT_SIZE / 2 && Math.abs(dx * lot.forward.x + dz * lot.forward.z) <= LOT_SIZE / 2;
+    }) || null
+  );
 }
-
-/** The district roads as world-space polylines, matching the streets built in world.js. */
-export function cityRoads(city) {
-  const roads = [];
-  for (const district of city.districts) {
-    const [cx, cz] = district.center;
-    const rows = Math.ceil(district.slotCount / district.columns);
-    const width = district.columns * district.spacing + 6, depth = rows * district.spacing + 6;
-    const left = cx - width / 2 - 4, right = cx + width / 2 + 4;
-    const top = cz - depth / 2 - 4, bottom = cz + depth / 2 + 4;
-    roads.push({ width: 7, points: [[left, top], [right, top], [right, bottom], [left, bottom], [left, top]] });
-    for (let row = 1; row < rows; row++) {
-      const z = cz + (row - rows / 2) * district.spacing;
-      roads.push({ width: 2.8, points: [[cx - width / 2, z], [cx + width / 2, z]] });
-    }
-    for (let col = 1; col < district.columns; col++) {
-      const x = cx + (col - district.columns / 2) * district.spacing;
-      roads.push({ width: 2.8, points: [[x, cz - depth / 2], [x, cz + depth / 2]] });
-    }
-    const ring = Math.sign(bottom) * 43;
-    roads.push({
-      width: 7,
-      points: Math.abs(cx) > 30 ? [[cx, bottom], [cx, ring], [0, ring]] : [[cx, bottom], [cx, 43]],
-    });
-  }
-  return roads;
+export function pedestalAtPosition(plan, x, z) {
+  return plan.showcase?.pedestals.find((pedestal) => Math.hypot(pedestal.position.x - x, pedestal.position.z - z) <= pedestal.size / 2 + 2.5) || null;
+}
+/** Where each neighbourhood's name sits: just beyond its island, away from the Beacon. */
+export function islandLabelPoint(island, distance = 10) {
+  return island.frame.toWorld(0, -island.back - BEACH_WIDTH - distance);
 }
 
 /**
- * A live top-down drawing of the real city: streets, every lot (built or open),
- * the beacon, the cube and where the camera is looking. It is plain 2D canvas,
- * so the map keeps working on devices without WebGL.
+ * A live top-down drawing of the real city: the bay, every island, bridge,
+ * street and lot, the Beacon, the showcase, the cube and where the camera
+ * looks. Plain 2D canvas, so it keeps working without WebGL.
  */
-export function createCityMap({ canvas, lots, city, labels = false, padding = 4 }) {
-  const extent = cityExtent(lots);
-  const roads = cityRoads(city);
-  const colors = new Map(city.districts.map((district) => [district.id, district.color]));
+export function createCityMap({ canvas, plan, labels = false, padding = 4 }) {
+  const extent = cityExtent(plan);
+  const colors = new Map(plan.islands.map((island) => [island.district.id, island.district.color]));
   const base = document.createElement("canvas");
   let width = 0, height = 0, ratio = 1, projection = null;
   let player = null, highlighted = null, selected = null, hovered = null;
   const listeners = new Set();
+
+  function polygon(ctx, points) {
+    ctx.beginPath();
+    points.forEach(({ x, z }, i) => {
+      const p = projection.toPixel(x, z);
+      if (i) ctx.lineTo(p.x, p.y);
+      else ctx.moveTo(p.x, p.y);
+    });
+    ctx.closePath();
+  }
+  function box(ctx, { p, s, r }) {
+    const centre = projection.toPixel(p[0], p[2]);
+    ctx.save();
+    ctx.translate(centre.x, centre.y);
+    ctx.rotate(-r);
+    ctx.fillRect((-s[0] / 2) * projection.scale, (-s[2] / 2) * projection.scale, s[0] * projection.scale, s[2] * projection.scale);
+    ctx.restore();
+  }
+  function lotSquare(ctx, lot, size, mode) {
+    const centre = projection.toPixel(lot.position.x, lot.position.z);
+    ctx.save();
+    ctx.translate(centre.x, centre.y);
+    ctx.rotate(-lot.angle);
+    if (mode === "fill") ctx.fillRect(-size / 2, -size / 2, size, size);
+    else ctx.strokeRect(-size / 2 + 0.5, -size / 2 + 0.5, size - 1, size - 1);
+    ctx.restore();
+  }
+  const isHighlighted = (id) => !highlighted || highlighted.has(id);
 
   function drawBase() {
     base.width = canvas.width;
     base.height = canvas.height;
     const ctx = base.getContext("2d");
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const { toPixel, scale } = projection;
-    ctx.lineCap = "square";
-    ctx.strokeStyle = "#5d7b85";
-    for (const road of roads) {
-      ctx.lineWidth = Math.max(0.6, road.width * scale);
-      ctx.globalAlpha = road.width > 3 ? 0.75 : 0.35;
+    const { scale, toPixel } = projection;
+    const circles = [{ centre: { x: 0, z: 0 }, radius: plan.center.radius }];
+    if (plan.showcase) circles.push({ centre: plan.showcase.frame.center, radius: plan.showcase.radius });
+    const circleShore = ({ centre, radius }, grow) => circleOutline(radius, grow, 64).map((p) => ({ x: p.x + centre.x, z: p.z + centre.z }));
+    // Shallows, beaches, then lawns.
+    ctx.fillStyle = "rgba(87, 170, 170, .35)";
+    for (const island of plan.islands) (polygon(ctx, islandShore(island, BEACH_WIDTH + 6)), ctx.fill());
+    for (const circle of circles) (polygon(ctx, circleShore(circle, BEACH_WIDTH + 6)), ctx.fill());
+    ctx.fillStyle = "#cbbd96";
+    for (const island of plan.islands) (polygon(ctx, islandShore(island, 3)), ctx.fill());
+    for (const circle of circles) (polygon(ctx, circleShore(circle, 3)), ctx.fill());
+    ctx.fillStyle = "#6f8a62";
+    for (const island of plan.islands) (polygon(ctx, islandShore(island, 0)), ctx.fill());
+    for (const circle of circles) (polygon(ctx, circleShore(circle, 0)), ctx.fill());
+    // Bridges, paving and streets.
+    ctx.strokeStyle = "#ddd4bf";
+    ctx.lineCap = "butt";
+    for (const bridge of plan.bridges) {
+      ctx.lineWidth = Math.max(1.5, bridge.width * scale);
+      const a = toPixel(bridge.from.x, bridge.from.z), b = toPixel(bridge.to.x, bridge.to.z);
       ctx.beginPath();
-      road.points.forEach(([x, z], index) => {
-        const point = toPixel(x, z);
-        if (index) ctx.lineTo(point.x, point.y);
-        else ctx.moveTo(point.x, point.y);
-      });
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
       ctx.stroke();
     }
-    ctx.globalAlpha = 1;
-    const center = toPixel(0, 0);
+    ctx.fillStyle = "#b9b1a0";
+    for (const item of [...plan.plazas, ...plan.spokes, ...plan.pavements, ...(plan.showcase ? [plan.showcase.avenue] : [])]) box(ctx, item);
+    ctx.fillStyle = "#47575e";
+    for (const road of plan.roads) box(ctx, road);
+    // The Beacon's plaza and water garden.
+    const centre = toPixel(0, 0);
     const disc = (radius, fill) => {
       ctx.fillStyle = fill;
       ctx.beginPath();
-      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+      ctx.arc(centre.x, centre.y, radius * scale, 0, Math.PI * 2);
       ctx.fill();
     };
-    disc(PLAZA_RADIUS * scale, "#8f9b93");
-    disc(30.35 * scale, "#4f8fa0");
-    disc(23.8 * scale, "#8f9b93");
-    disc(9.7 * scale, "#24404c");
-    disc(Math.max(1.5, 3.4 * scale), "#b5f1d6");
+    disc(plan.center.plaza, "#b9b1a0");
+    disc(30.35, "#4f8fa0");
+    disc(23.8, "#b9b1a0");
+    disc(9.7, "#24404c");
+    ctx.fillStyle = "#b5f1d6";
+    ctx.beginPath();
+    ctx.arc(centre.x, centre.y, Math.max(1.5, 3.4 * scale), 0, Math.PI * 2);
+    ctx.fill();
+    // Lots: built ones filled, open ones outlined.
     const size = Math.max(2, 13.6 * scale);
-    for (const lot of lots) {
-      const point = toPixel(lot.position.x, lot.position.z);
+    for (const lot of plan.lots) {
       const color = colors.get(lot.district) || "#b5f1d6";
-      ctx.globalAlpha = highlighted && !highlighted.has(lot.id) ? 0.2 : 1;
+      const on = isHighlighted(lot.id);
+      ctx.globalAlpha = on ? 1 : 0.22;
       if (lot.project) {
         ctx.fillStyle = color;
-        ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+        lotSquare(ctx, lot, size, "fill");
       } else {
-        ctx.strokeStyle = color;
-        if (!highlighted || !highlighted.has(lot.id)) ctx.globalAlpha *= 0.5;
-        else {
-          ctx.fillStyle = color + "26";
-          ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+        if (on && highlighted) {
+          ctx.fillStyle = `${color}33`;
+          lotSquare(ctx, lot, size, "fill");
         }
+        ctx.strokeStyle = color;
         ctx.lineWidth = 1;
-        ctx.strokeRect(point.x - size / 2 + 0.5, point.y - size / 2 + 0.5, size - 1, size - 1);
+        ctx.globalAlpha *= 0.75;
+        lotSquare(ctx, lot, size, "stroke");
+      }
+    }
+    // Showcase paths and pedestals.
+    if (plan.showcase) {
+      const showcaseCentre = toPixel(plan.showcase.frame.center.x, plan.showcase.frame.center.z);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#b9b1a0";
+      ctx.lineWidth = Math.max(1, 3 * scale);
+      for (const radius of plan.showcase.paths) {
+        ctx.beginPath();
+        ctx.arc(showcaseCentre.x, showcaseCentre.y, radius * scale, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (const pedestal of plan.showcase.pedestals) {
+        const p = toPixel(pedestal.position.x, pedestal.position.z);
+        ctx.globalAlpha = isHighlighted(`model:${pedestal.model.id}`) ? 1 : 0.25;
+        ctx.fillStyle = plan.showcase.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(1.6, (pedestal.size / 2) * scale + 0.6), 0, Math.PI * 2);
+        ctx.fill();
       }
     }
     ctx.globalAlpha = 1;
     if (labels) {
-      ctx.font = `600 ${Math.round(Math.max(9, Math.min(12, scale * 11)))}px "DM Sans", system-ui, sans-serif`;
+      ctx.font = `700 ${Math.round(Math.max(9, Math.min(12, scale * 22)))}px "DM Sans", system-ui, sans-serif`;
       ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      for (const district of city.districts) {
-        const rows = Math.ceil(district.slotCount / district.columns);
-        const point = toPixel(district.center[0], district.center[1] + (rows * district.spacing) / 2 + 8);
-        ctx.fillStyle = district.color;
-        ctx.fillText(district.name.toUpperCase(), point.x, point.y);
-      }
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(5, 20, 30, .8)";
+      ctx.shadowBlur = 4;
+      // Labels sit beyond each island but are kept inside the drawing.
+      const label = (text, point, color) => {
+        const p = toPixel(point.x, point.z);
+        const half = ctx.measureText(text).width / 2 + 4;
+        ctx.fillStyle = color;
+        ctx.fillText(text, Math.min(Math.max(p.x, half), width - half), Math.min(Math.max(p.y, 10), height - 10));
+      };
+      for (const island of plan.islands) label(island.district.name.toUpperCase(), islandLabelPoint(island, 2), island.district.color);
+      if (plan.showcase) label(plan.showcase.name.toUpperCase(), plan.showcase.frame.toWorld(0, -plan.showcase.radius - BEACH_WIDTH - 2), plan.showcase.color);
+      ctx.shadowBlur = 0;
     }
   }
 
-  function outline(lot, color, lineWidth) {
-    const point = projection.toPixel(lot.position.x, lot.position.z);
-    const size = Math.max(4, 13.6 * projection.scale) + lineWidth * 2 + 2;
+  function outline(target, color, lineWidth) {
     const ctx = canvas.getContext("2d");
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
-    ctx.strokeRect(point.x - size / 2, point.y - size / 2, size, size);
+    if (target.kind === "model") {
+      const p = projection.toPixel(target.pedestal.position.x, target.pedestal.position.z);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(4, (target.pedestal.size / 2) * projection.scale + 3), 0, Math.PI * 2);
+      ctx.stroke();
+      return;
+    }
+    lotSquare(ctx, target.lot, Math.max(4, 13.6 * projection.scale) + lineWidth * 2 + 2, "stroke");
   }
 
   function draw() {
@@ -225,14 +288,17 @@ export function createCityMap({ canvas, lots, city, labels = false, padding = 4 
       listeners.add(listener);
       if (projection) listener(projection);
     },
-    /** The lot under a viewport point, for hover and click handling. */
-    lotAt(clientX, clientY) {
+    /** What is under a viewport point: `{ kind: "lot", lot }`, `{ kind: "model", pedestal }` or null. */
+    targetAt(clientX, clientY) {
       if (!projection) return null;
       const rect = canvas.getBoundingClientRect();
       const world = projection.toWorld(clientX - rect.left, clientY - rect.top);
-      return lotAtPosition(lots, world.x, world.z);
+      const pedestal = pedestalAtPosition(plan, world.x, world.z);
+      if (pedestal) return { kind: "model", pedestal, model: pedestal.model };
+      const lot = lotAtPosition(plan.lots, world.x, world.z);
+      return lot ? { kind: "lot", lot } : null;
     },
-    /** Emphasize these lot ids and fade the rest; null shows everything. */
+    /** Emphasize these ids (lot ids, or `model:<id>`) and fade the rest; null shows everything. */
     highlight(ids) {
       highlighted = ids ? new Set(ids) : null;
       if (projection) {
@@ -240,13 +306,15 @@ export function createCityMap({ canvas, lots, city, labels = false, padding = 4 
         draw();
       }
     },
-    setHovered(lot) {
-      if (lot === hovered) return;
-      hovered = lot;
+    setHovered(target) {
+      const key = target ? (target.kind === "model" ? target.model.id : target.lot.id) : null;
+      const current = hovered ? (hovered.kind === "model" ? hovered.model.id : hovered.lot.id) : null;
+      if (key === current) return;
+      hovered = target;
       draw();
     },
-    setSelected(lot) {
-      selected = lot || null;
+    setSelected(target) {
+      selected = target || null;
       draw();
     },
     update({ position, heading, view }) {

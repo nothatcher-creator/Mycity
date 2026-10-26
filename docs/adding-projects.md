@@ -2,7 +2,28 @@
 
 Every entry in [`public/projects.json`](../public/projects.json) becomes a 3D plot and a searchable library card. Add an entry when a game, tool, or experiment is ready to visit.
 
-For a project already online, the easiest route is **Add to city** on the [live world](https://nothatcher-creator.github.io/Mycity/): paste its link, check the name and neighborhood, choose a building, and send the prefilled request through GitHub. No JSON editing is needed. See [community submissions and owner approval](community-lots.md). The instructions below are for adding locally hosted files or editing the catalog directly.
+## The quick way: `npm run add`
+
+From a checkout of this repository:
+
+```bash
+npm run add
+```
+
+Paste the project's link (an `https://` address, or `./games/your-game/` for a game hosted here) and answer a few questions: its name, neighborhood, what visitors can do, and whether it opens inside Mycity. The command picks the first empty lot in that neighborhood and the next plot number, refuses links already in the city, writes a validated entry to `public/projects.json` without reformatting the file, and renders the card picture. Then run `npm run dev` to see it, and commit and push.
+
+Everything can also be given as options, which skips the questions:
+
+```bash
+npm run add -- --url https://example.com/my-game --title "My Game" --district games \
+  --description "Explore the island and find the missing beacon." --style arcade --yes
+```
+
+Other options: `--subtitle`, `--source`, `--tags "Adventure,Puzzle"`, `--slot games-20`, `--embed` (open inside Mycity), and `--no-picture`.
+
+Without a checkout, use **Add to city** on the [live world](https://nothatcher-creator.github.io/Mycity/): paste the link, check the name and neighborhood, choose a building, and send the prefilled request through GitHub, then approve it. See [community submissions and owner approval](community-lots.md). 3D models go to the [Model Showcase](showcase.md) instead.
+
+The instructions below are for adding locally hosted files or editing the catalog by hand.
 
 ## 1. Choose where the project lives
 
@@ -22,7 +43,7 @@ GitHub Pages cannot run a backend, hide a server API key, or execute an Android 
 
 ## 2. Add a catalog entry
 
-Copy this object into the JSON array. Add a comma between objects, and choose an unused plot number.
+Copy this object into the JSON array. Add a comma between objects, and choose an unused plot number. `category` (defaults to the neighborhood), `embed` (defaults to `false`), `tags` (defaults to none), `subtitle`, `source`, `theme` and `lotStyle` may be left out.
 
 ```json
 {
@@ -49,29 +70,29 @@ Remove `source` if there is no public source repository. Keep Astraforge as the 
 | `id` | A unique stable slug, beginning with a lowercase letter; use lowercase letters, digits, and hyphens. |
 | `plot` | An unused positive whole number. Keep existing numbers stable. |
 | `district` | `games`, `tools`, `art`, `android`, or `mods`. Keep related creations together. |
-| `slot` | An existing empty slot from `public/city.json`, such as `games-17`. Check it is still vacant. |
+| `slot` | An empty lot, such as `games-17`. Each neighborhood's lots are numbered from its front row, nearest the bridge. Check it is still vacant. |
 | `title` | The project's visible name. |
 | `subtitle` | A short optional label for the card. |
 | `description` | A clear, accurate explanation of what visitors can do. |
-| `category` | `games`, `benchmarks`, `tools`, `mods`, `art`, or `android`. |
+| `category` | Optional: `games`, `benchmarks`, `tools`, `mods`, `art`, or `android`. Defaults to the neighborhood. |
 | `url` | The launch destination: a relative path or HTTPS URL. |
 | `source` | Optional HTTPS link to public source. |
-| `embed` | `true` to open the app inside the district; `false` to open its destination in a new tab. |
+| `embed` | Optional: `true` to open the app inside the city; `false` (the default) to open its destination in a new tab. |
 | `theme` | Plot artwork: `forge`, `benchmark`, `lighthouse`, `castle`, `blackbox`, `cards`, `workshop`, or `terminal`. |
 | `lotStyle` | Optional downloaded building: `studio`, `arcade`, `gallery`, `workshop`, `tower`, or `garden`. Original exterior models take precedence. |
-| `tags` | An array of searchable text labels. Use `[]` if none are needed. |
+| `tags` | Optional array of searchable text labels. |
 
 Use `embed: false` for sites that block frames, downloads, and pages intended to open in their own tab. The player always offers an external-open link for embedded apps. Test the app in the frame before considering it integrated.
 
 ## 3. Render its library picture
 
-Library cards and the detail panel show a picture of the lot's real city building. After adding or restyling a project, render the pictures again:
+Library cards and the detail panel show a picture of the lot's real city building. `npm run add` does this for you; after editing the catalog by hand, run:
 
 ```bash
-node scripts/render-thumbnails.mjs
+npm run thumbnails
 ```
 
-This renders each project's original exterior or chosen `lotStyle` building into `public/thumbnails/` and updates `public/thumbnails/index.json`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to use an existing Chromium. A project without a picture keeps the generic card artwork.
+This renders the missing pictures (add `-- --force` to redo them all) from each project's original exterior or chosen `lotStyle` building into `public/thumbnails/`, and updates `public/thumbnails/index.json`. Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to use an existing Chromium. A project without a picture keeps the generic card artwork.
 
 ## 4. Check it locally
 

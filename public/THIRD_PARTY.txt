@@ -54,3 +54,10 @@ https://polyhaven.com/a/qwantani_sunset_puresky
 
 Exact source URLs, sizes and SHA-256 hashes:
 assets/city-upgrade/manifest.json
+
+Model decoders (copied from the three.js package at build time into vendor/)
+Draco 3D Data Compression decoder, Google — Apache License 2.0
+https://github.com/google/draco
+Basis Universal transcoder, Binomial LLC — Apache License 2.0
+https://github.com/BinomialLLC/basis_universal
+They are loaded only for showcase models that use Draco meshes or KTX2 textures.

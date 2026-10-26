@@ -139,3 +139,11 @@ test("lot styles accept curated local presets and reject arbitrary model locatio
   for (const lotStyle of ["unknown", "https://example.com/model.glb", ["garden"], null])
     assert.throws(() => validateCatalog([{ ...first, lotStyle }]), /lot style/i);
 });
+test("hand-written entries may leave out category, embed and tags", () => {
+  const { category, embed, tags, ...short } = second;
+  const [, filled] = validateCatalog([first, { ...short, district: "games", slot: "games-01" }]);
+  assert.equal(filled.category, "games");
+  assert.equal(filled.embed, false);
+  assert.deepEqual(filled.tags, []);
+  assert.throws(() => validateCatalog([first, { ...short, district: "games", slot: "games-01", embed: "yes" }]), /project/i);
+});

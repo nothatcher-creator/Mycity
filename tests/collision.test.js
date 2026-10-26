@@ -127,3 +127,15 @@ test("surfaces too low to matter are skipped, but anything reaching above stays"
   field.addTriangles([0, 0.2, 0, 1, 3, 0, 0, 0.2, 1]);
   assert.ok(field.heightAt(0.6, 0.1) > 0.9);
 });
+
+test("clearing a rotated lot leaves its neighbours' walls alone", () => {
+  const field = createHeightField();
+  const angle = Math.PI / 5, fx = Math.sin(angle), fz = Math.cos(angle);
+  // Two lots 17 m apart along the lot's own x axis, each filled with a solid block.
+  const centres = [{ x: 0, z: 0 }, { x: 17 * fz, z: -17 * fx }];
+  for (const c of centres) field.addDisc(c.x, c.z, 6, 9);
+  field.clearRotatedRect(0, 0, 8, 8, angle);
+  assert.equal(field.heightAt(0, 0), 0);
+  assert.equal(field.heightAt(centres[1].x, centres[1].z), 9);
+  assert.ok(field.maxHeightIn(centres[1].x - 3, centres[1].z - 3, centres[1].x + 3, centres[1].z + 3) === 9);
+});

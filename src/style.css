@@ -2191,3 +2191,215 @@ body.touch-enabled .nearby-card {
     bottom: calc(151px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ---------- Nothatcher Bay: showcase labels, photo button, model viewer ---------- */
+.plot-label.model-label {
+  border-color: #c8b6ff66;
+  background: #241f3fdd;
+}
+.plot-label.model-label .plot-label-number {
+  color: #ddd2ff;
+  border-right-color: #c8b6ff40;
+}
+.plot-label.model-label:hover,
+.plot-label.model-label.selected {
+  background: #3a3266;
+  border-color: #ddd2ff;
+}
+.icon-hud {
+  padding: 8px 10px;
+}
+.icon-hud svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+}
+.model-card .card-art,
+[data-theme="model"] .card-art {
+  background:
+    radial-gradient(ellipse at 50% 70%, #c8b6ff33, transparent 70%), #2b2a4d;
+  --art: #ddd2ff;
+}
+.model-viewer {
+  position: fixed;
+  inset: 10px;
+  width: calc(100% - 20px);
+  height: calc(100dvh - 20px);
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  display: none;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  background: radial-gradient(circle at 38% 42%, #2f4a5c, #10202d 72%);
+  border: 1px solid #c9f8e93f;
+  color: #e6f6f4;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.model-viewer[open] {
+  display: grid;
+}
+.model-viewer::backdrop {
+  background: #061828d9;
+  backdrop-filter: blur(8px);
+}
+.viewer-stage {
+  position: relative;
+  min-height: 0;
+}
+.viewer-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.viewer-stage canvas:active {
+  cursor: grabbing;
+}
+.viewer-status {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #0d2130e6;
+  border: 1px solid #c9f8e92a;
+  font-size: 12px;
+  color: #cfe7e2;
+  text-align: center;
+}
+.viewer-tools {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #0d2130cc;
+  border: 1px solid #c9f8e926;
+  backdrop-filter: blur(10px);
+}
+.viewer-tools button,
+.viewer-clips button {
+  border: 1px solid transparent;
+  background: none;
+  color: #b9d3d6;
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.viewer-tools button[aria-pressed="true"],
+.viewer-clips button[aria-pressed="true"] {
+  background: #c8b6ff22;
+  border-color: #c8b6ff55;
+  color: #f0ebff;
+}
+.viewer-tools button:hover,
+.viewer-clips button:hover {
+  background: #ffffff12;
+}
+.viewer-panel {
+  border-left: 1px solid #e6fff01a;
+  background: #102435f2;
+  padding: 22px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.viewer-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.viewer-heading h2 {
+  font-family: Manrope, sans-serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+  margin: 8px 0 0;
+}
+.viewer-credit {
+  margin: 0;
+  font-size: 11px;
+  color: #c8b6ff;
+}
+.viewer-description {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #a9c2cc;
+}
+.viewer-stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 14px;
+  margin: 4px 0;
+  padding: 14px;
+  border-radius: 10px;
+  background: #ffffff08;
+  border: 1px solid #ffffff10;
+  font-size: 11px;
+}
+.viewer-stats:empty {
+  display: none;
+}
+.viewer-stats dt {
+  color: #86a7b5;
+}
+.viewer-stats dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #e3f2ef;
+}
+.viewer-clips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.viewer-clips button {
+  border-color: #ffffff1a;
+}
+.viewer-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.viewer-actions .subtle-link {
+  margin: 6px 0 0;
+  text-align: center;
+}
+@media (max-width: 800px) {
+  .model-viewer {
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+  .viewer-panel {
+    border-left: 0;
+    border-top: 1px solid #e6fff01a;
+    padding: 16px;
+  }
+  .viewer-tools {
+    bottom: 10px;
+  }
+}

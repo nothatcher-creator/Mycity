@@ -105,6 +105,18 @@ export function createHeightField({ cellSize = 0.5, ignoreBelow = -Infinity } = 
           if (Math.hypot(nearX - x, nearZ - z) < radius) raise(ix, iz, top);
         }
     },
+    /** Clear the cells whose centres fall inside a rotated rectangle (angle as three.js rotation.y). */
+    clearRotatedRect(x, z, halfX, halfZ, angle) {
+      const reach = Math.abs(halfX * Math.cos(angle)) + Math.abs(halfZ * Math.sin(angle)),
+        reachZ = Math.abs(halfX * Math.sin(angle)) + Math.abs(halfZ * Math.cos(angle));
+      const fx = Math.sin(angle), fz = Math.cos(angle);
+      for (let ix = cell(x - reach); ix <= cell(x + reach); ix++)
+        for (let iz = cell(z - reachZ); iz <= cell(z + reachZ); iz++) {
+          const dx = (ix + 0.5) * size - x, dz = (iz + 0.5) * size - z;
+          const across = dx * fz - dz * fx, along = dx * fx + dz * fz;
+          if (Math.abs(across) <= halfX && Math.abs(along) <= halfZ) cells.delete(key(ix, iz));
+        }
+    },
     clearRect(minX, minZ, maxX, maxZ) {
       for (let ix = cell(minX); ix <= cell(maxX); ix++)
         for (let iz = cell(minZ); iz <= cell(maxZ); iz++) cells.delete(key(ix, iz));

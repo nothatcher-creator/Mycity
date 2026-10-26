@@ -41,9 +41,24 @@ export function safeProjectUrl(value, base = DEFAULT_BASE) {
   return url.href;
 }
 
-export function validateCatalog(projects) {
-  if (!Array.isArray(projects) || !projects.length)
+/**
+ * Fields a hand-written entry may leave out. `category` follows the
+ * neighborhood, `embed` opens projects in a new tab, and `tags` is empty.
+ */
+function withDefaults(project) {
+  if (!project || typeof project !== "object") return project;
+  return {
+    ...project,
+    category: project.category ?? project.district,
+    embed: project.embed ?? false,
+    tags: project.tags ?? [],
+  };
+}
+
+export function validateCatalog(input) {
+  if (!Array.isArray(input) || !input.length)
     throw new Error("Project catalog must be a nonempty array");
+  const projects = input.map(withDefaults);
   const ids = new Set(),
     plots = new Set(),
     slots = new Set();

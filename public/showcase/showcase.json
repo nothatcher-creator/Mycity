@@ -1,0 +1,114 @@
+{
+  "$comment": "Curated showcase models. Files dropped into public/showcase/models/ are added automatically; see the README there.",
+  "models": [
+    {
+      "id": "abyssal-relic-build",
+      "title": "Abyssal Relic",
+      "file": "./assets/original-lots/3666/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 3666, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 3666",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "abyssal-relic",
+      "featured": true
+    },
+    {
+      "id": "tideborn-build",
+      "title": "Tideborn",
+      "file": "./assets/original-lots/3668/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 3668, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 3668",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "tideborn"
+    },
+    {
+      "id": "ashen-owl-build",
+      "title": "Ashen Owl",
+      "file": "./assets/original-lots/1147/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 1147, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 1147",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "ashen-owl"
+    },
+    {
+      "id": "skybound-build",
+      "title": "Skybound: Beaconfall",
+      "file": "./assets/original-lots/3670/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 3670, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 3670",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "skybound"
+    },
+    {
+      "id": "relicfall-build",
+      "title": "RELICFALL: Beneath the Beacon",
+      "file": "./assets/original-lots/3672/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 3672, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 3672",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "relicfall"
+    },
+    {
+      "id": "meridian-ironwatch-build",
+      "title": "Meridian Ironwatch",
+      "file": "./assets/original-lots/643/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 643, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 643",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "meridian-ironwatch"
+    },
+    {
+      "id": "crownstone-keep-build",
+      "title": "Crownstone Keep",
+      "file": "./assets/original-lots/1099/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 1099, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 1099",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "crownstone-keep"
+    },
+    {
+      "id": "orbital-shipyard-build",
+      "title": "Orbital Shipyard",
+      "file": "./assets/original-lots/1123/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 1123, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 1123",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "orbital-shipyard"
+    },
+    {
+      "id": "last-beacon-build",
+      "title": "The Last Beacon",
+      "file": "./assets/original-lots/3665/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 3665, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 3665",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "last-beacon"
+    },
+    {
+      "id": "stormglass-build",
+      "title": "Stormglass: Keeper's Watch",
+      "file": "./assets/original-lots/3667/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 3667, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 3667",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "stormglass"
+    },
+    {
+      "id": "convoy-chaos-build",
+      "title": "Convoy Chaos",
+      "file": "./assets/original-lots/987/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 987, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 987",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "convoy-chaos"
+    },
+    {
+      "id": "beaconfall-build",
+      "title": "Beaconfall",
+      "file": "./assets/original-lots/3671/lod0.glb",
+      "description": "The full-resolution exterior of original Project 0 lot 3671, as published there. Its lower-detail version stands in the Game Quarter.",
+      "credit": "Nothatcher, original Project 0 lot 3671",
+      "source": "https://github.com/nothatcher-creator/Mycity/blob/main/docs/original-lots.md",
+      "project": "beaconfall"
+    }
+  ]
+}

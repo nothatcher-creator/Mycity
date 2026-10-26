@@ -81,9 +81,22 @@ test("bad configuration cannot generate an unbounded or overlapping city", () =>
   duplicate.districts[1].id = duplicate.districts[0].id;
   assert.throws(() => validateCity(duplicate), /district/i);
 });
-test("district lookup matches neighborhood centers and central beacon", () => {
-  assert.equal(getDistrictAtPosition({ x: -118, z: -90 }, city), "games");
-  assert.equal(getDistrictAtPosition({ x: 96, z: 82 }, city), "android");
+test("district lookup matches each island, the Beacon, the showcase and open water", () => {
+  for (const district of city.districts)
+    assert.equal(getDistrictAtPosition({ x: district.center[0], z: district.center[1] }, city), district.id);
   assert.equal(getDistrictAtPosition({ x: 0, z: 0 }, city), "center");
-  assert.equal(getDistrictAtPosition({ x: 300, z: 0 }, city), "streets");
+  assert.equal(getDistrictAtPosition({ x: city.showcase.center[0], z: city.showcase.center[1] }, city), "showcase");
+  assert.equal(getDistrictAtPosition({ x: 330, z: 0 }, city), "bay");
+});
+test("islands that would touch each other or the Beacon are rejected", () => {
+  const crowded = structuredClone(city);
+  crowded.districts[1].center = [...crowded.districts[0].center];
+  crowded.districts[1].center[0] += 40;
+  assert.throws(() => validateCity(crowded), /overlap|slot/i);
+  const onBeacon = structuredClone(city);
+  onBeacon.districts[0].center = [0, -60];
+  assert.throws(() => validateCity(onBeacon), /beacon/i);
+  const showcase = structuredClone(city);
+  showcase.showcase.center = [0, 70];
+  assert.throws(() => validateCity(showcase), /showcase/i);
 });

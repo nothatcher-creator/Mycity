@@ -7,9 +7,9 @@
     "nexus": "https://www.nexusmods.com/profile/Nothatcher"
   },
   "bounds": {
-    "radius": 320,
+    "radius": 340,
     "floor": 1.6,
-    "ceiling": 55
+    "ceiling": 70
   },
   "districts": [
     {
@@ -17,8 +17,8 @@
       "name": "Game Quarter",
       "description": "Original worlds. Original lot numbers.",
       "center": [
-        -118,
-        -90
+        0,
+        -151
       ],
       "columns": 8,
       "slotCount": 32,
@@ -31,8 +31,8 @@
       "name": "Tools & AI",
       "description": "Make, build, measure, repeat.",
       "center": [
-        94,
-        -90
+        167.4,
+        -54.4
       ],
       "columns": 4,
       "slotCount": 16,
@@ -45,8 +45,8 @@
       "name": "Art & Images",
       "description": "A place to put something beautiful.",
       "center": [
-        -118,
-        82
+        -142.6,
+        111.4
       ],
       "columns": 4,
       "slotCount": 16,
@@ -59,8 +59,8 @@
       "name": "Android District",
       "description": "Apps and releases made for the small screen.",
       "center": [
-        96,
-        82
+        142.6,
+        111.4
       ],
       "columns": 4,
       "slotCount": 16,
@@ -73,8 +73,8 @@
       "name": "Mod Row",
       "description": "Nexus creations, game mods, and new possibilities.",
       "center": [
-        -118,
-        -190
+        -167.4,
+        -54.4
       ],
       "columns": 4,
       "slotCount": 16,
@@ -82,5 +82,23 @@
       "color": "#f4c18c",
       "prefix": "M"
     }
-  ]
+  ],
+  "centerIsland": {
+    "radius": 52
+  },
+  "bay": {
+    "name": "Nothatcher Bay"
+  },
+  "showcase": {
+    "id": "showcase",
+    "name": "Model Showcase",
+    "description": "3D models on display. Fly up close or open any model to inspect it.",
+    "center": [
+      0,
+      162
+    ],
+    "radius": 52,
+    "color": "#c8b6ff",
+    "prefix": "S"
+  }
 }

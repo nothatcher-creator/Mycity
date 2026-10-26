@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 /** The owner's central landmark and procedural fallback atmosphere. */
-export function createCityVisuals({ scene, city }) {
+export function createCityVisuals({ scene, city, bridgeAngles = [0, Math.PI / 2, Math.PI, Math.PI * 1.5] }) {
   const group = new THREE.Group();
   group.name = "Nothatchers-Beacon";
   scene.add(group);
@@ -193,8 +193,8 @@ export function createCityVisuals({ scene, city }) {
   ring(10.55, 10.64, 0.21, bronze);
   const bridges = [];
   const bridgeStripes = [];
-  for (let i = 0; i < 4; i++) {
-    const angle = (i * Math.PI) / 2;
+  // Pond crossings line up with the bridges out to the islands.
+  for (const angle of bridgeAngles) {
     const x = Math.sin(angle) * 27.1,
       z = Math.cos(angle) * 27.1;
     bridges.push({
@@ -491,7 +491,7 @@ export function createCityVisuals({ scene, city }) {
   instances(cylinder, dark, bollards);
   instances(sphere, gold, lamps);
 
-  // A fallback sky and low rolling ridges frame the neighborhoods without dominating them.
+  // A fallback sky for when the photographed sky cannot load.
   const skyMaterial = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
@@ -520,33 +520,6 @@ export function createCityVisuals({ scene, city }) {
   sky.castShadow = false;
   sky.receiveShadow = false;
   sky.renderOrder = -100;
-  const hills = [];
-  const distantHills = [];
-  for (let i = 0; i < 18; i++) {
-    const angle = (i / 18) * Math.PI * 2;
-    const radius = 510 + Math.sin(i * 1.9) * 22;
-    hills.push({
-      position: [Math.cos(angle) * radius, -8, Math.sin(angle) * radius],
-      scale: [128 + Math.sin(i * 2.3) * 28, 18 + Math.cos(i * 1.4) * 7, 105],
-      rotation: [0, i * 0.41, 0],
-    });
-    distantHills.push({
-      position: [Math.cos(angle + .1) * (radius + 160), -11, Math.sin(angle + .1) * (radius + 160)],
-      scale: [175 + Math.sin(i) * 30, 26 + Math.sin(i * .8) * 9, 145],
-      rotation: [0, i * .61, 0],
-    });
-  }
-  const hillMaterial = material(0x6f7d68, { roughness: 1, metalness: 0 });
-  const distantHillMaterial = material(0x97a18c, { roughness: 1, metalness: 0 });
-  const hillGeometry = geometry(new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2));
-  const hillMesh = instances(
-    hillGeometry,
-    hillMaterial,
-    hills,
-  );
-  const distantHillMesh = instances(hillGeometry, distantHillMaterial, distantHills);
-  hillMesh.castShadow = distantHillMesh.castShadow = false;
-  hillMesh.receiveShadow = distantHillMesh.receiveShadow = false;
   const positions = new Float32Array(360 * 3);
   let seed = 5831;
   const random = () => {
@@ -586,8 +559,6 @@ export function createCityVisuals({ scene, city }) {
     },
     setPhotographicSky(enabled) {
       sky.visible = stars.visible = !enabled;
-      hillMaterial.color.set(enabled ? 0x71816b : 0x647665);
-      distantHillMaterial.color.set(enabled ? 0x9ba58e : 0x8c9c88);
     },
     update(time, reducedMotion = false) {
       if (disposed || reducedMotion) return;

@@ -4,11 +4,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "node scripts/validate-catalog.js && vite build",
+    "dev": "node scripts/build-showcase.mjs && vite --host 0.0.0.0",
+    "build": "node scripts/validate-catalog.js && node scripts/build-showcase.mjs && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.js",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "showcase": "node scripts/build-showcase.mjs",
+    "thumbnails": "node scripts/render-thumbnails.mjs",
+    "add": "node scripts/add-project.mjs"
   },
   "dependencies": {
     "three": "0.186.1"

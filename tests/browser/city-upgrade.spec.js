@@ -80,8 +80,14 @@ test("the city map draws every lot, names it on hover and opens it on click", as
   expect(found, "no lot answered to hover").not.toBeNull();
   const tip = await page.locator("#city-map-tip").textContent();
   await page.mouse.click(found.x, found.y);
+  const [number, name] = tip.split(" · ");
+  if (/^S\d+$/.test(number)) {
+    // A showcase pedestal opens the model viewer.
+    await expect(page.locator("#model-viewer")).toBeVisible();
+    await expect(page.locator("#viewer-title")).toHaveText(name);
+    return;
+  }
   await expect(page.locator("#project-details")).toBeVisible();
-  const name = tip.split(" · ")[1];
   if (name.startsWith("Open lot")) await expect(page.locator("#detail-title")).toContainText("Open lot");
   else await expect(page.locator("#detail-title")).toHaveText(name);
 });

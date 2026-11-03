@@ -89,6 +89,7 @@ export class Engine {
     const r = this.renderer
     r.setRenderTarget(null)
     r.clear(true, true, true)
+    if (this.uiOnly) { r.render(this.uiScene, this.uiCamera); return }
     r.render(this.scene, this.camera)
     if (drawViewmodel) { r.clearDepth(); r.render(this.vmScene, this.vmCamera) }
     r.clearDepth()

@@ -111,19 +111,10 @@ export class Game {
     this.menuFrame(0)
     this.engine.setView(this.camPos, this.camQuat, this.fov)
     this.sky.update(0, this.engine.camera.position)
-    L(0.85, 'compiling'); await pause()
-    await this.warmup()
-    L(0.9, 'compiling'); await pause()
-    const tc = performance.now()
-    await this.engine.renderer.compileAsync(this.engine.scene, this.engine.camera)
-    const compile = performance.now() - tc
-    const tw = performance.now()
-    this.engine.render(false)
-    const warm = performance.now() - tw
-    p0.log('compile', Math.round(compile), 'ms; first frame', Math.round(warm), 'ms; boot', Math.round(performance.now() - t0), 'ms')
-    // a slow machine (or the software renderer) starts on the light version
-    p0.log('warm frame', Math.round(this.warmFrame), 'ms')
-    if ((warm > 250 || this.warmFrame > 120 || compile > 2500) && q !== 'low' && !this.settings.qualityChosen) this.setQuality('low')
+    // The title screen is 2D only (the island map behind the menus): it draws at once on any machine. The 3D
+    // world is compiled and warmed up on the first deploy, behind the deploying screen.
+    this.engine.uiOnly = true
+    p0.log('boot', Math.round(performance.now() - t0), 'ms')
     L(1, 'ready')
     this.state = 'menu'
     this.menus.open('main')
@@ -203,7 +194,8 @@ export class Game {
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
       if (e.code === 'NumpadSubtract' && this.state === 'menu') { this.start('online', { fresh: true }); return }
-      if (e.code === 'NumpadMultiply' && this.modeId === 'online') { p0.log('dbg online', JSON.stringify({ players: p0.room?.players, host: p0.room?.isHost, me: p0.me?.id, team: this.mode.team, remotes: [...this.mode.remotes.keys()], rows: this.mode.rows().map(r => r.id + ':' + r.team), stateKeys: Object.keys(p0.room?.state || {}) })) }
+      if (e.code === 'NumpadDivide' && this.state === 'menu') { this.start('online', { fresh: true, kind: 'domination' }); return }
+      if (e.code === 'NumpadMultiply' && this.modeId === 'online') { p0.log('dbg online', JSON.stringify({ flags: this.mode.flags?.map(f => (f.owner || '-') + f.progress.toFixed(1)), score: p0.room?.state?.score,  players: p0.room?.players, host: p0.room?.isHost, me: p0.me?.id, team: this.mode.team, remotes: [...this.mode.remotes.keys()], rows: this.mode.rows().map(r => r.id + ':' + r.team), stateKeys: Object.keys(p0.room?.state || {}) })) }
       if (e.code === 'F12' && this.state === 'menu') { this.dbgMission = ((this.dbgMission ?? -1) + 1) % 12; this.start('campaign', { mission: 'm' + (this.dbgMission + 1) }); p0.log('dbg mission', this.dbgMission + 1); return }
       if (e.code === 'Pause') { const m = this.playerSquad?.alive.find(q => q !== this.player.s); if (m) { const s = this.player.s; s.yaw = Math.atan2(m.pos.x - s.pos.x, m.pos.z - s.pos.z); this.player.pitch = -0.05 } }
       if (e.code === 'End' && this.mode?.markers) {
@@ -255,7 +247,26 @@ export class Game {
     this.pendingStart = { modeId, opts }
     this.menus.open('deploying')
   }
-  startNow(modeId, opts) {
+  // The first time: every shader of the 3D world compiled and timed (a slow machine drops to the light version).
+  async prepareWorld() {
+    if (this.worldReady) return
+    const t0 = performance.now(), q = this.settings.quality
+    this.engine.uiOnly = false
+    this.preload(this.camPos.x, this.camPos.z)
+    this.engine.setView(this.camPos, this.camQuat, this.fov)
+    this.sky.update(0, this.engine.camera.position)
+    await this.warmup()
+    await this.engine.renderer.compileAsync(this.engine.scene, this.engine.camera)
+    const tw = performance.now(); this.engine.render(false); const warm = performance.now() - tw
+    this.p0.log('world ready in', Math.round(performance.now() - t0), 'ms; warm frame', Math.round(this.warmFrame), 'ms')
+    if ((warm > 250 || this.warmFrame > 120) && q !== 'low' && !this.settings.qualityChosen) this.setQuality('low')
+    this.worldReady = true
+  }
+  async startNow(modeId, opts) {
+    if (this.starting) return
+    this.starting = true
+    try { await this.prepareWorld() } catch (e) { this.p0.log('prepare failed', e.message) }
+    this.starting = false
     this.pendingStart = null
     this.clearWorld()
     const M = MODES[modeId]
@@ -534,14 +545,15 @@ export class Game {
     this.time += dt
     const t0 = performance.now()
     this.rebuildGrid()
-    if (this.pendingStart && this.menus.page === 'deploying' && !this.menus.panel.dirty) { const p = this.pendingStart; this.startNow(p.modeId, p.opts) }
+    if (this.pendingStart && !this.starting && this.menus.page === 'deploying' && !this.menus.panel.dirty) { const p = this.pendingStart; this.startNow(p.modeId, p.opts) }
     if (this.state === 'menu') this.menuFrame(dt)
     else if (this.state === 'play') this.playFrame(dt)
     else if (this.state === 'paused') { this.input.takeLook(); this.menus.update(dt); if (this.input.hit('pause')) this.resume() }
     this.input.endFrame()
     const T = [performance.now()]
-    // the world round the camera
+    // the world round the camera (not while the title screen is up before the first deploy)
     const cp = this.camPos
+    if (this.engine.uiOnly) { this.ui.update(); this.engine.render(false); return }
     this.terrain.update(cp.x, cp.y, cp.z, this.settings.quality === 'low' ? 3 : 5); T.push(performance.now())
     this.city.update(cp.x, cp.z, 4); T.push(performance.now())
     this.veg.update(cp.x, cp.z, 3, dt); T.push(performance.now())

@@ -51,8 +51,17 @@ export class Menus {
     const W = p.w, H = p.h, s = this.s
     const fn = this['page_' + this.page]
     const overGame = this.g.state !== 'menu'
-    c.fillStyle = overGame ? 'rgba(8,10,7,0.72)' : 'rgba(8,10,7,0.35)'
-    c.fillRect(0, 0, W, H)
+    if (this.g.engine.uiOnly) {
+      // before the 3D world is up: the island map, dimmed, behind the menus
+      c.fillStyle = '#141a12'; c.fillRect(0, 0, W, H)
+      const img = mapImage(), m = Math.max(W, H) * 1.05
+      if (img) { c.globalAlpha = 0.55; c.drawImage(img, W - m * 0.78, (H - m) / 2, m, m); c.globalAlpha = 1 }
+      const gr = c.createLinearGradient(0, 0, W * 0.7, 0); gr.addColorStop(0, 'rgba(14,18,12,0.95)'); gr.addColorStop(1, 'rgba(14,18,12,0.1)')
+      c.fillStyle = gr; c.fillRect(0, 0, W, H)
+    } else {
+      c.fillStyle = overGame ? 'rgba(8,10,7,0.72)' : 'rgba(8,10,7,0.35)'
+      c.fillRect(0, 0, W, H)
+    }
     if (fn) fn.call(this, c, p, W, H, s)
   }
   // A column of big buttons at (x, y).
@@ -94,7 +103,7 @@ export class Menus {
     ].filter((v, i) => v || i === 5)
     this.column(c, p, x, 170 * s, Math.min(420 * s, W - x * 2), items, s)
     if (Math.floor((this.t || 0) * 2) % 2 === 0) text(c, 'PRESS SPACE TO DEPLOY  ·  or click to choose', x, H - 30 * s, { size: 14 * s, weight: 800, color: C.gold2, shadow: true })
-    text(c, 'Single player. Built for Project 0 lot 3084.', W - 20 * s, H - 30 * s, { size: 11 * s, color: C.dim, align: 'right', shadow: true })
+    text(c, 'Built for Project 0 lot 3084.', W - 20 * s, H - 30 * s, { size: 11 * s, color: C.dim, align: 'right', shadow: true })
   }
   page_freeroam(c, p, W, H, s) {
     const x = 60 * s, w = Math.min(640 * s, W - x * 2)

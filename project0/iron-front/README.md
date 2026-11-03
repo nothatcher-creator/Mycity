@@ -53,7 +53,7 @@ quads over the 3D view.
 - **World** (`src/world/`): a deterministic heightfield with erosion (`heightfield.js`), places and
   buildings from a blueprint (`blueprint.js`, `places.js`), streamed detail near the player and cheap
   shells far away (`citystream.js`), quadtree terrain (`terrain.js`), instanced vegetation, roads,
-  water, sky with day/night and weather. Collision is a grid of oriented boxes (`collision.js`).
+  water, sky with day/night and weather, rain streaks and storm lightning with thunder (`rain.js`). Collision is a grid of oriented boxes (`collision.js`).
 - **Soldiers** (`src/actors/`): one `Soldier` for the player and the AI (stances, lean, stamina, weight,
   vaulting, ladders, swimming, body-part damage, bleeding, armour). AI with senses, cover, flanking,
   grenades, suppression, squad orders and formations (`ai.js`), grid A* pathfinding round buildings
@@ -69,7 +69,7 @@ quads over the 3D view.
 - **Modes** (`src/game/modes/`): `freeroam.js`, `battle.js`, `campaign.js` on a shared `base.js`.
 - **Saves** (`src/game/save.js`): settings, key bindings, campaign progress, liberated places and the
   free-roam position and kit, kept by the city (`p0.save`, 16 KB).
-- **Sound** (`src/game/sfx.js`): 34 effects, all synthesised for this game by `tools/sfxgen.py`.
+- **Sound** (`src/game/sfx.js`): 35 effects, all synthesised for this game by `tools/sfxgen.py`.
 - **Light version**: the game measures the first frames and drops to low quality on slow machines
   (fewer pixels, shorter view, fewer AI near you).
 

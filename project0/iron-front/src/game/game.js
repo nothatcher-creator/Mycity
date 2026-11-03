@@ -9,6 +9,7 @@ import { initHeightfieldAsync, heightAt, normalAt } from '../world/heightfield.j
 import { Terrain } from '../world/terrain.js'
 import { Sky } from '../world/sky.js'
 import { Water } from '../world/water.js'
+import { Rain } from '../world/rain.js'
 import { Collision, raycastTerrain } from '../world/collision.js'
 import { buildPlaces, POINTS, BUILDINGS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
@@ -79,6 +80,7 @@ export class Game {
     this.terrain = new Terrain(this.engine.world, q)
     this.terrain.setQuality(q, QUALITY[q].view)
     this.water = new Water(this.engine.world, this.engine.scene)
+    this.rain = new Rain(this.engine, q)
     this.roads = new Roads(this.engine.world, this.collision)
     this.veg = new Vegetation(this.engine.world, this.collision, q)
     this.city = new CityStream(this.engine.world, this.collision, q)
@@ -218,6 +220,7 @@ export class Game {
       if (e.code === 'NumpadAdd') { const x = s.pos.x + Math.sin(s.yaw) * 600, z = s.pos.z + Math.cos(s.yaw) * 600; const q = this.mode.crewed('attackheli', 'nlf', x, z, s.yaw + Math.PI, { type: 'attack', pos: s.pos.clone() }, { air: 80 }); this.dbgVeh = q?.vehicle; p0.log('dbg heli', !!q, q?.members.map(m => m.seat?.role).join()) }
       if (e.code === 'Insert') { const x = s.pos.x + Math.sin(s.yaw) * 160, z = s.pos.z + Math.cos(s.yaw) * 160; const q = this.mode.crewed('technical', 'nlf', x, z, s.yaw + Math.PI, { type: 'attack', pos: s.pos.clone() }); p0.log('dbg crewed technical', !!q, q?.members.map(m => m.seat?.role).join()); this.dbgVeh = q?.vehicle }
       if (e.code === 'Delete') { const b = POINTS.filter(pt => pt.kind === 'boat').sort((a, c) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(c.x - s.pos.x, c.z - s.pos.z))[0]; this.mode.admin('teleport', { x: b.x, z: b.z + 15 }); const v = this.mode.park('rhib', b.x, b.z, b.yaw || 0, {}); s.pos.set(v.pos.x + 3, 0, v.pos.z); if (this.vehicles.enter(s, v)) this.vcontrol.entered(v); p0.log('dbg boat at', b.x.toFixed(0), b.z.toFixed(0)) }
+      if (e.code === 'NumpadDecimal') { this.sky.setWeather('storm'); p0.log('dbg storm') }
       if (e.code === 'F4') { this.mode.admin('teleport', { x: 60, z: 1650 }); p0.log('dbg teleported') }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
@@ -562,6 +565,7 @@ export class Game {
     this.engine.setView(cp, this.camQuat, this.fov || 70)
     this.sky.update(this.state === 'paused' ? 0 : dt, this.engine.camera.position)
     this.water.update(dt, cp, this.sky)
+    this.rain.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.sfx)
     this.fx.update(this.state === 'paused' ? 0 : dt, cp); T.push(performance.now())
     // soldiers
     const fpPlayer = this.player && this.player.view === 'fp' && !this.player.s.dead

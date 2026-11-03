@@ -117,6 +117,9 @@ SOUNDS['loop_heli'] = loop_noise(2.0, 700, 6.5, 0.85, tone=np.full(int(2.4 * SR)
 SOUNDS['loop_jet'] = loop_noise(3.0, 2600, 0, 0, tone=np.full(int(3.4 * SR), 620.0), tone_g=0.08)
 SOUNDS['loop_boat'] = engine(2.0, 55, (1, 0.5, 0.35, 0.25), 0.4, 1600)
 SOUNDS['loop_fire'] = loop_noise(4, 1500, 1.7, 0.4)
+# rain: a hiss with patters (high-passed noise, gently swelling)
+_r = loop_noise(5, 7000, 0.23, 0.25)
+SOUNDS['loop_rain'] = norm(hp(_r, 900) + hp(_r, 2500) * 0.5, 0.7)
 
 os.makedirs(OUT, exist_ok=True)
 for name, x in SOUNDS.items():

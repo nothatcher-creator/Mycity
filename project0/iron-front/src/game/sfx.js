@@ -5,7 +5,7 @@
 import { weapon, AMMO } from '../combat/weapons-data.js'
 
 const FILES = ['bolt', 'crack', 'dry', 'explosion', 'explosion_far', 'horn', 'impact_body', 'impact_dirt', 'impact_hard', 'impact_metal',
-  'loop_boat', 'loop_car', 'loop_fire', 'loop_heli', 'loop_jet', 'loop_tank', 'loop_wind', 'reload', 'ricochet', 'shot_cannon', 'shot_far',
+  'loop_boat', 'loop_car', 'loop_fire', 'loop_heli', 'loop_jet', 'loop_rain', 'loop_tank', 'loop_wind', 'reload', 'ricochet', 'shot_cannon', 'shot_far',
   'shot_heavy', 'shot_pistol', 'shot_rifle', 'shot_rocket', 'shot_shotgun', 'shot_smg', 'shot_suppressed', 'step', 'ui_click', 'ui_hurt',
   'ui_pickup', 'ui_radio', 'ui_throw']
 const SET = new Set(FILES)
@@ -83,6 +83,9 @@ export class SFX {
       const k = v.kind === 'heli' || v.kind === 'plane' ? 0.35 + v.rpm * 0.25 : 0.25 + Math.min(0.35, Math.abs(v.speed) / 50) + Math.abs(v.throttle) * 0.1
       this.loop('engine', file, k)
     } else this.stopLoop('engine')
+    // rain on the ground round you
+    const rain = this.g.sky?.w?.rain || 0
+    if (this.on) { if (rain > 0.05) this.loop('rain', 'loop_rain', 0.12 + rain * 0.3); else this.stopLoop('rain') }
     // wind: stronger up high and in storms
     if (this.on) { const h = this.g.camPos.y; this.loop('wind', 'loop_wind', Math.min(0.5, 0.12 + Math.max(0, h - 80) / 1500 + (this.g.sky?.w?.wind || 0) * 0.1)) }
   }

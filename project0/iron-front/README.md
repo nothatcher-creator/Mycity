@@ -1,6 +1,6 @@
 # OPERATION: IRON FRONT
 
-A single-player open-world military game for Project 0 lot **3084**, written in JavaScript on three.js
+An open-world military game for Project 0 lot **3084**, written in JavaScript on three.js
 (about 10,500 lines). The campaign, Free Roam and Battle are single player against AI; Online Battle pits the real
 players inside the lot against each other (no AI there).
 

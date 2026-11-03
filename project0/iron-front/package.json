@@ -1,0 +1,10 @@
+{
+  "name": "iron-front",
+  "private": true,
+  "type": "module",
+  "description": "OPERATION: IRON FRONT, a Project 0 experience. Source for the game in src/, offline tools in tools/.",
+  "scripts": {
+    "map": "node tools/mapgen.mjs",
+    "zip": "node tools/pack.mjs"
+  }
+}

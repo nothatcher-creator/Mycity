@@ -5,18 +5,21 @@
 // way and plans again when he gets there. Doors (1.4 m) always leave at least one free cell.
 import { heightAt } from '../world/heightfield.js'
 
-const CS = 0.75, R = 0.28, REACH = 60, MARGIN = 14
+// defaults for a soldier; vehicles use a coarser grid, a wider body and a longer reach
+const DEFAULTS = { cs: 0.75, r: 0.28, reach: 60, margin: 14, lo: 0.4, hi: 1.7 }
 const SKIP = new Set(['floor', 'stairs'])
 
 export class Nav {
-  constructor(collision) {
+  constructor(collision, o = {}) {
     this.col = collision
+    this.o = { ...DEFAULTS, ...o }
     this.cap = 0
     this.blocked = null; this.g = null; this.f = null; this.from = null; this.closed = null
     this.heap = []
   }
   // Is the straight walk from (sx, sz) to (gx, gz) at height y clear?
   clear(sx, y, sz, gx, gz) {
+    const R = this.o.r
     const dx = gx - sx, dz = gz - sz, d = Math.hypot(dx, dz)
     if (d < 0.5) return true
     const ux = dx / d, uz = dz / d, h = { t: 0 }, skip = c => SKIP.has(c.kind) || c.kind === 'glass' && !c.alive
@@ -32,6 +35,7 @@ export class Nav {
   // A route from (sx, sy, sz) towards (gx, gz): an array of [x, z] points, the last being the goal (or a step
   // towards it), or null when there is no way.
   path(sx, sy, sz, gx, gz) {
+    const { cs: CS, r: R, reach: REACH, margin: MARGIN } = this.o
     if (this.clear(sx, sy, sz, gx, gz)) return [[gx, gz]]
     let tx = gx, tz = gz
     const dd = Math.hypot(gx - sx, gz - sz)
@@ -45,7 +49,7 @@ export class Nav {
     } else { this.blocked.fill(0, 0, N); this.closed.fill(0, 0, N) }
     const B = this.blocked
     // draw the obstacles
-    const lo = sy + 0.4, hi = sy + 1.7
+    const lo = sy + this.o.lo, hi = sy + this.o.hi
     this.col.query(x0, z0, x0 + W * CS, z0 + H * CS, c => {
       if (SKIP.has(c.kind) || c.maxY < lo || c.minY > hi) return
       if (Math.abs(c.ay[1]) < 0.97) return          // ramps and fallen things: walkable
@@ -66,7 +70,7 @@ export class Nav {
     // the goal inside something: the nearest free cell
     if (B[tj * W + ti]) {
       let best = -1, bd = 1e9
-      for (let r = 1; r < 12 && best < 0; r++) for (let j = tj - r; j <= tj + r; j++) for (let i = ti - r; i <= ti + r; i++) {
+      for (let r = 1; r < Math.ceil(9 / CS) && best < 0; r++) for (let j = tj - r; j <= tj + r; j++) for (let i = ti - r; i <= ti + r; i++) {
         if (i < 0 || j < 0 || i >= W || j >= H || B[j * W + i]) continue
         const d = (i - ti) ** 2 + (j - tj) ** 2; if (d < bd) { bd = d; best = j * W + i }
       }

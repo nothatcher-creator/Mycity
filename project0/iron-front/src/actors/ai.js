@@ -73,6 +73,7 @@ export class AI {
     this.brains = new Map()
     this.time = 0
     this.nav = new Nav(game.collision)
+    this.vnav = new Nav(game.collision, { cs: 1.5, r: 1.6, reach: 160, margin: 30, lo: 0.5, hi: 2.2 })
     this.pathBudget = 3
   }
   add(s, squad, skill) {
@@ -530,8 +531,21 @@ export class AI {
     b.vStuck = Math.max(0, b.vStuck)
     if (b.reverseT > 0) { b.reverseT -= dt; v.throttle = -0.7; v.steer = -Math.sign(diff || 1) * 0.8; return }
     if (b.vStuck > 2.5) { b.vStuck = 0; b.reverseT = 2 }
+    // a route round buildings when the straight line is blocked (re-planned when the goal moves or every 8 s)
+    if ((!b.vpath || !b.vpathFor || b.vpathFor.distanceTo(tgt) > 10 || G.time - b.vpathT > 8) && this.pathBudget > 0) {
+      this.pathBudget--
+      b.vpath = this.vnav.path(v.pos.x, v.pos.y, v.pos.z, tgt.x, tgt.z)
+      b.vpathFor = tgt.clone ? tgt.clone() : new THREE.Vector3(tgt.x, tgt.y, tgt.z); b.vpathT = G.time
+    }
+    if (b.vpath && b.vpath.length > 1) {
+      while (b.vpath.length > 1 && Math.hypot(b.vpath[0][0] - v.pos.x, b.vpath[0][1] - v.pos.z) < 6) b.vpath.shift()
+      const wp = b.vpath[0]
+      diff = Math.atan2(wp[0] - v.pos.x, wp[1] - v.pos.z) - v.yaw
+      while (diff > Math.PI) diff -= Math.PI * 2
+      while (diff < -Math.PI) diff += Math.PI * 2
+    }
     v.steer = Math.max(-1, Math.min(1, diff * 2))
-    v.throttle = d < 15 ? 0 : Math.abs(diff) > 1.3 ? 0.35 : d < 40 ? 0.5 : 1
+    v.throttle = d < 15 ? 0 : Math.abs(diff) > 1.3 ? 0.35 : d < 40 || (b.vpath && b.vpath.length > 1) ? 0.6 : 1
     if (d < 15) v.brake = 1
   }
   inVehicle(s, b, dt) {

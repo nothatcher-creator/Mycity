@@ -110,6 +110,6 @@ Not done or not verified:
 
 - No multiplayer: every other soldier is AI.
 - The campaign has not been played through by hand, so difficulty and balance are not tuned.
-- AI flies attack helicopters only (no planes, no landing); AI drivers do not path round buildings.
+- AI flies attack helicopters only (no planes, no landing). AI drivers route round buildings on a coarse grid, not along roads.
 - Mouse aiming could not be checked by hand in the headless browser.
 - Performance on real phones and laptops has not been measured.

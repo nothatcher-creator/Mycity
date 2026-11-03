@@ -28,6 +28,7 @@ export class CityStream {
         if (distance(center, camXZ) < hideR) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);`)
     }
     this.broken = new Set()      // glass and props destroyed (kept while the tile is unloaded)
+    this.destroyed = new Set()   // wall sections blown out
     this.near = new Map(); this.far = new Map()
     this.nearIdx = new Map(); this.farIdx = new Map()
     for (const b of BUILDINGS) push(this.nearIdx, key(b.x, b.z, NEAR), { b }), push(this.farIdx, key(b.x, b.z, FAR), { b })
@@ -52,6 +53,10 @@ export class CityStream {
       const m = new THREE.Mesh(kit.geometry(), this.mat)
       m.castShadow = true; m.receiveShadow = true
       this.world.add(m); t.meshes.push(m)
+      // every solid part knows its place in the mesh; parts blown out before stay out
+      kit.colliders.forEach((c, i) => { c.wallId = `${k}:${i}`; c.tileMesh = m })
+      for (const c of kit.colliders) if (this.destroyed.has(c.wallId)) this.collapse(c)
+      t.colliders = kit.colliders.filter(c => c.alive)
     }
     // glass panes: one instanced mesh; each pane's collider knows its instance so a bullet can break it
     if (kit.glass.length) {
@@ -143,6 +148,30 @@ export class CityStream {
       this.ladders = []; this.spots = []
       for (const t of this.near.values()) { this.ladders.push(...t.ladders); this.spots.push(...t.spots) }
     }
+  }
+  // A heavy blast knocks out the wall sections within reach (not floors, stairs or the ground floor's slab).
+  // Returns the knocked-out parts' centres for the rubble and dust.
+  blastWalls(x, y, z, r, collision) {
+    const out = []
+    collision.query(x - r, z - r, x + r, z + r, c => {
+      if (!c.wallId || c.kind !== 'wall' || !c.alive || this.destroyed.has(c.wallId)) return
+      if (c.mat !== 'concrete' && c.mat !== 'brick' && c.mat !== 'wood' && c.mat !== 'sheetmetal') return
+      const d = Math.hypot(c.x - x, c.y - y, c.z - z) - Math.max(c.hx, c.hz) * 0.5
+      if (d > r) return
+      this.destroyed.add(c.wallId)
+      this.collapse(c)
+      collision.remove(c)
+      out.push({ x: c.x, y: c.y, z: c.z, size: Math.max(c.hx, c.hy, c.hz) })
+    })
+    return out
+  }
+  // A part is removed from view by folding its 8 corners into its centre.
+  collapse(c) {
+    c.alive = false
+    const m = c.tileMesh; if (!m || c.vbase === undefined) return
+    const pa = m.geometry.attributes.position
+    for (let i = 0; i < 8; i++) pa.setXYZ(c.vbase + i, c.x, c.y, c.z)
+    pa.needsUpdate = true
   }
   // A bullet broke a pane.
   breakGlass(c) {

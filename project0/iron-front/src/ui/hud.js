@@ -371,6 +371,6 @@ export class HUD {
     btn('inv', W - r, r * 6.8, 'INV', () => g.input.pressed.add('inventory'), r * 0.7)
     btn('heal', W - r, r * 8.4, 'HEAL', () => g.input.pressed.add('heal'), r * 0.7)
     btn('menu', r * 0.9, r * 4.5, 'MENU', () => g.input.pressed.add('pause'), r * 0.7)
-    text(c, 'Drag right side to look', W * 0.72, H * 0.12, { size: 12, align: 'center', color: 'rgba(255,255,255,0.6)' })
+    text(c, g.settings.stickTurns !== false ? 'Stick: move and turn · drag right side: look' : 'Drag right side to look', W * 0.72, H * 0.12, { size: 12, align: 'center', color: 'rgba(255,255,255,0.6)' })
   }
 }

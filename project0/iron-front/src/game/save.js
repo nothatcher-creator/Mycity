@@ -5,7 +5,7 @@ import { DEFAULT_BINDS } from '../core/input.js'
 
 export const DEFAULT_SETTINGS = {
   quality: 'medium', qualityChosen: false, fov: 70, sens: 1, invertY: false, volume: 1, view: 'fp',
-  hud: { compass: true, weapon: true, minimap: true, crosshair: true }, minimapRange: 300, flightAssist: true,
+  hud: { compass: true, weapon: true, minimap: true, crosshair: true }, minimapRange: 300, flightAssist: true, stickTurns: true,
   difficulty: 0.5, binds: {},
 }
 

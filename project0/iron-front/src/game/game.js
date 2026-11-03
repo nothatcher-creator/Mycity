@@ -220,13 +220,18 @@ export class Game {
       if (e.code === 'NumpadAdd') { const x = s.pos.x + Math.sin(s.yaw) * 600, z = s.pos.z + Math.cos(s.yaw) * 600; const q = this.mode.crewed('attackheli', 'nlf', x, z, s.yaw + Math.PI, { type: 'attack', pos: s.pos.clone() }, { air: 80 }); this.dbgVeh = q?.vehicle; p0.log('dbg heli', !!q, q?.members.map(m => m.seat?.role).join()) }
       if (e.code === 'Insert') { const x = s.pos.x + Math.sin(s.yaw) * 160, z = s.pos.z + Math.cos(s.yaw) * 160; const q = this.mode.crewed('technical', 'nlf', x, z, s.yaw + Math.PI, { type: 'attack', pos: s.pos.clone() }); p0.log('dbg crewed technical', !!q, q?.members.map(m => m.seat?.role).join()); this.dbgVeh = q?.vehicle }
       if (e.code === 'Delete') { const b = POINTS.filter(pt => pt.kind === 'boat').sort((a, c) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(c.x - s.pos.x, c.z - s.pos.z))[0]; this.mode.admin('teleport', { x: b.x, z: b.z + 15 }); const v = this.mode.park('rhib', b.x, b.z, b.yaw || 0, {}); s.pos.set(v.pos.x + 3, 0, v.pos.z); if (this.vehicles.enter(s, v)) this.vcontrol.entered(v); p0.log('dbg boat at', b.x.toFixed(0), b.z.toFixed(0)) }
+      if (e.code === 'Numpad0') { const t = performance.now(); let hx = s.pos.x, hz = s.pos.z, hy = s.pos.y + 1.5; const h = { t: 0 }; const d = this.player.aimDirection(); if (this.collision.raycast(this.player.camPos.x, this.player.camPos.y, this.player.camPos.z, d.x, d.y, d.z, 200, h)) { hx = this.player.camPos.x + d.x * (h.t - 0.3); hy = this.player.camPos.y + d.y * (h.t - 0.3); hz = this.player.camPos.z + d.z * (h.t - 0.3) } this.explode(hx, hy, hz, { radius: 6, dmg: 200, heat: 1400 }, s); p0.log('dbg blast', Math.round(performance.now() - t), 'ms walls', this.city.destroyed.size, 'hit', h.t?.toFixed(1)) }
+      if (e.code === 'Numpad5') { this.player.touchAds = !this.player.touchAds; p0.log('dbg ads', this.player.touchAds, this.player.s.w?.rec.att?.optic) }
       if (e.code === 'NumpadDecimal') { this.sky.setWeather('storm'); p0.log('dbg storm') }
       if (e.code === 'F4') { this.mode.admin('teleport', { x: 60, z: 1650 }); p0.log('dbg teleported') }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
+    if (DEBUG) for (const ev of ['pointerdown', 'pointermove', 'pointerup']) p0.on(ev, e => { if (e.touch && (this.dbgPtr = (this.dbgPtr || 0) + 1) < 60) p0.log('dbg ptr', ev, JSON.stringify(e)) })
     p0.on('pointermove', e => {
       if (e.touch && this.touchLook) {
         const k = 2.4
+        // a jump of more than 120 px is another finger (the platform reports one touch at a time): not a drag
+        if (Math.abs(e.x - this.touchLook.x) > 120 || Math.abs(e.y - this.touchLook.y) > 120) { this.touchLook = null; return }
         this.input.look.dx += (e.x - this.touchLook.x) * k; this.input.look.dy += (e.y - this.touchLook.y) * k
         this.touchLook.x = e.x; this.touchLook.y = e.y
         return
@@ -376,6 +381,7 @@ export class Game {
   // An explosion: blast for everyone in range (less behind cover), vehicles by armour, windows break,
   // fuel and ammunition nearby go up, the AI hears it, the camera shakes.
   explode(x, y, z, ex, src, directVehicle = null, big = false) {
+    if (DEBUG) this.p0.log('dbg explode', x.toFixed(1), y.toFixed(1), z.toFixed(1), ex.radius, ex.heat || 0)
     const r = ex.radius
     this.fx.explosion(x, y, z, r, { fire: big })
     this.sfx.explosion(x, y, z, r)
@@ -397,6 +403,14 @@ export class Game {
       const d = Math.hypot(v.pos.x - x, v.pos.y + 1 - y, v.pos.z - z) - Math.max(v.def.size[0], v.def.size[2]) / 2
       if (v === directVehicle) v.blast(ex.dmg, ex.heat || 0, src, true)
       else if (d < r) v.blast(ex.dmg * (1 - Math.max(0, d) / r), 0, src, false)
+    }
+    // heavy blasts (tank shells, rockets, missiles, bombs) knock holes in walls: rubble and dust where they stood
+    if ((ex.heat || 0) >= 300 || r >= 12) {
+      const reach = Math.min(8, 1.5 + r * 0.45)
+      for (const p of this.city.blastWalls(x, y, z, reach, this.collision)) {
+        this.fx.puff(p.x, p.y, p.z, { s0: 1.5, s1: 4 + p.size, life: 3.5, r: 0.62, g: 0.6, b: 0.55, a: 0.7, drag: 1.2, vy: 0.6 })
+        for (let k = 0; k < 3; k++) this.fx.impact(p.x + (Math.random() - 0.5) * p.size, p.y, p.z + (Math.random() - 0.5) * p.size, 0, 1, 0, 'chips')
+      }
     }
     this.collision.query(x - r, z - r, x + r, z + r, c => {
       if (!c.alive && c.alive !== undefined) return
@@ -594,7 +608,7 @@ export class Game {
         const crews = this.vehicles.list.filter(v => v.driver && !v.driver.isPlayer).map(v => `${v.type}:${v.alive ? v.speed.toFixed(1) : 'X'}`).join(' ')
         const dvs = dv ? `${dv.alive ? 'alive' : 'WRECK'} d${dv.pos.distanceTo(this.player.s.pos).toFixed(0)} v${dv.speed.toFixed(1)} g:${gun?.occupant?.brain?.state} ammo${gun?.w?.mag}` : ''
         const P = this.player
-        this.p0.log('dbg', this.state, 'fps', (this.dbgN / this.dbgT).toFixed(1), where, 'soldiers', this.soldiers.filter(o => !o.dead).length, 'dead', this.soldiers.filter(o => o.dead).length, 'veh', this.vehicles.list.length, 'q', this.settings.quality, 'crews', crews, 'dbgveh', dvs)
+        this.p0.log('dbg', this.state, 'fps', (this.dbgN / this.dbgT).toFixed(1), where, 'soldiers', this.soldiers.filter(o => !o.dead).length, 'dead', this.soldiers.filter(o => o.dead).length, 'veh', this.vehicles.list.length, 'q', this.settings.quality, 'crews', crews, 'dbgveh', dvs, 'walls', this.city.destroyed.size)
         if (this.modeId === 'campaign' && this.mode) { const o = this.mode.obj; this.p0.log('dbgc', 'obj', this.mode.idx, o?.type, 'enemies', o?.squads?.reduce((n, q) => n + q.alive.length, 0), 'squad', this.playerSquad?.alive.length, 'hp', this.player?.s.blood.toFixed(0), 'kills', this.mode.kills) }
         this.p0.log('dbg2', 'score', this.mode?.scoreText?.(), 'yaw', P?.s.yaw.toFixed(2), 'kills', this.mode?.kills, 'scope', P?.scoped, P?.binoculars, P?.s.ads, P?.adsT?.toFixed(2), this.input.mouse.right, P?.view, this.hud?.scope.visible, this.hud?.visible)
         if (s) { let e = null, ed = 1e9; for (const o of this.soldiers) if (!o.dead && o.brain && hostile(o.team, s.team)) { const d = o.pos.distanceTo(s.pos); if (d < ed) { ed = d; e = o } }

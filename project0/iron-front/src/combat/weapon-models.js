@@ -27,6 +27,8 @@ class Parts {
   }
   box(w, h, d, color, x, y, z, rx = 0, ry = 0, rz = 0) { this.add(new THREE.BoxGeometry(w, h, d), color, x, y, z, rx, ry, rz) }
   cyl(r, len, color, x, y, z, seg = 8, r2 = r) { this.add(new THREE.CylinderGeometry(r2, r, len, seg), color, x, y, z, Math.PI / 2) }
+  // an open tube along z: looking down a sight you see through it (its inside faces away and is not drawn)
+  tube(r, len, color, x, y, z, seg = 12) { this.add(new THREE.CylinderGeometry(r, r, len, seg, 1, true), color, x, y, z, Math.PI / 2) }
   merged() { return mergeGeometries(this.list) }
 }
 
@@ -171,15 +173,21 @@ export function buildWeapon(def, att = {}) {
   const opticId = att.optic || def.optic || 'iron'
   if (opticId !== 'iron' && body !== 'pistol') {
     const y = sightY + 0.01
-    if (opticId === 'rd1') { P.cyl(0.018, 0.05, COL.dark, 0, y + 0.018, -0.06, 10); P.box(0.02, 0.012, 0.04, COL.dark, 0, y, -0.06); sight.set(0, y + 0.018, -0.06) }
-    else if (opticId === 'eh3') { P.box(0.045, 0.04, 0.07, COL.dark, 0, y + 0.02, -0.07); P.box(0.038, 0.03, 0.005, COL.lens, 0, y + 0.024, -0.104); sight.set(0, y + 0.026, -0.07) }
+    // reflex sights are hollow: a tube (red dot) or a window frame (holographic) you look through
+    if (opticId === 'rd1') { P.tube(0.018, 0.05, COL.dark, 0, y + 0.018, -0.06); P.box(0.02, 0.008, 0.04, COL.dark, 0, y - 0.002, -0.06); sight.set(0, y + 0.018, -0.06) }
+    else if (opticId === 'eh3') {
+      P.box(0.045, 0.012, 0.07, COL.dark, 0, y + 0.004, -0.07)                 // base
+      P.box(0.045, 0.006, 0.02, COL.dark, 0, y + 0.043, -0.095)                // top of the window
+      for (const s of [-1, 1]) P.box(0.005, 0.04, 0.02, COL.dark, s * 0.02, y + 0.025, -0.095)
+      sight.set(0, y + 0.026, -0.07)
+    }
     else if (opticId === 'atgm') { sight.set(-0.12, 0.08, -0.06) }
     else {
       const big = opticId === 'lr525' || opticId === 'hunter8', len = big ? 0.34 : opticId === 'aco2' ? 0.13 : 0.2
       const r = big ? 0.02 : 0.018
-      P.cyl(r, len, COL.dark, 0, y + 0.035, -0.07, 10)
-      P.cyl(big ? 0.03 : 0.024, 0.05, COL.dark, 0, y + 0.035, -0.07 - len / 2, 10)
-      P.cyl(0.024, 0.04, COL.dark, 0, y + 0.035, -0.07 + len / 2, 10)
+      P.tube(r, len, COL.dark, 0, y + 0.035, -0.07)
+      P.tube(big ? 0.03 : 0.024, 0.05, COL.dark, 0, y + 0.035, -0.07 - len / 2)
+      P.tube(0.024, 0.04, COL.dark, 0, y + 0.035, -0.07 + len / 2)
       P.box(0.02, 0.03, 0.06, COL.dark, 0, y + 0.012, -0.07)
       if (optic.thermal || optic.night) P.box(0.04, 0.04, 0.06, COL.green, 0, y + 0.035, -0.07 + len / 2 + 0.04)
       sight.set(0, y + 0.035, -0.07)

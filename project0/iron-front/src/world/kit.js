@@ -43,6 +43,7 @@ export class Kit {
     B(2, 6, 7); B(2, 7, 3); B(0, 2, 3); B(0, 3, 1); B(4, 5, 7); B(4, 7, 6)
     if (o.collide !== false) {
       const c = makeBox(wx, wy, wz, hx, hy, hz, yaw, o.mat || 'concrete', o.kind || 'wall', pitch)
+      c.vbase = base      // its 8 corners in the tile's mesh (a blast can knock it out)
       this.colliders.push(c)
       return c
     }

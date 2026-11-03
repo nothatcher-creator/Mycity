@@ -109,6 +109,12 @@ export class Player {
     const inp = s.input
     inp.fwd = (input.down('forward') ? 1 : 0) - (input.down('back') ? 1 : 0)
     inp.side = (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0)
+    // on touch screens the city's stick also turns you (its left and right), since the platform follows only one
+    // finger: you can move and turn with the stick alone. Aiming down sights it strafes, for fine aim.
+    if (input.touch && g.settings.stickTurns !== false && !s.ads && !this.binoculars) {
+      s.yaw -= inp.side * dt * (1.2 + Math.min(1, s.speed / 4) * 0.4)
+      inp.side = 0
+    }
     inp.sprint = input.down('sprint') && !s.ads
     inp.walk = input.down('walk')
     if (input.hit('jump')) inp.jump = true

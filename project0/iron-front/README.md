@@ -41,7 +41,7 @@ Independent Resistance (RES).
 
 Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with flight assist on.
 
-**Phones and tablets:** the city's stick moves; drag anywhere else to look; buttons for fire (hold), aim,
+**Phones and tablets:** the city's stick moves you and its left and right turn you (the platform follows one finger at a time, so moving and looking with two fingers is not possible; a setting switches the stick back to strafing); drag anywhere else to look, also up and down; buttons for fire (hold), aim,
 reload, stance, jump, use, grenade, view, map, inventory, heal and the menu.
 
 ## How it works
@@ -59,6 +59,7 @@ quads over the 3D view.
   grenades, suppression, squad orders and formations (`ai.js`), grid A* pathfinding round buildings
   (`nav.js`), and AI vehicle crews: gunners, drivers, and attack-helicopter pilots that hold altitude,
   circle their target and fire rockets.
+- **Destruction**: tank shells, rockets, missiles and bombs knock wall sections out of buildings (`citystream.js`), and glass breaks.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
   thickness, ricochets and near-miss suppression (`ballistics.js`); 48 hand-held weapons and 11 mounted
   ones with attachments (`weapons-data.js`); models built in code (`weapon-models.js`).

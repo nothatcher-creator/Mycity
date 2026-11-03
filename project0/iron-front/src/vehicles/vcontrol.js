@@ -39,7 +39,8 @@ export class VehicleControl {
           // on touch the stick's left and right turn the helicopter (one thumb flies it); with keys they roll
           roll: touchTurn ? 0 : (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0),
           climb: (up ? 1 : 0) - (down ? 1 : 0),
-          yaw: touchTurn ? (input.down('left') ? 1 : 0) - (input.down('right') ? 1 : 0) : assist ? THREE.MathUtils.clamp(look.yaw * 18, -1, 1) : (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0),
+          // (gentler while flying forward, so the speed can build along the new heading)
+          yaw: touchTurn ? ((input.down('left') ? 1 : 0) - (input.down('right') ? 1 : 0)) * (input.down('forward') ? 0.4 : 0.8) : assist ? THREE.MathUtils.clamp(look.yaw * 18, -1, 1) : (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0),
         }
         if (!assist) { this.orbit.yaw += look.yaw; this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.6, 1.2) }
         else this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.6, 1.2)

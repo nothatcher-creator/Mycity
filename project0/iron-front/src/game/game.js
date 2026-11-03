@@ -44,6 +44,7 @@ export class Game {
   constructor(p0) {
     this.p0 = p0
     try { DEBUG = /\/\/(127\.0\.0\.1|localhost)[:/]/.test(p0.asset('main.js')) } catch {}
+    this.debug = DEBUG
     this.time = 0
     this.state = 'boot'
     this.difficulty = 0.5
@@ -578,7 +579,7 @@ export class Game {
         const dvs = dv ? `${dv.alive ? 'alive' : 'WRECK'} d${dv.pos.distanceTo(this.player.s.pos).toFixed(0)} v${dv.speed.toFixed(1)} g:${gun?.occupant?.brain?.state} ammo${gun?.w?.mag}` : ''
         const P = this.player
         this.p0.log('dbg', this.state, 'fps', (this.dbgN / this.dbgT).toFixed(1), where, 'soldiers', this.soldiers.filter(o => !o.dead).length, 'dead', this.soldiers.filter(o => o.dead).length, 'veh', this.vehicles.list.length, 'q', this.settings.quality, 'crews', crews, 'dbgveh', dvs)
-        if (this.modeId === 'campaign') { const o = this.mode.obj; this.p0.log('dbgc', 'obj', this.mode.idx, o?.type, 'enemies', o?.squads?.reduce((n, q) => n + q.alive.length, 0), 'squad', this.playerSquad?.alive.length, 'hp', this.player?.s.blood.toFixed(0), 'kills', this.mode.kills) }
+        if (this.modeId === 'campaign' && this.mode) { const o = this.mode.obj; this.p0.log('dbgc', 'obj', this.mode.idx, o?.type, 'enemies', o?.squads?.reduce((n, q) => n + q.alive.length, 0), 'squad', this.playerSquad?.alive.length, 'hp', this.player?.s.blood.toFixed(0), 'kills', this.mode.kills) }
         this.p0.log('dbg2', 'score', this.mode?.scoreText?.(), 'yaw', P?.s.yaw.toFixed(2), 'kills', this.mode?.kills, 'scope', P?.scoped, P?.binoculars, P?.s.ads, P?.adsT?.toFixed(2), this.input.mouse.right, P?.view, this.hud?.scope.visible, this.hud?.visible)
         if (s) { let e = null, ed = 1e9; for (const o of this.soldiers) if (!o.dead && o.brain && hostile(o.team, s.team)) { const d = o.pos.distanceTo(s.pos); if (d < ed) { ed = d; e = o } }
           if (e) this.p0.log('dbg enemy', ed.toFixed(0), 'm', e.brain.state, 'tgt', e.brain.target?.name, 'move', e.brain.move ? e.brain.move.distanceTo(e.pos).toFixed(0) : '-', 'spd', e.speed.toFixed(1), 'ammo', e.ammoInWeapon, 'keys', [...this.p0.input.keys].join('+'), 'fwd', s.input.fwd, 'spd', s.speed.toFixed(2), 'ground', s.onGround)

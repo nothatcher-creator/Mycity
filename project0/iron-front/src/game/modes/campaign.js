@@ -8,7 +8,7 @@
 import * as THREE from 'three'
 import { Mode, nextName } from './base.js'
 import { POINTS } from '../../world/places.js'
-import { heightAt } from '../../world/heightfield.js'
+import { heightAt, waterLevel } from '../../world/heightfield.js'
 import { FACTIONS } from '../../actors/factions.js'
 import { C, text, wrap } from '../../ui/ui.js'
 import { ROADS } from '../../world/roads-data.js'
@@ -204,7 +204,18 @@ export class Campaign extends Mode {
     return v
   }
   get obj() { return this.m.objectives[this.idx] }
-  pos(o) { return o.at ? o.at() : [o.x, o.z] }
+  // Where an objective is: its place, its target, or (clear and destroy) the middle of what is left to kill.
+  pos(o) {
+    if (o.at) return o.at()
+    if (o.x !== undefined) return [o.x, o.z]
+    if (o.type === 'kill') return o.hvt && !o.hvt.dead ? [o.hvt.pos.x, o.hvt.pos.z] : [o.target.x, o.target.z]
+    const things = o.type === 'destroy' ? (o.vehicles_ || []).filter(v => v.alive).map(v => v.pos) : (o.squads || []).flatMap(q => q.alive).map(m => m.pos)
+    if (things.length) return [things.reduce((n, p) => n + p.x, 0) / things.length, things.reduce((n, p) => n + p.z, 0) / things.length]
+    const sp = (o.spawn || [])[0] || (o.vehicles || [])[0]
+    if (sp) return sp.at ? sp.at() : [sp.x, sp.z]
+    const p = this.g.player.s.pos
+    return [p.x, p.z]
+  }
   // Starting an objective: its enemies, vehicles and timers.
   begin(i) {
     const g = this.g
@@ -239,6 +250,12 @@ export class Campaign extends Mode {
       o.hvt = L; o.squads.push(q)
       // a patrol on the road too
       o.squads.push(this.squadFrom({ faction: T.faction, x: T.x + 120, z: T.z + 80, n: 3, order: 'patrol', r: 80 }))
+    }
+    if (this.g.debug) {
+      // a check of what this objective set up: soldiers on dry land, the vehicles it asked for
+      const men = o.squads.flatMap(q => q.members), wet = men.filter(m => waterLevel(m.pos.x, m.pos.z) > m.pos.y + 1).length
+      const [ox, oz] = this.pos(o)
+      g.p0.log('dbg objective', this.m.id, i, o.type, 'men', men.length, 'wet', wet, 'vehicles', (o.vehicles_ || []).length, 'asked', (o.vehicles || []).length + (o.boats || []).length + (o.convoy?.types.length || 0), 'target', Math.round(ox), Math.round(oz), 'land', Math.round(heightAt(ox, oz)), 'water', Math.round(waterLevel(ox, oz)))
     }
     if (o.type === 'survive') o.state.wave = 0
     for (const q of this.allies || []) if (q.alive.length) { const [ax, az] = this.pos(o); q.order = { type: 'attack', pos: V(ax, az) } }
@@ -332,7 +349,7 @@ export class Campaign extends Mode {
     if (this.m.vehicle) { const v = this.park(this.m.vehicle, p[0] + 8, p[1] + 8, cp.yaw || 0, { faction: 'vdf', search: 30 }); if (v && g.vehicles.enter(s, v)) g.vcontrol.entered(v) }
   }
   // ---- HUD and map ----
-  markers() { const o = this.obj; if (!o) return []; if (o.type === 'kill' && !o.hvt.dead && o.t > 20) return [{ x: o.hvt.pos.x, z: o.hvt.pos.z, color: '#e0483a' }]; const [x, z] = this.pos(o); return [{ x, z, color: C.gold2 }] }
+  markers() { const o = this.obj; if (!o) return []; if (o.type === 'kill' && o.t <= 20) return [{ x: o.target.x, z: o.target.z, color: C.gold2 }]; const [x, z] = this.pos(o); return [{ x, z, color: C.gold2 }] }
   objectives() {
     const o = this.obj; if (!o) return []
     const [x, z] = this.pos(o)

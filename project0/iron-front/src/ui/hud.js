@@ -49,6 +49,7 @@ export class HUD {
       this.status.place(14, 104 * s, 270 * s, 98 * s)
       this.weapon.place(W / 2 - 145 * s, 48 * s, 290 * s, 98 * s)
       this.feed.place(W - 300 * s - 14, ms + 22, 300 * s, 130 * s)
+      this.vehP.place(W / 2 - Math.min(230 * s, W / 2 - 8), 48 * s, Math.min(460 * s, W - 16), 92 * s)
     } else {
       this.status.place(14, H - 112 * s, 270 * s, 98 * s)
       this.weapon.place(W - 290 * s - 14, H - 112 * s, 290 * s, 98 * s)
@@ -57,7 +58,7 @@ export class HUD {
     this.cross.place(W / 2 - 60, H / 2 - 60, 120, 120)
     this.center.place(W / 2 - 260 * s, H / 2 + 60 * s, 520 * s, 120 * s)
     this.modeP.place(14, 14, 360 * s, 190 * s)
-    this.vehP.place(W / 2 - 230 * s, H - 104 * s, 460 * s, 92 * s)
+    if (!touch) this.vehP.place(W / 2 - 230 * s, H - 104 * s, 460 * s, 92 * s)
     this.scope.place(0, 0, W, H)
     this.vign.place(0, 0, W, H)
     this.touch.place(0, 0, W, H)
@@ -108,6 +109,7 @@ export class HUD {
     this.dmgDirs = this.dmgDirs.filter(d => g.time - d.t < 1.5)
     if (scoped && g.player.binoculars) this.scope.dirty = true
     else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
+    if (g.input.touch && !!s.vehicle !== this.lastTouchVeh) { this.lastTouchVeh = !!s.vehicle; this.touch.dirty = true }
     this.touch.show(g.input.touch)
   }
   crossSpread() {
@@ -359,6 +361,22 @@ export class HUD {
       p.buttons.push({ id, x: x - rr, y: y - rr, w: rr * 2, h: rr * 2, fn })
     }
     const R = W - r * 1.6, B = H - r * 1.6
+    const P = g.player
+    if (P.s.vehicle) {
+      // in a vehicle: hold to fire, second weapon, up and down (helicopters, landing); get out, change seat, view
+      const v = P.s.vehicle, air = v.kind === 'heli' || v.kind === 'plane'
+      btn('vfire', R, B - r * 0.4, 'FIRE', () => { P.touchFire = true }, r * 1.25)
+      btn('valt', R - r * 2.6, B + r * 0.2, 'ALT', () => { P.touchAlt = true })
+      if (air) { btn('vup', R - r * 0.2, B - r * 3, 'UP', () => { P.touchUp = true }); btn('vdown', R - r * 2.5, B - r * 2.2, 'DOWN', () => { P.touchDown = true }) }
+      btn('vexit', R - r * 4.4, B + r * 0.2, 'EXIT', () => g.input.pressed.add('interact'), r * 0.8)
+      btn('vseat', R - r * 4.2, B - r * 2.2, 'SEAT', () => g.input.pressed.add('vSeat'), r * 0.8)
+      btn('view', W - r, r * 3.6, 'VIEW', () => g.input.pressed.add('view'), r * 0.7)
+      btn('map', W - r, r * 5.2, 'MAP', () => g.input.pressed.add('map'), r * 0.7)
+      if (air) btn('flares', W - r, r * 6.8, 'FLARE', () => g.input.pressed.add('vFlares'), r * 0.7)
+      btn('menu', r * 0.9, r * 4.5, 'MENU', () => g.input.pressed.add('pause'), r * 0.7)
+      text(c, air ? 'Stick: forward and turn · drag: aim' : 'Stick: drive · drag: look and aim', W * 0.72, H * 0.12, { size: 12, align: 'center', color: 'rgba(255,255,255,0.6)' })
+      return
+    }
     btn('fire', R, B - r * 0.4, 'FIRE', () => { g.player.touchFire = true }, r * 1.25)   // held until the finger lifts
     btn('aim', R - r * 2.6, B + r * 0.2, 'AIM', () => { g.player.touchAds = !g.player.touchAds })
     btn('reload', R - r * 0.2, B - r * 3, 'RLD', () => g.input.pressed.add('reload'))

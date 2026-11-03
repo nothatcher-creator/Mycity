@@ -25,15 +25,21 @@ export class VehicleControl {
     if (input.hit('vHorn')) g.sfx?.horn(v)
     if (input.hit('vFlares') && v.popFlares()) g.hud.note('Flares!')
     const driving = seat.role === 'driver' || seat.role === 'pilot'
+    // the touch buttons stand in for the mouse buttons and the up and down keys
+    const P = g.player
+    const fire = input.mouse.left || P.touchFire, alt = input.mouse.right || P.touchAlt
+    const up = input.down('vUp') || P.touchUp, down = input.down('vDown') || P.touchDown
+    const touchTurn = input.touch && g.settings.stickTurns !== false
     // ---- driving / flying ----
     if (driving) {
       if (v.kind === 'heli') {
         const assist = g.settings.flightAssist
         v.ctl = {
           pitch: (input.down('forward') ? 1 : 0) - (input.down('back') ? 1 : 0),
-          roll: (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0),
-          climb: (input.down('vUp') ? 1 : 0) - (input.down('vDown') ? 1 : 0),
-          yaw: assist ? THREE.MathUtils.clamp(look.yaw * 18, -1, 1) : (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0),
+          // on touch the stick's left and right turn the helicopter (one thumb flies it); with keys they roll
+          roll: touchTurn ? 0 : (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0),
+          climb: (up ? 1 : 0) - (down ? 1 : 0),
+          yaw: touchTurn ? (input.down('left') ? 1 : 0) - (input.down('right') ? 1 : 0) : assist ? THREE.MathUtils.clamp(look.yaw * 18, -1, 1) : (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0),
         }
         if (!assist) { this.orbit.yaw += look.yaw; this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.6, 1.2) }
         else this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.6, 1.2)
@@ -53,12 +59,12 @@ export class VehicleControl {
           const bankWant = kb ? -kb * 1.2 : THREE.MathUtils.clamp(e * 2.5, -1.05, 1.05)
           const pitchWant = THREE.MathUtils.clamp(this.aim.pitch, -1.1, 1.1)
           v.ctl = {
-            thrust, brake: input.down('vDown'),
+            thrust, brake: down,
             pitch: THREE.MathUtils.clamp((pitchWant - v.pitch) * 3, -1, 1),
             roll: THREE.MathUtils.clamp((bankWant - v.roll) * 2.5, -1, 1),
             yaw: THREE.MathUtils.clamp(e * 2, -1, 1),
           }
-          if (v.onGround) v.ctl.pitch = input.down('vUp') || this.aim.pitch > 0.1 ? 1 : 0
+          if (v.onGround) v.ctl.pitch = up || this.aim.pitch > 0.1 ? 1 : 0
         } else {
           v.ctl = { thrust, brake: input.down('vDown'), pitch: THREE.MathUtils.clamp(look.pitch * 25, -1, 1) + (input.down('vUp') ? 1 : 0), roll: THREE.MathUtils.clamp(look.yaw * 25, -1, 1) - ((input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0)), yaw: (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0) }
         }
@@ -79,8 +85,8 @@ export class VehicleControl {
       // the pilot's own guns
       if (seat.w && (seat.pilotWeapon || v.kind === 'plane' || v.kind === 'heli')) {
         const dir = v.kind === 'plane' || v.kind === 'heli' ? v.forward(new THREE.Vector3()).add(new THREE.Vector3(0, v.kind === 'heli' ? -0.06 : 0, 0)).normalize() : v.forward(new THREE.Vector3())
-        if (input.mouse.left) g.vehicles.fireSeat(v, seat, dir, false)
-        if (input.mouse.right && seat.w2) this.lockAndFire(v, seat, dir, dt, input)
+        if (fire) g.vehicles.fireSeat(v, seat, dir, false)
+        if (alt && seat.w2) this.lockAndFire(v, seat, dir, dt, input)
       }
     } else if (seat.w) {
       // ---- the gunner aims the turret ----
@@ -89,8 +95,8 @@ export class VehicleControl {
       seat.aimPitch = THREE.MathUtils.clamp(seat.aimPitch + look.pitch, -0.35, seat.side ? 0.6 : 0.95)
       if (wheel) this.zoom = THREE.MathUtils.clamp(this.zoom * (wheel < 0 ? 1.5 : 1 / 1.5), 1, seat.optic || 1.5)
       const dir = this.gunDir(v, seat)
-      if (input.mouse.left) g.vehicles.fireSeat(v, seat, dir, false)
-      if (input.mouse.right && seat.w2) { if (seat.w2.def.lock) this.lockAndFire(v, seat, dir, dt, input); else g.vehicles.fireSeat(v, seat, dir, true) }
+      if (fire) g.vehicles.fireSeat(v, seat, dir, false)
+      if (alt && seat.w2) { if (seat.w2.def.lock) this.lockAndFire(v, seat, dir, dt, input); else g.vehicles.fireSeat(v, seat, dir, true) }
       if (input.hit('reload') && seat.w.mag < seat.w.def.mag) seat.w.reloadT = seat.w.def.reload || 4
     } else {
       // a passenger looks about

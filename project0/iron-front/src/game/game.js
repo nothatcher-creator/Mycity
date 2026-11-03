@@ -240,7 +240,7 @@ export class Game {
       if (this.map.visible) this.map.pointerMove(e.x, e.y)
       if (this.invui.visible) this.invui.pointerMove(e.x, e.y)
     })
-    p0.on('pointerup', e => { if (e.touch) { this.touchLook = null; if (this.player) this.player.touchFire = false } if (this.map.visible) this.map.pointerUp(e.x, e.y); if (this.invui.visible) this.invui.pointerUp(e.x, e.y) })
+    p0.on('pointerup', e => { if (e.touch) { this.touchLook = null; if (this.player) { const P = this.player; P.touchFire = P.touchAlt = P.touchUp = P.touchDown = false } } if (this.map.visible) this.map.pointerUp(e.x, e.y); if (this.invui.visible) this.invui.pointerUp(e.x, e.y) })
     p0.on('wheel', e => {
       const dy = e.dy ?? e.deltaY ?? 0
       if (this.map.visible) { this.input.mouse.wheel = 0; this.map.wheel(dy, this.ui.pointer.x, this.ui.pointer.y) }

@@ -362,3 +362,32 @@ export function initHeightfield(opts = {}) {
   ready = true
 }
 export function heightfieldReady() { return ready }
+
+// The same, in slices, giving the page (and the loading screen) a breath between them.
+export async function initHeightfieldAsync(progress = () => {}) {
+  if (ready) return
+  const pause = () => new Promise(r => setTimeout(r, 0))
+  buildRivers()
+  progress(0.05, 'rivers')
+  await pause()
+  for (let iz = 0; iz < N1; iz++) {
+    const z = iz * CELL - HALF
+    for (let ix = 0; ix < N1; ix++) {
+      const x = ix * CELL - HALF
+      base[iz * N1 + ix] = macro(x, z)
+      let fl = 0
+      for (const p of PLATEAUS) fl = Math.max(fl, plateauMask(p, x, z))
+      for (const l of LAKES) fl = Math.max(fl, 1 - smooth(l.r * 0.9, l.r * 1.4, Math.hypot(x - l.x, z - l.z)))
+      const r = riverAt(x, z)
+      if (r) fl = Math.max(fl, 1 - smooth(r.w / 2 + 10, r.w / 2 + 60, r.d))
+      flatMask[iz * N1 + ix] = Math.round(fl * 255)
+    }
+    if (iz % 40 === 0) { progress(0.05 + 0.75 * iz / N1, 'raising the island'); await pause() }
+  }
+  erode(14, 0.8 * CELL)
+  progress(0.85, 'roads')
+  await pause()
+  for (const r of ROADS) addRoad(r.id, r.kind, r.pts)
+  ready = true
+  progress(1, 'land ready')
+}

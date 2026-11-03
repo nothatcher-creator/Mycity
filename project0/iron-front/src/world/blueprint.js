@@ -96,7 +96,7 @@ export const ROAD_ROUTES = [
   { id: 'r13', kind: 'dirt', via: [[-400, 2700], [-1800, 3550]] },
   { id: 'r14', kind: 'dirt', via: [[3500, -500], [2900, -1700]] },
 ]
-export const ROAD_WIDTH = { highway: 10, road: 7, dirt: 5, street: 8 }
+export const ROAD_WIDTH = { highway: 10, road: 7, dirt: 5, street: 10, runway: 45, taxiway: 22, apron: 32 }
 
 // Colours of the land (linear-ish sRGB values 0..1), shared by the terrain mesh and the map.
 export const LAND_COLORS = {

@@ -1,0 +1,8 @@
+{
+  "entry": "main.js",
+  "name": "OPERATION: IRON FRONT",
+  "description": "Open-world military warfare on the island of Varden: infantry, vehicles, aircraft, a campaign and battle modes against AI.",
+  "maxPlayers": 16,
+  "ui": "minimized",
+  "loading": { "background": "#141a12", "accent": "#d9a521", "text": "#e8e4d4" }
+}

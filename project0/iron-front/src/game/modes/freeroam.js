@@ -152,8 +152,10 @@ export class FreeRoam extends Mode {
       this.airT = 420 + Math.random() * 300
       const enemy = Object.keys(FACTIONS).find(f => this.enemyOf(f)) || 'nlf', a = Math.random() * Math.PI * 2
       const hx = px + Math.cos(a) * 1600, hz = pz + Math.sin(a) * 1600
-      const q = this.crewed('attackheli', enemy, hx, hz, a + Math.PI, { type: 'patrol', route: this.patrolRoute(px, pz, 350, 4) }, { air: 90 })
-      if (q) { q.home = new THREE.Vector3(hx, 0, hz); q.t = 0; this.air = q; g.hud.radio('Command', 'Enemy gunship in your area. Take cover, or bring it down with a launcher.') }
+      // a gunship, or now and then a ground-attack jet making strafing runs
+      const jet = Math.random() < 0.4
+      const q = this.crewed(jet ? 'groundattack' : 'attackheli', enemy, hx, hz, a + Math.PI, { type: 'patrol', route: this.patrolRoute(px, pz, jet ? 700 : 350, 4) }, { air: jet ? 300 : 90 })
+      if (q) { q.home = new THREE.Vector3(hx, 0, hz); q.t = 0; this.air = q; g.hud.radio('Command', jet ? 'Enemy jet inbound! Get under cover, or lock it with a Skyguard.' : 'Enemy gunship in your area. Take cover, or bring it down with a launcher.') }
     }
     // keep the progress
     this.saveT -= 1

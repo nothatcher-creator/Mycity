@@ -20,7 +20,7 @@ Independent Resistance (RES).
 | Mode | What it is |
 |---|---|
 | **Campaign** | VARDEN, 12 missions in two chapters: patrols, defence, night raids, a tank assault, a jet strike, a convoy ambush, a boat assault, a helicopter insertion, Camp Sentinel, Port Anselm, the Mount Hallen finale. Briefings, checkpoints, saved progress and unlocks. |
-| **Free Roam** | The whole island at war. Garrisons appear as you approach a place; clear an enemy-held place to liberate it (saved). Patrols, AI-crewed vehicles, an enemy gunship sweep every few minutes, parked vehicles at bases, airfields and harbours. Sandbox tools in the pause menu: spawn vehicles (aircraft start airborne), squads and weapons, set time and weather, teleport by the map, invulnerability. |
+| **Free Roam** | The whole island at war. Garrisons appear as you approach a place; clear an enemy-held place to liberate it (saved). Patrols, AI-crewed vehicles, an enemy gunship or jet sweep every few minutes, parked vehicles at bases, airfields and harbours. Sandbox tools in the pause menu: spawn vehicles (aircraft start airborne), squads and weapons, set time and weather, teleport by the map, invulnerability. |
 | **Online Battle** | Team Deathmatch or Domination with the real players inside the lot (up to 16), no AI. Each client simulates everyone's shots and damages only its own player; scores, teams and the match live in the session's shared state; the host turns the flags. |
 | **Battle** | Team Deathmatch, Domination, Conquest, King of the Hill, Capture the Flag, Sector Control and Survival, at 12 places, with settings for side, side size, score and time limits, time of day, weather and difficulty. |
 
@@ -57,8 +57,8 @@ quads over the 3D view.
 - **Soldiers** (`src/actors/`): one `Soldier` for the player and the AI (stances, lean, stamina, weight,
   vaulting, ladders, swimming, body-part damage, bleeding, armour). AI with senses, cover, flanking,
   grenades, suppression, squad orders and formations (`ai.js`), grid A* pathfinding round buildings
-  (`nav.js`), and AI vehicle crews: gunners, drivers, and attack-helicopter pilots that hold altitude,
-  circle their target and fire rockets.
+  (`nav.js`), and AI vehicle crews: gunners, drivers, attack-helicopter pilots that hold altitude,
+  circle their target and fire rockets, and jet pilots that dive on targets with the cannon, pull out and come round again.
 - **Destruction**: tank shells, rockets, missiles and bombs knock wall sections out of buildings (`citystream.js`), and glass breaks.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
   thickness, ricochets and near-miss suppression (`ballistics.js`); 48 hand-held weapons and 11 mounted
@@ -113,6 +113,6 @@ Not done or not verified:
 
 - Online Battle has only been tested against the dev kit's simulated player (one client); two real players in the same session have not been tested. Players in a match see each other as soldiers (no vehicles online).
 - The campaign has not been played through by hand, so difficulty and balance are not tuned.
-- AI flies attack helicopters only (no planes, no landing). AI drivers route round buildings on a coarse grid, not along roads.
+- AI flies attack helicopters and jets, but does not take off or land. AI drivers route round buildings on a coarse grid, not along roads.
 - Mouse aiming could not be checked by hand in the headless browser.
 - Performance on real phones and laptops has not been measured.

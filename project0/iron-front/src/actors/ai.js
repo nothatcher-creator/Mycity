@@ -116,6 +116,7 @@ export class AI {
         if (s.gunner) this.gunner(s, b, dt)
         else if (role === 'driver') this.driver(s, b, dt)
         else if (role === 'pilot' && s.vehicle.kind === 'heli') this.pilot(s, b, dt)
+        else if (role === 'pilot' && s.vehicle.kind === 'plane') this.jetPilot(s, b, dt)
         else this.inVehicle(s, b, dt)
         continue
       }
@@ -507,6 +508,49 @@ export class AI {
       }
     }
     v.ctl = { pitch, roll: 0, climb, yaw }
+  }
+  // A jet pilot: cruises 250 m up to the area, then attack runs: a shallow dive on the target with the cannon
+  // when the nose is on it, a pull-out before it gets low, a run out of a kilometre or so and back round.
+  jetPilot(s, b, dt) {
+    const G = this.game, v = s.vehicle, o = this.squadOrder(b), d = v.def
+    if (!v.alive) return
+    v.engine = v.fuel > 0
+    const seen = b.state === 'combat' && b.target && !b.target.dead && G.time - b.lastSeen < 8 ? b.target : null
+    const area = seen ? seen.pos : o.type === 'patrol' && o.route ? o.route[b.wpIdx % o.route.length] : o.pos
+    b.run = b.run || 'cruise'
+    let headWant = v.yaw, pitchWant = 0
+    const groundY = heightAt(v.pos.x, v.pos.z)
+    if (area) {
+      const dx = area.x - v.pos.x, dz = area.z - v.pos.z, dist = Math.hypot(dx, dz)
+      if (b.run === 'cruise') {
+        headWant = Math.atan2(dx, dz)
+        pitchWant = Math.max(-0.25, Math.min(0.25, (groundY + 250 - v.pos.y) / 300))
+        if (seen && dist < 1300) b.run = 'attack'
+        if (!seen && o.type === 'patrol' && dist < 150) b.wpIdx++
+      } else if (b.run === 'attack') {
+        headWant = Math.atan2(dx, dz)
+        // a shallow dive, levelling off about 60 m up so the run reaches gun range
+        pitchWant = Math.max(-0.35, Math.min(0.1, Math.max(Math.atan2((area.y + 1) - v.pos.y, dist), (groundY + 60 - v.pos.y) / 120)))
+        // guns when lined up
+        const ps = v.seats.find(q => q.role === 'pilot')
+        let e = headWant - v.yaw; while (e > Math.PI) e -= Math.PI * 2; while (e < -Math.PI) e += Math.PI * 2
+        if (ps?.w && dist < 1000 && Math.abs(e) < 0.08) G.vehicles.fireSeat(v, ps, v.forward(_v2), false)
+        if (dist < 250 || v.pos.y - groundY < 30) { if (G.debug) G.p0.log('dbg jet pullout', Math.round(dist), Math.round(v.pos.y - groundY), seen?.name, Math.round(area.x), Math.round(area.z)); b.run = 'pullout'; b.runT = 0; b.away = v.yaw }
+      } else if (b.run === 'pullout') {
+        b.runT += dt
+        headWant = b.away; pitchWant = 0.45
+        if (v.pos.y - groundY > 180 && b.runT > 4) { b.run = 'extend'; b.runT = 0 }
+      } else if (b.run === 'extend') {
+        b.runT += dt
+        headWant = b.away; pitchWant = Math.max(-0.2, Math.min(0.2, (groundY + 250 - v.pos.y) / 300))
+        if (b.runT > 9) b.run = 'cruise'
+      }
+    }
+    let e = headWant - v.yaw
+    while (e > Math.PI) e -= Math.PI * 2
+    while (e < -Math.PI) e += Math.PI * 2
+    const bankWant = Math.max(-1, Math.min(1, e * 2.5))
+    v.ctl = { thrust: v.speed < d.maxSpeed * 0.75 ? 1 : -0.3, brake: false, pitch: Math.max(-1, Math.min(1, (pitchWant - v.pitch) * 3)), roll: Math.max(-1, Math.min(1, (bankWant - v.roll) * 2.5)), yaw: Math.max(-1, Math.min(1, e * 2)) }
   }
   // A driver heads for the squad's next point (patrol route, move or attack position), slows for turns,
   // stops to let the gunner shoot (light vehicles), and backs out when stuck.

@@ -97,7 +97,11 @@ export class Mode {
     // aircraft can start in the air (o.air: metres above the ground), engine running
     const v = o.air ? g.vehicles.spawn(type, x, z, yaw, { faction, y: heightAt(x, z) + o.air }) : this.park(type, x, z, yaw, { faction, search: o.search ?? 40 })
     if (!v) return null
-    if (o.air) { v.rpm = 1; v.engine = true; v.onGround = false; v.gearDown = false }
+    if (o.air) {
+      v.rpm = 1; v.engine = true; v.onGround = false; v.gearDown = false
+      // a plane starts at speed
+      if (v.kind === 'plane') { const sp = Math.max(v.def.minSpeed * 1.6, 60); v.speed = sp; v.throttle = 0.8; v.vel.set(Math.sin(yaw) * sp, 0, Math.cos(yaw) * sp) }
+    }
     const q = g.ai.squad(faction, { order, name: v.def.name })
     for (const role of ['driver', 'pilot', 'gunner']) {
       if (!v.seats.some(st => st.role === role)) continue

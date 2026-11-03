@@ -158,10 +158,14 @@ export class Menus {
     if (cs.at) { const m = MISSIONS.find(q => q.id === cs.at.mission); if (m) items.push({ id: 'resume', label: `CONTINUE: ${m.name.toUpperCase()}`, sub: `From objective ${cs.at.checkpoint + 1} of ${m.objectives.length}`, fn: () => g.start('campaign', { mission: m.id, checkpoint: cs.at.checkpoint }) }) }
     MISSIONS.forEach((m, i) => {
       const open = i < (cs.unlocked || 1), done = cs.done.includes(m.id)
-      items.push({ id: 'm' + m.id, label: `${i + 1}. ${m.name.toUpperCase()}${done ? '  ✓' : ''}`, sub: open ? `${m.place}` : 'Finish the mission before it to unlock', disabled: !open, selected: this.mission === m.id, fn: () => { this.mission = m.id; this.panel.dirty = true } })
+      items.push({ id: 'm' + m.id, label: `${i + 1}. ${m.name.toUpperCase()}${done ? '  ✓' : ''}`, sub: open ? `${m.chapter.split(':')[0]} · ${m.place}` : 'Finish the mission before it to unlock', disabled: !open, selected: this.mission === m.id, fn: () => { this.mission = m.id; this.panel.dirty = true } })
     })
     items.push(null, { id: 'back', label: 'BACK', fn: () => this.back() })
-    this.column(c, p, x, y, w, items, s)
+    const end = this.column(c, p, x, y, w, items, s)
+    if (end + this.scroll > H) {
+      p.button(c, 'up', W - 60 * s, 20 * s, 44 * s, 44 * s, '▲', () => { this.scroll = Math.max(0, this.scroll - H * 0.6); this.panel.dirty = true }, { align: 'center' })
+      p.button(c, 'dn', W - 60 * s, 70 * s, 44 * s, 44 * s, '▼', () => { this.scroll = Math.min(end + this.scroll - H + 40 * s, this.scroll + H * 0.6); this.panel.dirty = true }, { align: 'center' })
+    }
     // the briefing of the chosen mission
     const m = MISSIONS.find(q => q.id === this.mission)
     if (m) {

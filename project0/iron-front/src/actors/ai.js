@@ -10,6 +10,7 @@ import { STAND, CROUCH, PRONE } from './soldier.js'
 import { raycastTerrain } from '../world/collision.js'
 import { heightAt, waterLevel } from '../world/heightfield.js'
 import { Nav } from './nav.js'
+import { AMMO } from '../combat/weapons-data.js'
 
 export const FORMATIONS = {
   wedge: (i) => [((i % 2) ? 1 : -1) * Math.ceil(i / 2) * 4, -Math.ceil(i / 2) * 4],
@@ -63,6 +64,7 @@ export class Brain {
 }
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _h = { t: 0 }
+const AMMO_V = Object.fromEntries(Object.entries(AMMO).map(([k, a]) => [k, a.v || 800]))
 
 export class AI {
   constructor(game) {
@@ -105,8 +107,16 @@ export class AI {
     const G = this.game
     for (const [s, b] of this.brains) {
       if (s.dead) { if (!b.counted) { b.counted = true; b.squad.losses++ } continue }
-      if (s.vehicle && !s.gunner) { this.inVehicle(s, b, dt); continue }
       const far = playerPos ? Math.hypot(s.pos.x - playerPos.x, s.pos.z - playerPos.z) : 0
+      if (s.vehicle) {
+        // crews: gunners look and shoot with the mounted weapon, drivers follow the squad's orders
+        const role = s.seat?.role
+        if (far < 1200 && (s.gunner || role === 'driver')) { b.senseT -= dt; if (b.senseT <= 0) { b.senseT = 0.3; this.sense(s, b, 0.3) } }
+        if (s.gunner) this.gunner(s, b, dt)
+        else if (role === 'driver') this.driver(s, b, dt)
+        else this.inVehicle(s, b, dt)
+        continue
+      }
       // far from the player they only walk their orders (cheap)
       if (far > 900) { this.farStep(s, b, dt); continue }
       b.senseT -= dt; b.thinkT -= dt
@@ -423,9 +433,73 @@ export class AI {
       else { s.speed = 0; if (o.type === 'patrol') b.wpIdx++ }
     }
   }
+  // ---------- crews ----------
+  // A gunner turns the turret to the target (at the turret's speed) and fires bursts when on it.
+  gunner(s, b, dt) {
+    const G = this.game, v = s.vehicle, seat = s.seat
+    if (!v.alive || !seat?.w) return
+    const t = b.target
+    const seen = t && !t.dead && b.state === 'combat' && G.time - b.lastSeen < 1.5
+    let wantYaw = seat.aimYaw, wantPitch = 0
+    if (seen) {
+      const piv = v.model.gunPivot && !seat.side ? _v.set(v.model.gunPivot[0], v.model.gunPivot[1], v.model.gunPivot[2]).applyQuaternion(v.quat).add(v.pos) : _v.set(seat.at[0], seat.at[1] + 0.5, seat.at[2]).applyQuaternion(v.quat).add(v.pos)
+      const a = AMMO_V[seat.w.def.ammo] || 800, dist = Math.hypot(t.pos.x - piv.x, t.pos.z - piv.z), tof = dist / a
+      const tx = t.pos.x + t.vel.x * tof, tz = t.pos.z + t.vel.z * tof, ty = t.pos.y + (t.vehicle ? 1.2 : 1.0) + 0.5 * 9.81 * tof * tof
+      const yaw = Math.atan2(tx - piv.x, tz - piv.z), pitch = Math.atan2(ty - piv.y, dist)
+      wantYaw = yaw - v.yaw - (seat.side ? seat.side * 1.2 : 0)
+      while (wantYaw - seat.aimYaw > Math.PI) wantYaw -= Math.PI * 2
+      while (wantYaw - seat.aimYaw < -Math.PI) wantYaw += Math.PI * 2
+      wantPitch = pitch - v.pitch * 0.5
+    }
+    // the turret's traverse speed (heavy turrets are slow)
+    const rate = (seat.w.def.ammo === '120mm' ? 0.5 : seat.w.def.ammo === '30mm' ? 0.9 : 1.6) * dt
+    seat.aimYaw += Math.max(-rate, Math.min(rate, wantYaw - seat.aimYaw))
+    if (seat.side) seat.aimYaw = Math.max(-1.6, Math.min(1.6, seat.aimYaw))
+    seat.aimPitch += Math.max(-rate, Math.min(rate, wantPitch - seat.aimPitch))
+    seat.aimPitch = Math.max(-0.35, Math.min(seat.side ? 0.6 : 0.95, seat.aimPitch))
+    if (!seen) return
+    if (b.reactT > 0) { b.reactT -= dt; return }
+    const off = Math.abs(wantYaw - seat.aimYaw) + Math.abs(wantPitch - seat.aimPitch)
+    if (off > 0.05) return
+    // bursts with pauses; an aim error that grows with range and shrinks with skill
+    b.burstPause = (b.burstPause || 0) - dt
+    if (b.burst <= 0) { if (b.burstPause > 0) return; b.burst = seat.w.def.rpm > 300 ? 6 + Math.floor(Math.random() * 10) : 1; b.burstPause = seat.w.def.rpm > 300 ? 1 + Math.random() : 3 + Math.random() * 3 }
+    const err = (0.006 + (1 - b.skill) * 0.012) * (1.4 - G.difficulty * 0.4)
+    const yaw = v.yaw + seat.aimYaw + (seat.side ? seat.side * 1.2 : 0) + (Math.random() - 0.5) * err * 2, pitch = seat.aimPitch + v.pitch * 0.5 + (Math.random() - 0.5) * err * 2
+    if (G.vehicles.fireSeat(v, seat, _v2.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)), false)) b.burst--
+  }
+  // A driver heads for the squad's next point (patrol route, move or attack position), slows for turns,
+  // stops to let the gunner shoot (light vehicles), and backs out when stuck.
+  driver(s, b, dt) {
+    const G = this.game, v = s.vehicle, o = this.squadOrder(b)
+    if (!v.alive) return
+    let tgt = null
+    if (o.type === 'patrol' && o.route) { tgt = o.route[b.wpIdx % o.route.length]; if (Math.hypot(tgt.x - v.pos.x, tgt.z - v.pos.z) < 12) { b.wpIdx++; tgt = o.route[b.wpIdx % o.route.length] } }
+    else if ((o.type === 'move' || o.type === 'attack') && o.pos) tgt = o.pos
+    else if (o.type === 'defend' && o.pos && Math.hypot(o.pos.x - v.pos.x, o.pos.z - v.pos.z) > (o.radius || 20) + 10) tgt = o.pos
+    const gunnerBusy = v.seats.some(q => q.role === 'gunner' && q.occupant && q.occupant.brain?.state === 'combat' && G.time - q.occupant.brain.lastSeen < 2)
+    const light = v.kind !== 'tracked' && v.armor < 2
+    v.engine = v.fuel > 0
+    if (!tgt || (gunnerBusy && light)) { v.throttle = 0; v.brake = 1; v.steer *= 0.9; return }
+    v.brake = 0
+    const d = Math.hypot(tgt.x - v.pos.x, tgt.z - v.pos.z)
+    let diff = Math.atan2(tgt.x - v.pos.x, tgt.z - v.pos.z) - v.yaw
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    // stuck against something: back up with the wheel turned the other way for a moment
+    b.vStuck = (b.vStuck || 0) + (Math.abs(v.speed) < 0.6 && v.throttle > 0 ? dt : -dt)
+    b.vStuck = Math.max(0, b.vStuck)
+    if (b.reverseT > 0) { b.reverseT -= dt; v.throttle = -0.7; v.steer = -Math.sign(diff || 1) * 0.8; return }
+    if (b.vStuck > 2.5) { b.vStuck = 0; b.reverseT = 2 }
+    v.steer = Math.max(-1, Math.min(1, diff * 2))
+    v.throttle = d < 15 ? 0 : Math.abs(diff) > 1.3 ? 0.35 : d < 40 ? 0.5 : 1
+    if (d < 15) v.brake = 1
+  }
   inVehicle(s, b, dt) {
-    // passengers just ride; drivers are handled by the vehicle's own driving AI
+    // passengers ride; one following a leader who has got out gets out too
     s.speed = 0
+    const o = this.squadOrder(b)
+    if (o.type === 'follow' && o.target && o.target.vehicle !== s.vehicle && (!s.vehicle.alt || s.vehicle.alt < 3) && Math.abs(s.vehicle.speed) < 3) this.game.vehicles.exit(s)
   }
 }
 function turn(a, b, max) {

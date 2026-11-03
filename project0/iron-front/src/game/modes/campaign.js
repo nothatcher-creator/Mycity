@@ -11,13 +11,15 @@ import { POINTS } from '../../world/places.js'
 import { heightAt } from '../../world/heightfield.js'
 import { FACTIONS } from '../../actors/factions.js'
 import { C, text, wrap } from '../../ui/ui.js'
+import { ROADS } from '../../world/roads-data.js'
 
 const V = (x, z) => new THREE.Vector3(x, heightAt(x, z), z)
 const comms = () => POINTS.find(p => p.kind === 'objective' && p.name === 'Kaldor comms station') || { x: 640, z: 760 }
 
 // ---------- the story ----------
 export const CHAPTER = 'Chapter One: The Northern Storm'
-export const MISSIONS = [
+export const CHAPTER2 = 'Chapter Two: The Battle for the North'
+const ONE = [
   {
     id: 'm1', name: 'First Light', place: 'Tovar', hour: 6.2, weather: 'fog',
     brief: 'Spring 2031. The Northern Liberation Front has crossed the Dresk line overnight. Your section of the 2nd Varden Rifles is in Tovar, the crossroads town that guards the road south to Port Anselm. Scouts have been seen in the fields to the north. Find them before they find the garrison.',
@@ -82,9 +84,80 @@ export const MISSIONS = [
       { type: 'destroy', text: 'Destroy the vehicles at Fort Grail (LMB cannon, RMB rockets)', vehicles: [{ type: 'truck', x: 2880, z: -1680 }, { type: 'ifv', x: 2930, z: -1720 }, { type: 'technical', x: 2860, z: -1730 }, { type: 'ammotruck', x: 2950, z: -1660 }], radio: 'Anvil 1, targets are in the fort. Cleared hot.' },
       { type: 'destroy', text: 'Destroy the trucks at the Hallen summit station', vehicles: [{ type: 'truck', x: 2450, z: -2740 }, { type: 'fueltruck', x: 2420, z: -2770 }], radio: 'Good hits! Now the summit, the trucks by the station.' },
     ],
-    outro: 'Fort Grail\'s guns fell silent at sunset. Chapter Two, the battle for the north, is still being written.',
+    outro: 'Fort Grail\'s guns fell silent at sunset. The road north lies open.',
   },
 ]
+// A convoy route along a road of the island: its control points from `from` to `to`.
+const road = (id, from, to) => { const r = ROADS.find(q => q.id === id); return r.pts.slice(from, to).map(([x, z]) => V(x, z)) }
+const TWO = [
+  {
+    id: 'm7', name: 'Supply Line', place: 'the Sentinel road', hour: 8, weather: 'overcast',
+    brief: 'Camp Sentinel, the NLF\'s last stronghold in the north, lives on the trucks that come up the Sentinel road. One convoy is on the road this morning: two trucks, a fuel tanker and an escort. Set an ambush on the high ground and stop it. An AT specialist is with your section.',
+    start: { x: -700, z: -1700, yaw: 0.6 }, squad: 4, role: 'at',
+    objectives: [
+      { type: 'reach', text: 'Take the ambush position above the road', at: () => { const p = road('r6', 9, 10)[0]; return [p.x - 70, p.z + 30] }, r: 25, radio: 'Convoy left Kaldor junction ten minutes ago. Get into position.' },
+      { type: 'destroy', text: 'Destroy the convoy (AT launcher: 2, or the rifles on the trucks)', convoy: { road: ['r6', 2, 20], types: ['technical', 'truck', 'fueltruck', 'truck'] }, radio: 'Vehicles on the road! Let the escort pass the bend, then hit them.' },
+      { type: 'clear', text: 'Finish the survivors', spawn: [{ faction: 'nlf', at: () => { const p = road('r6', 9, 10)[0]; return [p.x + 30, p.z - 20] }, n: 4, order: 'attack', near: true }], radio: 'Dismounts in the ditch, clean them up.' },
+    ],
+    outro: 'Without its fuel, Sentinel cannot move its armour. The NLF turned east, to the sea.',
+  },
+  {
+    id: 'm8', name: 'Harbour Run', place: 'Halvik', hour: 5.5, weather: 'rain',
+    brief: 'The NLF has taken Halvik, the fishing town on the east coast, to bring in weapons by sea. Before dawn your section goes in by boat. Cross the bay in the rain, land on the quay and clear the harbour. A patrol boat guards the entrance.',
+    start: { x: 4450, z: 1250, yaw: -0.9 }, squad: 3, role: 'rifleman', boat: 'rhib',
+    objectives: [
+      { type: 'reach', text: 'Cross the bay to the Halvik quay (W/S throttle, A/D steer)', x: 3830, z: 1560, r: 45, spawn: [{ faction: 'nlf', vehicle: 'patrolboat', x: 4150, z: 1480, order: 'patrol', r: 120 }], radio: 'Patrol boat in the bay. Stay low and fast.' },
+      { type: 'clear', text: 'Clear the harbour', spawn: [{ faction: 'nlf', x: 3730, z: 1600, n: 5, order: 'defend', r: 35 }, { faction: 'nlf', x: 3650, z: 1520, n: 4, order: 'patrol', r: 60 }], radio: 'On the quay! Clear the warehouses.' },
+      { type: 'hold', text: 'Hold the harbour until the relief arrives', x: 3720, z: 1590, r: 45, time: 60, attack: { faction: 'nlf', n: 4, waves: 2 }, radio: 'Relief is twenty minutes out. Hold the harbour.' },
+    ],
+    outro: 'The weapons ship turned back. The NLF had one more card to play: Rask Quarry and its stockpile.',
+  },
+  {
+    id: 'm9', name: 'Air Assault', place: 'Rask Quarry', hour: 18.5, weather: 'clear',
+    brief: 'NLF engineers are turning Rask Quarry into an explosives store for Sentinel. You fly your section there in a Kestrel transport helicopter. Land them close, then lead them in to clear the quarry before the stockpile can be moved.',
+    start: { x: 420, z: 760, yaw: Math.PI * 0.95 }, squad: 3, role: 'rifleman', heli: 'transportheli',
+    objectives: [
+      { type: 'reach', text: 'Fly to the quarry and land in the landing zone (Space/C up/down, W/S/A/D tilt)', x: -60, z: -2050, r: 60, landed: true, radio: 'Kestrel 2, the LZ is the field south of the quarry. Squad boards with you.' },
+      { type: 'clear', text: 'Clear the quarry', spawn: [{ faction: 'nlf', x: -200, z: -2300, n: 6, order: 'defend', r: 50 }, { faction: 'nlf', vehicle: 'technical', x: -150, z: -2380, order: 'patrol', r: 90 }], radio: 'Boots on the ground! Push into the quarry.' },
+    ],
+    outro: 'The stockpile went up with a roar that rattled windows in Kaldor. Only Camp Sentinel remains.',
+  },
+  {
+    id: 'm10', name: 'Sentinel Gate', place: 'Camp Sentinel', hour: 11, weather: 'overcast',
+    brief: 'The assault on Camp Sentinel begins. Two APCs go in with your platoon. Break through the gate, knock out the anti-aircraft vehicles so the air force can come in, and clear the barracks.',
+    start: { x: 520, z: -3620, yaw: Math.PI }, squad: 4, role: 'at', allies: [{ vehicle: 'apc', x: 490, z: -3640 }, { vehicle: 'apc', x: 560, z: -3650 }],
+    objectives: [
+      { type: 'clear', text: 'Break through the checkpoint south of the camp', spawn: [{ faction: 'nlf', x: 500, z: -3880, n: 5, order: 'defend', r: 30 }, { faction: 'nlf', vehicle: 'technical', x: 540, z: -3900, order: 'defend', r: 20 }], radio: 'All units, advance on the checkpoint.' },
+      { type: 'destroy', text: 'Destroy the anti-aircraft vehicles in the camp', vehicles: [{ type: 'ifv', x: 450, z: -4150 }, { type: 'ifv', x: 560, z: -4250 }], spawn: [{ faction: 'nlf', x: 500, z: -4180, n: 5, order: 'defend', r: 40 }], radio: 'The AA tracks are inside the wire. Take them out.' },
+      { type: 'clear', text: 'Clear the barracks', spawn: [{ faction: 'nlf', x: 480, z: -4230, n: 6, order: 'defend', r: 40 }], radio: 'AA down! Jets inbound. Clear the barracks.' },
+    ],
+    outro: 'Sentinel fell. But its commander, General Rhuar, escaped south-west with his guard, towards Port Anselm.',
+  },
+  {
+    id: 'm11', name: 'Anselm Docks', place: 'Port Anselm', hour: 20, weather: 'storm',
+    brief: 'Rhuar has thrown everything he has left at Port Anselm: landing craft from the bay and gunboats offshore. Hold the docks with the city garrison. When the gunboats come close, sink them.',
+    start: { x: -3420, z: 3380, yaw: 2.6 }, squad: 4, role: 'at',
+    objectives: [
+      { type: 'reach', text: 'Get to the docks', x: -3560, z: 3520, r: 40, radio: 'They are coming in from the bay. To the docks, Iron 2!' },
+      { type: 'survive', text: 'Hold the docks against the landings', x: -3560, z: 3520, r: 70, waves: 3, faction: 'nlf', from: { x: -3700, z: 3780 }, radio: 'Landing parties on the beach!' },
+      { type: 'destroy', text: 'Sink the gunboats (AT launcher: 2)', boats: [{ type: 'patrolboat', x: -3900, z: 3800 }, { type: 'patrolboat', x: -3750, z: 3950 }], radio: 'Gunboats closing on the quay! Sink them!' },
+    ],
+    outro: 'Port Anselm held through the storm. At first light, scouts found Rhuar\'s trail climbing Mount Hallen.',
+  },
+  {
+    id: 'm12', name: 'The Iron Front', place: 'Mount Hallen', hour: 6, weather: 'fog',
+    brief: 'General Rhuar has made his last stand at the radio station on the summit of Mount Hallen. Climb the mountain road with your section, take the summit, and end this war.',
+    start: { x: 2620, z: -2380, yaw: Math.PI * 1.1 }, squad: 4, role: 'rifleman',
+    objectives: [
+      { type: 'clear', text: 'Fight up the mountain road', spawn: [{ faction: 'nlf', x: 2540, z: -2560, n: 5, order: 'defend', r: 35 }], radio: 'Fog on the mountain. Watch the switchbacks.' },
+      { type: 'kill', text: 'Take the summit and kill General Rhuar', target: { faction: 'nlf', x: 2440, z: -2760, name: 'General Rhuar', guards: 7 }, radio: 'Rhuar is at the station. Go!' },
+      { type: 'hold', text: 'Hold the summit against the last counter-attack', x: 2440, z: -2760, r: 40, time: 60, attack: { faction: 'nlf', n: 5, waves: 2 }, radio: 'His guard is coming back up the hill!' },
+    ],
+    outro: 'Rhuar is dead and the NLF has laid down its arms. Varden is free. Thank you for playing OPERATION: IRON FRONT.',
+  },
+]
+ONE.forEach(m => { m.chapter = CHAPTER }); TWO.forEach(m => { m.chapter = CHAPTER2 })
+export const MISSIONS = [...ONE, ...TWO]
 
 export class Campaign extends Mode {
   get name() { return 'Campaign' }
@@ -112,6 +185,13 @@ export class Campaign extends Mode {
     if (m.squad) this.playerSquadAround(s, m.squad)
     if (m.vehicle) { const v = this.park(m.vehicle, p[0] + Math.sin(yaw) * 10, p[1] + Math.cos(yaw) * 10, yaw, { faction: 'vdf', search: 30 }); if (v && g.vehicles.enter(s, v)) g.vcontrol.entered(v) }
     if (m.aircraft) this.admin('vehicle', m.aircraft)
+    // a boat or a helicopter to start in (the squad boards with you)
+    for (const [key, kind] of [['boat', 'boat'], ['heli', 'heli']]) if (m[key]) {
+      const v = this.park(m[key], p[0] + Math.sin(yaw) * 8, p[1] + Math.cos(yaw) * 8, yaw, { faction: 'vdf', search: 40 })
+      if (v && g.vehicles.enter(s, v)) { g.vcontrol.entered(v); for (const mb of g.playerSquad?.members || []) if (mb !== s) g.vehicles.enter(mb, v, 'passenger') }
+    }
+    // friendly armour that advances with you
+    for (const a of m.allies || []) { const q = this.crewed(a.vehicle, 'vdf', a.x, a.z, yaw, { type: 'attack', pos: V(this.pos(m.objectives[0])[0], this.pos(m.objectives[0])[1]) }); if (q) { q.ally = true; this.allies = [...(this.allies || []), q] } }
     return s
   }
   // the sandbox's airborne spawn, used for the jet mission
@@ -137,7 +217,20 @@ export class Campaign extends Mode {
     g.sfx.ui('radio')
     o.squads = []
     for (const sp of o.spawn || []) o.squads.push(this.squadFrom(sp))
-    if (o.type === 'destroy') o.vehicles_ = o.vehicles.map(d => this.park(d.type, d.x, d.z, Math.random() * 6, { faction: 'nlf', search: 30 })).filter(Boolean)
+    if (o.type === 'destroy') {
+      o.vehicles_ = (o.vehicles || []).map(d => this.park(d.type, d.x, d.z, Math.random() * 6, { faction: 'nlf', search: 30 })).filter(Boolean)
+      // crewed gunboats that close on the player
+      for (const d of o.boats || []) { const q = this.crewed(d.type, 'nlf', d.x, d.z, 0, { type: 'attack', pos: V(this.pos(this.m.objectives[Math.max(0, i - 1)])[0], this.pos(this.m.objectives[Math.max(0, i - 1)])[1]) }); if (q) { o.vehicles_.push(q.vehicle); o.squads.push(q) } }
+      // a convoy: crewed vehicles one behind the other along a road, all driving its route
+      if (o.convoy) {
+        const route = road(...o.convoy.road)
+        o.convoy.types.forEach((t, k) => {
+          const p = route[0], n = route[1], dx = n.x - p.x, dz = n.z - p.z, l = Math.hypot(dx, dz) || 1
+          const q = this.crewed(t, 'nlf', p.x - dx / l * k * 22, p.z - dz / l * k * 22, Math.atan2(dx, dz), { type: 'patrol', route: route.slice(1) }, { search: 8 })
+          if (q) { o.vehicles_.push(q.vehicle); o.squads.push(q) }
+        })
+      }
+    }
     if (o.type === 'kill') {
       const T = o.target
       const q = this.spawnSquad(T.faction, T.x, T.z, T.guards, { type: 'defend', pos: V(T.x, T.z), radius: 30 }, { spread: 30 })
@@ -148,15 +241,17 @@ export class Campaign extends Mode {
       o.squads.push(this.squadFrom({ faction: T.faction, x: T.x + 120, z: T.z + 80, n: 3, order: 'patrol', r: 80 }))
     }
     if (o.type === 'survive') o.state.wave = 0
+    for (const q of this.allies || []) if (q.alive.length) { const [ax, az] = this.pos(o); q.order = { type: 'attack', pos: V(ax, az) } }
     if (o.type === 'hold') o.state.wave = 0
     this.saveProgress()
   }
   squadFrom(sp) {
-    const [x, z] = sp.at ? sp.at() : [sp.x, sp.z]
+    let [x, z] = sp.at ? sp.at() : [sp.x, sp.z]
+    if (sp.near) { const p = this.g.player.s.pos; x = (x + p.x) / 2; z = (z + p.z) / 2 }
     const order = sp.order === 'patrol' ? { type: 'patrol', route: this.patrolRoute(x, z, sp.r || 50) }
       : sp.order === 'attack' ? { type: 'attack', pos: V(sp.tx ?? this.g.player.s.pos.x, sp.tz ?? this.g.player.s.pos.z) }
         : { type: 'defend', pos: V(x, z), radius: sp.r || 25 }
-    const q = this.spawnSquad(sp.faction, x, z, sp.n, order, { spread: 15, formation: sp.order === 'patrol' ? 'file' : 'wedge' })
+    const q = sp.vehicle ? (this.crewed(sp.vehicle, sp.faction, x, z, Math.random() * 6, order) || this.g.ai.squad(sp.faction, {})) : this.spawnSquad(sp.faction, x, z, sp.n, order, { spread: 15, formation: sp.order === 'patrol' ? 'file' : 'wedge' })
     this.squads.push(q)
     return q
   }
@@ -168,7 +263,7 @@ export class Campaign extends Mode {
     const [x, z] = this.pos(o)
     const near = r => Math.hypot(s.pos.x - x, s.pos.z - z) < r
     let ok = false
-    if (o.type === 'reach') ok = near(o.r)
+    if (o.type === 'reach') ok = near(o.r) && (!o.landed || !s.vehicle || s.vehicle.onGround)
     else if (o.type === 'clear') ok = o.squads.every(q => q.alive.length === 0)
     else if (o.type === 'destroy') ok = o.vehicles_.every(v => !v.alive)
     else if (o.type === 'kill') ok = o.hvt.dead
@@ -262,7 +357,7 @@ export class Campaign extends Mode {
 
 // The briefing screen's text for a mission.
 export function drawBriefing(c, m, x, y, w, s) {
-  text(c, CHAPTER.toUpperCase(), x, y, { size: 12 * s, color: C.dim, weight: 700 })
+  text(c, (m.chapter || CHAPTER).toUpperCase(), x, y, { size: 12 * s, color: C.dim, weight: 700 })
   text(c, m.name.toUpperCase(), x, y + 34 * s, { size: 30 * s, weight: 900, color: C.gold2 })
   text(c, `${m.place}  ·  ${String(Math.floor(m.hour)).padStart(2, '0')}:${String(Math.round((m.hour % 1) * 60)).padStart(2, '0')}  ·  ${m.weather}`, x, y + 56 * s, { size: 12 * s, color: C.dim })
   let yy = wrap(c, m.brief, x, y + 84 * s, w, 19 * s, { size: 14 * s })

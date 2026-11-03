@@ -85,6 +85,13 @@ export class Battle extends Mode {
       const types = this.kind === 'survival' ? [] : f === 'nlf' || f === 'res' ? ['technical', 'ifv'] : ['jeep', 'apc']
       types.forEach((t, i) => this.park(t, bx + Math.cos(this.axis + Math.PI / 2) * (12 + i * 10), bz + Math.sin(this.axis + Math.PI / 2) * (12 + i * 10), this.axis + (side === 'A' ? Math.PI : 0), { faction: f, search: 30 }))
     }
+    // a crewed fighting vehicle for each side (driver and gunner): a technical, an APC or an armoured car
+    if (this.kind !== 'survival') for (const side of ['A', 'B']) {
+      const [bx, bz] = this.base[side], f = this.faction(side)
+      const type = { nlf: 'technical', res: 'technical', vdf: 'apc', cef: 'mrap' }[f] || 'technical'
+      const q = this.crewed(type, f, bx - Math.cos(this.axis + Math.PI / 2) * 15, bz - Math.sin(this.axis + Math.PI / 2) * 15, this.axis + (side === 'A' ? Math.PI : 0), { type: 'hold', pos: null })
+      if (q) { q.side = side; this.squads[side].push(q) }
+    }
     // the armies
     if (this.kind === 'survival') this.nextWave()
     else this.reinforce(true)

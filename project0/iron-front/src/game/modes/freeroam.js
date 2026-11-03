@@ -92,6 +92,12 @@ export class FreeRoam extends Mode {
           P.squads.push(q)
           near += q.members.length
         }
+        // an enemy-held town or base often has an armed vehicle patrolling its streets
+        if (this.enemyOf(side) && ['city', 'town', 'military', 'airport'].includes(p.kind) && Math.random() < 0.6) {
+          const c = this.findGround(p.x, p.z, p.r * 0.5, 30, Math.random, 3) || [p.x, p.z]
+          const q = this.crewed(side === 'nlf' && Math.random() < 0.3 ? 'ifv' : 'technical', side, c[0], c[1], Math.random() * 6, { type: 'patrol', route: this.patrolRoute(p.x, p.z, Math.min(p.r * 0.7, 300), 5) })
+          if (q) { q.place = p.id; P.squads.push(q); near += 2 }
+        }
       } else if (P.active && d > p.r + 1500) this.standDown(P)
       // a hostile place with all its garrison gone is liberated
       if (P.active && !P.cleared && this.enemyOf(side) && P.squads.length && P.squads.every(q => q.alive.length === 0)) {
@@ -155,6 +161,8 @@ export class FreeRoam extends Mode {
   removeSquad(q) {
     const g = this.g
     q.gone = true
+    // a crewed vehicle goes with its crew (unless the player has taken it)
+    if (q.vehicle && !q.vehicle.seats.some(st => st.occupant?.isPlayer)) { for (const m of q.members) if (m.vehicle) g.vehicles.exit(m, true); g.vehicles.remove(q.vehicle) }
     for (const m of q.members) {
       if (m.isPlayer || m.vehicle) continue
       g.ai.remove(m)

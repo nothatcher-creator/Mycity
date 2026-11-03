@@ -87,9 +87,24 @@ export class Mode {
   park(type, x, z, yaw, o = {}) {
     const d = VEHICLES[type]
     const need = Math.max(d.size[0], d.size[2]) / 2 + (d.kind === 'heli' ? 4 : 0.8)
-    const p = o.exact ? [x, z] : (this.findGround(x, z, o.search ?? 25, 30, Math.random, need) || (d.kind === 'boat' ? [x, z] : null))
+    const p = d.kind === 'boat' ? deepWater(x, z) : o.exact ? [x, z] : this.findGround(x, z, o.search ?? 25, 30, Math.random, need)
     if (!p) return null
     return this.g.vehicles.spawn(type, p[0], p[1], yaw, o)
+  }
+  // A vehicle with an AI crew (a driver and, where it has one, a gunner) as a squad of its own.
+  crewed(type, faction, x, z, yaw, order, o = {}) {
+    const g = this.g
+    const v = this.park(type, x, z, yaw, { faction, search: o.search ?? 40 })
+    if (!v) return null
+    const q = g.ai.squad(faction, { order, name: v.def.name })
+    for (const role of ['driver', 'gunner']) {
+      if (!v.seats.some(st => st.role === role)) continue
+      const s = g.addSoldier({ faction, role: role === 'driver' ? 'engineer' : 'rifleman', x: v.pos.x, z: v.pos.z, name: `${FACTIONS[faction].ranks[1]} ${nextName()}` })
+      g.ai.add(s, q, (FACTIONS[faction].skill || 0.5) * (0.75 + g.difficulty * 0.5))
+      g.vehicles.enter(s, v, role)
+    }
+    q.vehicle = v
+    return q
   }
   // ---- the player ----
   spawnPoints(place) { return POINTS.filter(p => p.kind === 'spawn' && (!place || p.place === place)) }
@@ -115,3 +130,10 @@ export function nearestPlace(x, z) {
   return { place: best, d: bd }
 }
 export function onRoad(x, z) { const r = roadAt(x, z); return r && r.d < r.w / 2 }
+// The nearest water deep enough to float a boat (at least 1.5 m), searching outwards up to 120 m.
+export function deepWater(x, z) {
+  const deep = (px, pz) => waterLevel(px, pz) - heightAt(px, pz) > 1.5
+  if (deep(x, z)) return [x, z]
+  for (let r = 6; r <= 120; r += 6) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r; if (deep(px, pz)) return [px, pz] }
+  return [x, z]
+}

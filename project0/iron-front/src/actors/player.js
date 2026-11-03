@@ -294,7 +294,8 @@ export class Player {
     limb(this.arms[1], grip, grip.clone().add(_v6.set(0, -0.02, 0.0)), 0.06)
     limb(this.arms[2], _v5.set(-0.26, -0.48, 0.0), sup, 0.07)
     limb(this.arms[3], sup, sup.clone().add(_v6.set(0, -0.02, 0)), 0.055)
-    this.game.engine.vmCamera.fov = 55
+    const vc = this.game.engine.vmCamera, vf = this.game.engine.widen(55)
+    if (Math.abs(vc.fov - vf) > 0.01) { vc.fov = vf; vc.updateProjectionMatrix() }
   }
   updateLight() {
     const L = this.flashlight

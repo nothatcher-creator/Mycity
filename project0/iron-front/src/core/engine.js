@@ -74,7 +74,14 @@ export class Engine {
     this.world.position.set(ANCHOR.x - pos.x, ANCHOR.y - pos.y, ANCHOR.z - pos.z)
     this.camera.position.copy(ANCHOR)
     this.camera.quaternion.copy(quat)
+    if (fov) fov = this.widen(fov)
     if (fov && Math.abs(fov - this.camera.fov) > 0.01) { this.camera.fov = fov; this.camera.updateProjectionMatrix() }
+  }
+  // On narrow screens (phones held upright) the field of view is kept as wide sideways as on a 1.3:1 screen.
+  widen(fov) {
+    const a = this.width / Math.max(1, this.height)
+    if (a >= 1.3) return fov
+    return Math.min(115, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(fov) / 2) * 1.3 / a)))
   }
   // Island coordinates to scene coordinates and back.
   toScene(v, out = new THREE.Vector3()) { return out.set(v.x + this.world.position.x, v.y + this.world.position.y, v.z + this.world.position.z) }

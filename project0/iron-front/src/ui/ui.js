@@ -95,7 +95,8 @@ export class Panel {
     this.mesh.position.set(this.x + this.w / 2, -(this.y + this.h / 2), 0)
     return this
   }
-  show(v = true) { this.visible = v; this.mesh.visible = v; if (v) this.dirty = true; return this }
+  // (a strict boolean: three.js only skips objects whose visible is exactly false)
+  show(v = true) { v = !!v; if (v && !this.visible) this.dirty = true; this.visible = v; this.mesh.visible = v; return this }
   redraw() {
     const c = this.ctx, dpr = this.ui.dpr
     c.setTransform(dpr, 0, 0, dpr, 0, 0)

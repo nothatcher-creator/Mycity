@@ -183,14 +183,18 @@ export class Game {
     const p0 = this.p0
     p0.on('pointerdown', e => {
       this.sfx.unlock()
+      if (e.touch && !this.touchSeen) { this.touchSeen = true; this.input.touch = true; this.hud.layout() }
       if (this.map.visible) { this.ui.click(e.x, e.y); if (this.map.visible) this.map.pointerDown(e.x, e.y, e.button); return }
       if (this.ui.click(e.x, e.y)) { this.input.mouse.left = false; return }
       if (this.invui.visible) { this.invui.pointerDown(e.x, e.y, e.button); return }
+      // a finger on the screen (not on a button, not on the city's stick at the bottom left) turns the view
+      if (e.touch && this.state === 'play' && !this.ui.blocking && (e.x > this.engine.width * 0.35 || e.y < this.engine.height * 0.45)) { this.touchLook = { x: e.x, y: e.y }; return }
       if (this.state === 'play' && !e.touch && !this.ui.blocking) p0.input.lockPointer()
     })
     p0.on('keydown', () => this.sfx.unlock())
     if (DEBUG) p0.on('keydown', e => {
       if (e.code === 'F9' && this.state === 'menu') { this.start('freeroam', { ...this.menus.setup }); return }
+      if (e.code === 'F10' && this.state === 'menu') { this.start('battle', { ...this.menus.bsetup, kind: 'domination', limit: 300 }); return }
       if (this.state !== 'play' || !this.mode?.admin) return
       const s = this.player.s
       if (e.code === 'F8') { const x = s.pos.x + Math.sin(s.yaw) * 90, z = s.pos.z + Math.cos(s.yaw) * 90; const q = this.mode.spawnSquad('nlf', x, z, 4, { type: 'attack', pos: s.pos.clone() }); this.mode.patrols.push(q); p0.log('dbg enemy squad at', x.toFixed(0), z.toFixed(0)) }
@@ -199,11 +203,17 @@ export class Game {
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), ctl: v.ctl }) : 'none') }
     })
     p0.on('pointermove', e => {
+      if (e.touch && this.touchLook) {
+        const k = 2.4
+        this.input.look.dx += (e.x - this.touchLook.x) * k; this.input.look.dy += (e.y - this.touchLook.y) * k
+        this.touchLook.x = e.x; this.touchLook.y = e.y
+        return
+      }
       this.ui.move(e.x, e.y)
       if (this.map.visible) this.map.pointerMove(e.x, e.y)
       if (this.invui.visible) this.invui.pointerMove(e.x, e.y)
     })
-    p0.on('pointerup', e => { if (this.map.visible) this.map.pointerUp(e.x, e.y); if (this.invui.visible) this.invui.pointerUp(e.x, e.y) })
+    p0.on('pointerup', e => { if (e.touch) { this.touchLook = null; if (this.player) this.player.touchFire = false } if (this.map.visible) this.map.pointerUp(e.x, e.y); if (this.invui.visible) this.invui.pointerUp(e.x, e.y) })
     p0.on('wheel', e => {
       const dy = e.dy ?? e.deltaY ?? 0
       if (this.map.visible) { this.input.mouse.wheel = 0; this.map.wheel(dy, this.ui.pointer.x, this.ui.pointer.y) }
@@ -243,6 +253,7 @@ export class Game {
     this.player = null; this.playerSquad = null; this.waypoint = null
     this.fx.smokeClouds = []
     this.deadHandled = false
+    this.mode?.dispose?.()
     this.mode = null
   }
   quitToMenu() {
@@ -529,7 +540,7 @@ export class Game {
       this.dbgT = (this.dbgT || 0) + dt; this.dbgN = (this.dbgN || 0) + 1
       if (this.dbgT > 1.5) {
         const s = this.player?.s
-        this.p0.log('dbg', this.state, 'fps', (this.dbgN / this.dbgT).toFixed(1), s ? `pos ${s.pos.x.toFixed(1)} ${s.pos.y.toFixed(1)} ${s.pos.z.toFixed(1)} hp ${s.blood.toFixed(0)} ${s.dead ? 'DEAD' : ''} ${s.vehicle ? 'in ' + s.vehicle.type + ' v' + s.vehicle.speed.toFixed(1) + ' alt' + s.vehicle.alt.toFixed(0) : ''}` : '', 'soldiers', this.soldiers.filter(o => !o.dead).length, 'dead', this.soldiers.filter(o => o.dead).length, 'veh', this.vehicles.list.length, 'bullets', this.ballistics.list?.length, 'q', this.settings.quality, 'kills', this.mode?.kills)
+        this.p0.log('dbg', this.state, 'fps', (this.dbgN / this.dbgT).toFixed(1), s ? `pos ${s.pos.x.toFixed(1)} ${s.pos.y.toFixed(1)} ${s.pos.z.toFixed(1)} hp ${s.blood.toFixed(0)} ${s.dead ? 'DEAD' : ''} ${s.vehicle ? 'in ' + s.vehicle.type + ' v' + s.vehicle.speed.toFixed(1) + ' alt' + s.vehicle.alt.toFixed(0) : ''}` : '', 'soldiers', this.soldiers.filter(o => !o.dead).length, 'dead', this.soldiers.filter(o => o.dead).length, 'veh', this.vehicles.list.length, 'bullets', this.ballistics.list?.length, 'q', this.settings.quality, 'yaw', this.player?.s.yaw.toFixed(2), 'kills', this.mode?.kills, 'scope', this.player?.scoped, this.player?.binoculars, this.player?.s.ads, this.player?.adsT?.toFixed(2), this.input.mouse.right, this.player?.view, this.hud?.scope.visible, this.hud?.visible)
         if (s) { let e = null, ed = 1e9; for (const o of this.soldiers) if (!o.dead && o.brain && hostile(o.team, s.team)) { const d = o.pos.distanceTo(s.pos); if (d < ed) { ed = d; e = o } }
           if (e) this.p0.log('dbg enemy', ed.toFixed(0), 'm', e.brain.state, 'tgt', e.brain.target?.name, 'move', e.brain.move ? e.brain.move.distanceTo(e.pos).toFixed(0) : '-', 'spd', e.speed.toFixed(1), 'ammo', e.ammoInWeapon, 'keys', [...this.p0.input.keys].join('+'), 'fwd', s.input.fwd, 'spd', s.speed.toFixed(2), 'ground', s.onGround)
           if (e) { const ey = e.eye(new THREE.Vector3()); const dx = s.pos.x - e.pos.x, dz = s.pos.z - e.pos.z, d = Math.hypot(dx, dz); const ty = s.pos.y + 1.35; const u = new THREE.Vector3(s.pos.x - ey.x, ty - ey.y, s.pos.z - ey.z); const L = u.length(); u.divideScalar(L); const h = { t: 0 }
@@ -593,7 +604,7 @@ export class Game {
     this.engine.renderer.toneMappingExposure = p.nvg && !s.dead ? 3.2 : 1
     this.sfx.update(dt)
     if (s.dead && !this.deadHandled) { this.deadHandled = true; this.deadAt = this.time; this.p0.input.unlockPointer() }
-    if (s.dead && this.deadHandled && this.time - this.deadAt > 2.5 && !this.menus.visible) this.menus.open('dead')
+    if (s.dead && this.deadHandled && this.time - this.deadAt > 2.5 && !this.menus.visible && !this.mode?.spectate) this.menus.open('dead')
   }
   // What the player can use nearby: vehicles, bodies and crates to search, wounded friends, ladders.
   interactions() {

@@ -37,14 +37,23 @@ export class HUD {
   }
   layout() {
     const W = this.g.engine.width, H = this.g.engine.height
-    const s = Math.min(1.25, Math.max(0.7, Math.min(W / 1280, H / 720) * 1.05))
+    const touch = this.g.input.touch
+    const s = Math.min(1.25, Math.max(0.5, Math.min(W / 1280, H / 720) * (touch ? 1.15 : 1.05)))
     this.s = s
-    this.compass.place(W / 2 - 240 * s, 8, 480 * s, 34 * s)
-    this.status.place(14, H - 112 * s, 270 * s, 98 * s)
-    this.weapon.place(W - 290 * s - 14, H - 112 * s, 290 * s, 98 * s)
-    const ms = 190 * s
+    this.compass.place(W / 2 - Math.min(240 * s, W * 0.3), 8, Math.min(480 * s, W * 0.6), 34 * s)
+    const ms = (touch ? 140 : 190) * s
     this.mini.place(W - ms - 14, 14, ms, ms)
-    this.feed.place(W - 340 * s - 14, ms + 22, 340 * s, 150 * s)
+    if (touch) {
+      // phones: the city's stick is at the bottom left and the fire buttons at the bottom right,
+      // so the status and weapon panels go up top
+      this.status.place(14, 104 * s, 270 * s, 98 * s)
+      this.weapon.place(W / 2 - 145 * s, 48 * s, 290 * s, 98 * s)
+      this.feed.place(W - 300 * s - 14, ms + 22, 300 * s, 130 * s)
+    } else {
+      this.status.place(14, H - 112 * s, 270 * s, 98 * s)
+      this.weapon.place(W - 290 * s - 14, H - 112 * s, 290 * s, 98 * s)
+      this.feed.place(W - 340 * s - 14, ms + 22, 340 * s, 150 * s)
+    }
     this.cross.place(W / 2 - 60, H / 2 - 60, 120, 120)
     this.center.place(W / 2 - 260 * s, H / 2 + 60 * s, 520 * s, 120 * s)
     this.modeP.place(14, 14, 360 * s, 190 * s)
@@ -350,7 +359,7 @@ export class HUD {
       p.buttons.push({ id, x: x - rr, y: y - rr, w: rr * 2, h: rr * 2, fn })
     }
     const R = W - r * 1.6, B = H - r * 1.6
-    btn('fire', R, B - r * 0.4, 'FIRE', () => { g.player.touchFire = true; setTimeout(() => { g.player.touchFire = false }, 120) }, r * 1.25)
+    btn('fire', R, B - r * 0.4, 'FIRE', () => { g.player.touchFire = true }, r * 1.25)   // held until the finger lifts
     btn('aim', R - r * 2.6, B + r * 0.2, 'AIM', () => { g.player.touchAds = !g.player.touchAds })
     btn('reload', R - r * 0.2, B - r * 3, 'RLD', () => g.input.pressed.add('reload'))
     btn('stance', R - r * 2.5, B - r * 2.2, 'STNC', () => g.input.pressed.add(g.player.s.stance === 0 ? 'crouch' : g.player.s.stance === 1 ? 'prone' : 'prone'))

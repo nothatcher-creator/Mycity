@@ -13,6 +13,7 @@ import { WEAPONS, CATEGORIES } from '../combat/weapons-data.js'
 import { WEATHER } from '../world/sky.js'
 import { mapImage } from './mapimage.js'
 import { CONTROL } from '../game/modes/freeroam.js'
+import { BATTLES, ARENAS } from '../game/modes/battle.js'
 
 export class Menus {
   constructor(game) {
@@ -21,12 +22,13 @@ export class Menus {
     this.stack = []
     this.scroll = 0
     this.setup = { faction: 'vdf', start: 'kaldor', squad: 3, hour: 9.5, weather: 'clear', role: 'rifleman' }
+    this.bsetup = { kind: 'domination', place: 'tovar', faction: 'vdf', teamSize: 10, limit: null, minutes: 15, hour: 13, weather: 'clear' }
     this.panel = game.ui.add(new Panel(game.ui, 0, 0, 10, 10, (c, p) => this.draw(c, p), { modal: true, order: 20 }))
     this.panel.show(false)
     this.layout()
   }
   get visible() { return this.panel.visible }
-  layout() { const e = this.g.engine; this.panel.place(0, 0, e.width, e.height); this.s = Math.max(0.42, Math.min(1.2, Math.min(e.width / 1280, e.height / 720))) }
+  layout() { const e = this.g.engine; this.panel.place(0, 0, e.width, e.height); this.s = e.height > e.width ? Math.max(0.42, Math.min(1, e.width / 520)) : Math.max(0.42, Math.min(1.2, Math.min(e.width / 1280, e.height / 720))) }
   open(page, keepStack = false) {
     if (this.page && keepStack) this.stack.push(this.page); else if (!keepStack) this.stack = []
     this.page = page; this.scroll = 0; this.rebinding = null
@@ -67,9 +69,9 @@ export class Menus {
   }
   // small option rows: label + choices
   choices(c, p, x, y, w, label, opts, cur, set, s) {
-    text(c, label, x, y + 18 * s, { size: 14 * s, weight: 700, color: C.dim })
+    if (label) text(c, label, x, y + 18 * s, { size: 14 * s, weight: 700, color: C.dim })
     const bx = x + 150 * s, bw = (w - 150 * s - (opts.length - 1) * 6 * s) / opts.length
-    opts.forEach((o, i) => p.button(c, label + i, bx + i * (bw + 6 * s), y, bw, 30 * s, o.label, () => { set(o.v); this.panel.dirty = true }, { selected: o.v === cur, align: 'center', font: FONT(13 * s, 700) }))
+    opts.forEach((o, i) => p.button(c, (label || 'more' + y) + i, bx + i * (bw + 6 * s), y, bw, 30 * s, o.label, () => { set(o.v); this.panel.dirty = true }, { selected: o.v === cur, align: 'center', font: FONT(13 * s, 700) }))
     return y + 38 * s
   }
   page_main(c, p, W, H, s) {
@@ -79,11 +81,12 @@ export class Menus {
     const items = [
       fr ? { id: 'cont', label: 'CONTINUE FREE ROAM', sub: `${FACTIONS[fr.faction]?.short || ''} · ${(fr.liberated || []).length} places liberated`, fn: () => this.g.start('freeroam', { resume: true, squad: this.setup.squad }) } : null,
       { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
+      { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
-    ].filter((v, i) => v || i === 2)
+    ].filter((v, i) => v || i === 3)
     this.column(c, p, x, 200 * s, Math.min(420 * s, W - x * 2), items, s)
     if (Math.floor((this.t || 0) * 2) % 2 === 0) text(c, 'PRESS SPACE TO DEPLOY  ·  or click to choose', x, H - 30 * s, { size: 14 * s, weight: 800, color: C.gold2, shadow: true })
     text(c, 'Single player. Built for Project 0 lot 3084.', W - 20 * s, H - 30 * s, { size: 11 * s, color: C.dim, align: 'right', shadow: true })
@@ -120,6 +123,40 @@ export class Menus {
       }
       text(c, 'Squares: who holds each place', mx, my + ms + 18 * s, { size: 11 * s, color: C.dim })
     }
+  }
+  page_battle(c, p, W, H, s) {
+    const x = 60 * s, w = Math.min(760 * s, W - x * 2), b = this.bsetup
+    let y = 40 * s - this.scroll
+    text(c, 'BATTLE', x, y + 30 * s, { size: 26 * s, weight: 900, color: C.gold2 }); y += 48 * s
+    const kinds = Object.entries(BATTLES)
+    y = this.choices(c, p, x, y, w, 'Mode', kinds.slice(0, 4).map(([k, v]) => ({ label: v.name.replace('Team ', ''), v: k })), b.kind, v => { b.kind = v; b.limit = null }, s)
+    y = this.choices(c, p, x, y, w, '', kinds.slice(4).map(([k, v]) => ({ label: v.name, v: k })), b.kind, v => { b.kind = v; b.limit = null }, s)
+    text(c, BATTLES[b.kind].desc, x + 150 * s, y + 2 * s, { size: 12 * s, color: C.dim }); y += 16 * s
+    y = this.choices(c, p, x, y, w, 'Place', ARENAS.slice(0, 6).map(id => ({ label: PLACES.find(q => q.id === id).name.replace(' Airbase', '').replace('Camp ', ''), v: id })), b.place, v => { b.place = v }, s)
+    y = this.choices(c, p, x, y, w, '', ARENAS.slice(6).map(id => ({ label: PLACES.find(q => q.id === id).name.replace(' Airbase', '').replace('Rask ', ''), v: id })), b.place, v => { b.place = v }, s)
+    y = this.choices(c, p, x, y, w, 'Your side', Object.values(FACTIONS).map(f => ({ label: f.short, v: f.id })), b.faction, v => { b.faction = v }, s)
+    y = this.choices(c, p, x, y, w, 'Side size', [6, 10, 16].map(n => ({ label: `${n}`, v: n })), b.teamSize, v => { b.teamSize = v }, s)
+    const base = BATTLES[b.kind].score
+    y = this.choices(c, p, x, y, w, b.kind === 'survival' ? 'Waves' : b.kind === 'conquest' ? 'Tickets' : b.kind === 'sector' ? 'Sectors' : 'Score limit', [0.5, 1, 2].map(m => ({ label: String(Math.max(1, Math.round(base * m))), v: Math.max(1, Math.round(base * m)) })), b.limit ?? base, v => { b.limit = v }, s)
+    y = this.choices(c, p, x, y, w, 'Time limit', [10, 15, 25].map(m => ({ label: `${m} min`, v: m })), b.minutes, v => { b.minutes = v }, s)
+    y = this.choices(c, p, x, y, w, 'Time of day', [[7, 'Morning'], [13, 'Noon'], [19, 'Dusk'], [23, 'Night']].map(([v, l]) => ({ label: l, v })), b.hour, v => { b.hour = v }, s)
+    y = this.choices(c, p, x, y, w, 'Weather', Object.entries(WEATHER).map(([k, v]) => ({ label: v.name, v: k })), b.weather, v => { b.weather = v }, s)
+    y = this.choices(c, p, x, y, w, 'Difficulty', [[0.25, 'Recruit'], [0.5, 'Regular'], [0.8, 'Veteran']].map(([v, l]) => ({ label: l, v })), this.g.settings.difficulty, v => { this.g.settings.difficulty = v; this.g.save.store() }, s)
+    y += 8 * s
+    p.button(c, 'go', x, y, 260 * s, 50 * s, 'DEPLOY', () => this.g.start('battle', { ...b, limit: b.limit ?? base }), { font: FONT(20 * s, 900), color: C.gold2 })
+    p.button(c, 'back', x + 274 * s, y, 140 * s, 50 * s, 'BACK', () => this.back(), { align: 'center' })
+    text(c, 'All other soldiers are AI: this game is single player.', x, y + 72 * s, { size: 11 * s, color: C.dim })
+  }
+  page_results(c, p, W, H, s) {
+    const g = this.g, r = g.mode?.results?.() || { title: '', lines: [] }, x = W / 2
+    text(c, r.title, x, H * 0.24, { size: 48 * s, weight: 900, align: 'center', color: r.title === 'VICTORY' ? C.gold2 : r.title === 'DEFEAT' ? C.red : C.text, shadow: true })
+    text(c, r.reason, x, H * 0.24 + 32 * s, { size: 15 * s, align: 'center', color: C.dim })
+    let y = H * 0.24 + 74 * s
+    for (const l of r.lines) { text(c, l, x, y, { size: 16 * s, align: 'center' }); y += 26 * s }
+    const w = Math.min(380 * s, W - 40 * s)
+    this.column(c, p, x - w / 2, y + 10 * s, w, [
+      { id: 'again', label: 'PLAY AGAIN', fn: () => { const o = { ...g.mode.opts }; g.start(g.modeId, o) } },
+      { id: 'menu', label: 'MAIN MENU', fn: () => g.quitToMenu() }], s)
   }
   startsFor(f) {
     const own = Object.entries(CONTROL).filter(([id, side]) => side === f && POINTS.some(pt => pt.kind === 'spawn' && pt.place === id)).map(([id]) => id)

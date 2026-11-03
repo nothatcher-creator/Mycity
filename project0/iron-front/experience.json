@@ -1,7 +1,7 @@
 {
   "entry": "main.js",
   "name": "OPERATION: IRON FRONT",
-  "description": "Single-player open-world military sandbox on the 12 km island of Varden. Free Roam: liberate towns from enemy garrisons with an AI squad, take any car, tank, helicopter, jet or boat, real bullet ballistics, inventory, day/night and weather, sandbox tools.",
+  "description": "Single-player open-world military sandbox on the 12 km island of Varden, against AI. Free Roam: liberate towns with your squad, take any car, tank, helicopter, jet or boat. Battle: Team Deathmatch, Domination, Conquest, King of the Hill, Capture the Flag, Sector Control, Survival. Bullet ballistics, inventory, day/night, weather. Touch controls on phones.",
   "maxPlayers": 1,
   "ui": "minimized",
   "loading": {

@@ -45,12 +45,13 @@ export class Input {
     })
     p0.on('pointermove', e => {
       if (e.touch) { this.touch = true }
-      if (p0.input.pointer.locked || (e.buttons & 2) || (this.dragLook && (e.buttons & 1))) {
+      if (!e.touch && (p0.input.pointer.locked || (e.buttons & 2) || (this.dragLook && (e.buttons & 1)))) {
         this.look.dx += e.dx; this.look.dy += e.dy
       }
     })
-    p0.on('pointerdown', e => { if (e.touch) this.touch = true; if (e.button === 0) this.mouse.left = true; if (e.button === 2) this.mouse.right = true })
-    p0.on('pointerup', e => { if (e.button === 0) this.mouse.left = false; if (e.button === 2) this.mouse.right = false })
+    // touches are not mouse buttons: the game reads them as look drags and on-screen buttons (game.js)
+    p0.on('pointerdown', e => { if (e.touch) { this.touch = true; return } if (e.button === 0) this.mouse.left = true; if (e.button === 2) this.mouse.right = true })
+    p0.on('pointerup', e => { if (e.touch) return; if (e.button === 0) this.mouse.left = false; if (e.button === 2) this.mouse.right = false })
     p0.on('wheel', e => { this.mouse.wheel += Math.sign(e.dy || e.deltaY || 0) })
   }
   down(action) { const c = this.binds[action]; return !!c && this.p0.input.keys.has(c) }

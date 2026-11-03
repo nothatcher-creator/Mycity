@@ -50,9 +50,13 @@ export class Player {
     this.arms = []
     for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), i % 2 ? this.gloveMat : this.armMat); e.vmScene.add(m); this.arms.push(m) }
     this.weaponKey = null
-    this.flashlight = new THREE.SpotLight(0xfff2d8, 0, 70, 0.42, 0.45, 1.2)
-    this.flashlight.target = new THREE.Object3D()
-    e.scene.add(this.flashlight, this.flashlight.target)
+    // one flashlight for the game, kept in the scene (adding or removing a light recompiles every shader)
+    if (!game.flashlight) {
+      game.flashlight = new THREE.SpotLight(0xfff2d8, 0, 70, 0.42, 0.45, 1.2)
+      game.flashlight.target = new THREE.Object3D()
+      e.scene.add(game.flashlight, game.flashlight.target)
+    }
+    this.flashlight = game.flashlight
     this.rebuildViewmodel()
   }
   get ads() { return this.s.ads }

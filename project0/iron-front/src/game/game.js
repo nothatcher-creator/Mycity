@@ -110,7 +110,8 @@ export class Game {
     this.menuFrame(0)
     this.engine.setView(this.camPos, this.camQuat, this.fov)
     this.sky.update(0, this.engine.camera.position)
-    this.warmupSoldier()
+    L(0.85, 'compiling'); await pause()
+    await this.warmup()
     L(0.9, 'compiling'); await pause()
     const tc = performance.now()
     await this.engine.renderer.compileAsync(this.engine.scene, this.engine.camera)
@@ -120,7 +121,8 @@ export class Game {
     const warm = performance.now() - tw
     p0.log('compile', Math.round(compile), 'ms; first frame', Math.round(warm), 'ms; boot', Math.round(performance.now() - t0), 'ms')
     // a slow machine (or the software renderer) starts on the light version
-    if ((warm > 250 || compile > 2500) && q !== 'low' && !this.settings.qualityChosen) this.setQuality('low')
+    p0.log('warm frame', Math.round(this.warmFrame), 'ms')
+    if ((warm > 250 || this.warmFrame > 120 || compile > 2500) && q !== 'low' && !this.settings.qualityChosen) this.setQuality('low')
     L(1, 'ready')
     this.state = 'menu'
     this.menus.open('main')
@@ -129,9 +131,37 @@ export class Game {
     p0.on('update', () => this.hud?.note('A new version of the game is out: re-enter to play it.', C.gold2))
   }
   // A soldier drawn once so his materials compile before play.
-  warmupSoldier() {
+  // Everything play draws for the first time (a soldier, the first-person weapon and arms, the flashlight,
+  // a vehicle and its wreck) put up once while loading, so their shaders compile before the first frame of
+  // play rather than freezing it; then taken away again.
+  async warmup() {
+    const e = this.engine
     const s = new Soldier({ x: this.camPos.x, z: this.camPos.z + 20, faction: 'vdf', inv: kit('rifleman', 'vdf', FACTIONS.vdf, ROLES) })
     this.rig.begin(); this.rig.draw(s, this.camPos); this.rig.end()
+    const pl = new Player(this, s)
+    pl.view = 'fp'; pl.updateViewmodel(0); pl.light = true; pl.updateLight()
+    const v = this.vehicles.spawn('jeep', this.camPos.x, this.camPos.z + 30, 0)
+    const wreck = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), this.vehicles.wreckMat)
+    wreck.position.set(this.camPos.x, this.camPos.y, this.camPos.z + 25); e.world.add(wreck)
+    this.player = pl
+    this.hud.show(true)
+    try { this.ui.update() } catch (err) { this.p0.log('warmup hud', err.message) }
+    await e.renderer.compileAsync(e.scene, e.camera)
+    await e.renderer.compileAsync(e.vmScene, e.vmCamera)
+    // draw it and wait for the GPU to finish (reading a pixel back waits): the shaders link now, not in play
+    const gl = e.renderer.getContext(), px = new Uint8Array(4)
+    const sync = () => { try { gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px) } catch {} }
+    e.render(true); sync()
+    // a second frame shows how fast this machine draws once the shaders are ready
+    const t = performance.now(); e.render(true); sync(); this.warmFrame = performance.now() - t
+    // and away
+    this.player = null
+    this.hud.show(false)
+    e.world.remove(wreck); wreck.geometry.dispose()
+    this.vehicles.remove(v)
+    e.vmScene.remove(pl.vm); for (const a of pl.arms) e.vmScene.remove(a)
+    pl.light = false; pl.updateLight()
+    this.rig.begin(); this.rig.end()
   }
   // Builds the land, roads, trees and buildings round (x, z) at once (before a spawn).
   preload(x, z) {
@@ -182,7 +212,14 @@ export class Game {
   }
 
   // ---------- starting a game ----------
+  // Shows the deploying screen for a frame, then builds the game (the build takes a moment).
   start(modeId, opts = {}) {
+    if (this.pendingStart) return
+    this.pendingStart = { modeId, opts }
+    this.menus.open('deploying')
+  }
+  startNow(modeId, opts) {
+    this.pendingStart = null
     this.clearWorld()
     const M = MODES[modeId]
     this.modeId = modeId
@@ -199,9 +236,9 @@ export class Game {
     for (const v of [...this.vehicles.list]) this.vehicles.remove(v)
     this.soldiers = []; this.ai = new AI(this); this.grenades = []; this.loot = []
     if (this.player) {
+      this.player.light = false; this.player.updateLight()
       this.engine.vmScene.remove(this.player.vm)
       for (const a of this.player.arms) this.engine.vmScene.remove(a)
-      this.engine.scene.remove(this.player.flashlight, this.player.flashlight.target)
     }
     this.player = null; this.playerSquad = null; this.waypoint = null
     this.fx.smokeClouds = []
@@ -242,8 +279,8 @@ export class Game {
     if (old) {
       this.engine.vmScene.remove(old.vm)
       for (const a of old.arms) this.engine.vmScene.remove(a)
-      this.engine.scene.remove(old.flashlight, old.flashlight.target)
       old.s.isPlayer = false
+      old.light = false; old.updateLight()
     }
     const view = old?.view
     const s = this.spawnPlayer(o)
@@ -453,6 +490,7 @@ export class Game {
     this.time += dt
     const t0 = performance.now()
     this.rebuildGrid()
+    if (this.pendingStart && this.menus.page === 'deploying' && !this.menus.panel.dirty) { const p = this.pendingStart; this.startNow(p.modeId, p.opts) }
     if (this.state === 'menu') this.menuFrame(dt)
     else if (this.state === 'play') this.playFrame(dt)
     else if (this.state === 'paused') { this.input.takeLook(); this.menus.update(dt); if (this.input.hit('pause')) this.resume() }
@@ -511,6 +549,8 @@ export class Game {
     this.camQuat.setFromEuler(new THREE.Euler(Math.asin(look.y), Math.atan2(look.x, look.z) + Math.PI, 0, 'YXZ'))
     this.fov = 60
     this.menus.update(dt)
+    // Space on the title screen: straight into Free Roam with the last setup
+    if (this.menus.page === 'main' && this.input.hit('jump')) this.start('freeroam', { ...this.menus.setup })
   }
   resume() { this.menus.close(); this.state = 'play'; if (!this.input.touch) this.p0.input.lockPointer() }
   playFrame(dt) {

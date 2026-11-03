@@ -85,7 +85,7 @@ export class Menus {
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
     ].filter((v, i) => v || i === 2)
     this.column(c, p, x, 200 * s, Math.min(420 * s, W - x * 2), items, s)
-    if (Math.floor((this.t || 0) * 2) % 2 === 0) text(c, 'Click or tap to choose. Sound starts with your first click.', x, H - 30 * s, { size: 12 * s, color: C.dim, shadow: true })
+    if (Math.floor((this.t || 0) * 2) % 2 === 0) text(c, 'PRESS SPACE TO DEPLOY  ·  or click to choose', x, H - 30 * s, { size: 14 * s, weight: 800, color: C.gold2, shadow: true })
     text(c, 'Single player. Built for Project 0 lot 3084.', W - 20 * s, H - 30 * s, { size: 11 * s, color: C.dim, align: 'right', shadow: true })
   }
   page_freeroam(c, p, W, H, s) {
@@ -192,6 +192,11 @@ export class Menus {
     ]
     for (const t of paras) y = wrap(c, t, x, y, w, 19 * s, { size: 13.5 * s }) + 10 * s
     p.button(c, 'back', x, y + 6 * s, 200 * s, 46 * s, 'BACK', () => this.back(), { align: 'center' })
+  }
+  page_deploying(c, p, W, H, s) {
+    c.fillStyle = 'rgba(8,10,7,0.85)'; c.fillRect(0, 0, W, H)
+    this.title(c, W / 2 - 160 * s, H / 2 - 70 * s, s, false)
+    text(c, 'DEPLOYING…', W / 2, H / 2 + 40 * s, { size: 22 * s, weight: 900, align: 'center', color: C.gold2 })
   }
   page_pause(c, p, W, H, s) {
     const g = this.g, x = 60 * s

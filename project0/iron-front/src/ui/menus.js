@@ -15,6 +15,7 @@ import { mapImage } from './mapimage.js'
 import { CONTROL } from '../game/modes/freeroam.js'
 import { BATTLES, ARENAS } from '../game/modes/battle.js'
 import { MISSIONS, CHAPTER, drawBriefing } from '../game/modes/campaign.js'
+import { ONLINE_KINDS, ONLINE_PLACES } from '../game/modes/online.js'
 
 export class Menus {
   constructor(game) {
@@ -23,6 +24,7 @@ export class Menus {
     this.stack = []
     this.scroll = 0
     this.setup = { faction: 'vdf', start: 'kaldor', squad: 3, hour: 9.5, weather: 'clear', role: 'rifleman' }
+    this.osetup = { kind: 'tdm', place: 'tovar', minutes: 12 }
     this.bsetup = { kind: 'domination', place: 'tovar', faction: 'vdf', teamSize: 10, limit: null, minutes: 15, hour: 13, weather: 'clear' }
     this.panel = game.ui.add(new Panel(game.ui, 0, 0, 10, 10, (c, p) => this.draw(c, p), { modal: true, order: 20 }))
     this.panel.show(false)
@@ -84,12 +86,13 @@ export class Menus {
       { id: 'camp', label: 'CAMPAIGN', sub: MODE_INFO[2].desc, fn: () => this.open('campaign', true) },
       { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
       { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
+      { id: 'online', label: 'ONLINE BATTLE', sub: `${(this.g.p0.room?.players || []).length} in this lot now · ${MODE_INFO[3].desc}`, fn: () => this.open('online', true) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
-    ].filter((v, i) => v || i === 4)
-    this.column(c, p, x, 180 * s, Math.min(420 * s, W - x * 2), items, s)
+    ].filter((v, i) => v || i === 5)
+    this.column(c, p, x, 170 * s, Math.min(420 * s, W - x * 2), items, s)
     if (Math.floor((this.t || 0) * 2) % 2 === 0) text(c, 'PRESS SPACE TO DEPLOY  ·  or click to choose', x, H - 30 * s, { size: 14 * s, weight: 800, color: C.gold2, shadow: true })
     text(c, 'Single player. Built for Project 0 lot 3084.', W - 20 * s, H - 30 * s, { size: 11 * s, color: C.dim, align: 'right', shadow: true })
   }
@@ -173,6 +176,29 @@ export class Menus {
       const yy = drawBriefing(c, m, bx, by, bw, s)
       p.button(c, 'deploy', bx, yy + 10 * s, 240 * s, 50 * s, 'DEPLOY', () => g.start('campaign', { mission: m.id }), { font: FONT(20 * s, 900), color: C.gold2 })
     } else if (W > 900 * s) text(c, 'Choose a mission for its briefing.', x + w + 40 * s, 130 * s, { size: 14 * s, color: C.dim })
+  }
+  page_online(c, p, W, H, s) {
+    const g = this.g, room = g.p0.room, x = 60 * s, w = Math.min(640 * s, W - x * 2), o = this.osetup
+    let y = 40 * s - this.scroll
+    text(c, 'ONLINE BATTLE', x, y + 30 * s, { size: 26 * s, weight: 900, color: C.gold2 }); y += 50 * s
+    const players = room?.players || [], st = room?.state || {}, m = st.match
+    const running = m && st.over?.match !== m.id && (Date.now() - m.start) / 60000 < m.minutes
+    const inMatch = running ? Object.entries(st).filter(([k, v]) => k.startsWith('pl:') && v?.match === m.id && players.map(String).includes(k.slice(3))) : []
+    text(c, `${players.length} player${players.length === 1 ? '' : 's'} in this lot's session. Real players only: no AI in online battles.`, x, y, { size: 13 * s, color: C.dim }); y += 26 * s
+    if (running) {
+      text(c, `A match is on: ${ONLINE_KINDS[m.kind].name} at ${PLACES.find(q => q.id === m.place).name}, ${inMatch.length} playing, ${Math.max(0, Math.round(m.minutes - (Date.now() - m.start) / 60000))} min left.`, x, y, { size: 14 * s }); y += 16 * s
+      for (const [, v] of inMatch.slice(0, 10)) { y += 18 * s; text(c, `${v.team === 'A' ? 'VDF' : 'NLF'}   ${v.name}   ${v.k || 0} kills`, x + 20 * s, y, { size: 12 * s, color: v.team === 'A' ? '#5ab0ff' : '#e0483a' }) }
+      y += 24 * s
+      p.button(c, 'join', x, y, 300 * s, 50 * s, 'JOIN THE MATCH', () => g.start('online', {}), { font: FONT(20 * s, 900), color: C.gold2 })
+      y += 70 * s
+      text(c, 'Or start a new match for everyone (ends the current one):', x, y, { size: 12 * s, color: C.dim }); y += 14 * s
+    } else { text(c, players.length < 2 ? 'Nobody else is here yet. Start a match and others who enter the lot can join it.' : 'No match is running. Start one: the others can join from this screen.', x, y, { size: 14 * s }); y += 16 * s }
+    y = this.choices(c, p, x, y, w, 'Mode', Object.entries(ONLINE_KINDS).map(([k, v]) => ({ label: v.name, v: k })), o.kind, v => { o.kind = v }, s)
+    y = this.choices(c, p, x, y, w, 'Place', ONLINE_PLACES.map(id => ({ label: PLACES.find(q => q.id === id).name.replace('Camp ', ''), v: id })), o.place, v => { o.place = v }, s)
+    y = this.choices(c, p, x, y, w, 'Length', [8, 12, 20].map(n => ({ label: `${n} min`, v: n })), o.minutes, v => { o.minutes = v }, s)
+    y += 8 * s
+    p.button(c, 'start', x, y, 300 * s, 50 * s, running ? 'START A NEW MATCH' : 'START THE MATCH', () => g.start('online', { ...o, fresh: true }), { font: FONT(18 * s, 900) })
+    p.button(c, 'back', x + 314 * s, y, 140 * s, 50 * s, 'BACK', () => this.back(), { align: 'center' })
   }
   page_results(c, p, W, H, s) {
     const g = this.g, r = g.mode?.results?.() || { title: '', lines: [] }, x = W / 2

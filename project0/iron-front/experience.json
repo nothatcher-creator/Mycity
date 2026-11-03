@@ -1,8 +1,8 @@
 {
   "entry": "main.js",
   "name": "OPERATION: IRON FRONT",
-  "description": "Single-player open-world military game on the 12 km island of Varden, against AI. Campaign: 12 missions in two chapters (ambush, boat and helicopter assaults, night raids, armour, jets). Free Roam with your squad, any vehicle and sandbox tools. Battle: TDM, Domination, Conquest, King of the Hill, CTF, Sector Control, Survival. AI crews drive and gun vehicles.",
-  "maxPlayers": 1,
+  "description": "Open-world military game on the 12 km island of Varden. Campaign: 12 missions. Free Roam with your squad, any vehicle and sandbox tools. Battle vs AI: TDM, Domination, Conquest, King of the Hill, CTF, Sector Control, Survival. Online Battle: Team Deathmatch or Domination with the real players in the lot.",
+  "maxPlayers": 16,
   "ui": "minimized",
   "loading": {
     "background": "#141a12",

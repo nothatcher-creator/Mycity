@@ -1,7 +1,8 @@
 # OPERATION: IRON FRONT
 
 A single-player open-world military game for Project 0 lot **3084**, written in JavaScript on three.js
-(about 10,000 lines). Every other soldier is computer-controlled; there is no multiplayer.
+(about 10,500 lines). The campaign, Free Roam and Battle are single player against AI; Online Battle pits the real
+players inside the lot against each other (no AI there).
 
 - Play it: enter lot 3084 in Project 0 (the game runs in the platform's sandbox).
 - Source: this folder. Exterior (the lot's street view): `lot/`.
@@ -20,6 +21,7 @@ Independent Resistance (RES).
 |---|---|
 | **Campaign** | VARDEN, 12 missions in two chapters: patrols, defence, night raids, a tank assault, a jet strike, a convoy ambush, a boat assault, a helicopter insertion, Camp Sentinel, Port Anselm, the Mount Hallen finale. Briefings, checkpoints, saved progress and unlocks. |
 | **Free Roam** | The whole island at war. Garrisons appear as you approach a place; clear an enemy-held place to liberate it (saved). Patrols, AI-crewed vehicles, an enemy gunship sweep every few minutes, parked vehicles at bases, airfields and harbours. Sandbox tools in the pause menu: spawn vehicles (aircraft start airborne), squads and weapons, set time and weather, teleport by the map, invulnerability. |
+| **Online Battle** | Team Deathmatch or Domination with the real players inside the lot (up to 16), no AI. Each client simulates everyone's shots and damages only its own player; scores, teams and the match live in the session's shared state; the host turns the flags. |
 | **Battle** | Team Deathmatch, Domination, Conquest, King of the Hill, Capture the Flag, Sector Control and Survival, at 12 places, with settings for side, side size, score and time limits, time of day, weather and difficulty. |
 
 ### Controls (keyboard and mouse; every key can be rebound in Controls)
@@ -108,7 +110,7 @@ mission's firefight fought out by the AI; touch look on a simulated phone screen
 
 Not done or not verified:
 
-- No multiplayer: every other soldier is AI.
+- Online Battle has only been tested against the dev kit's simulated player (one client); two real players in the same session have not been tested. Players in a match see each other as soldiers (no vehicles online).
 - The campaign has not been played through by hand, so difficulty and balance are not tuned.
 - AI flies attack helicopters only (no planes, no landing). AI drivers route round buildings on a coarse grid, not along roads.
 - Mouse aiming could not be checked by hand in the headless browser.

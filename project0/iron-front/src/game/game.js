@@ -128,6 +128,11 @@ export class Game {
     this.menus.open('main')
     p0.hud('OPERATION: IRON FRONT. Click to start and for sound. WASD move, mouse aim/fire, Shift sprint, C crouch, Z prone, Q/E lean, R reload, F use/enter, V view, M map, Tab inventory, T squad, P pause. Enter is chat, Esc leaves.')
     p0.loop((dt) => this.frame(Math.min(dt, 0.1)))
+    // the session: other players' messages and the shared state go to the mode that uses them (Online Battle)
+    p0.on('message', (data, from) => this.mode?.onNet?.('message', data, from))
+    p0.on('state', (key, value, from) => { this.mode?.onNet?.('state', key, value, from); if (this.menus?.page === 'online') this.menus.panel.dirty = true })
+    p0.on('leave', p => this.mode?.onNet?.('leave', p))
+    p0.on('join', () => { if (this.menus?.page === 'online') this.menus.panel.dirty = true })
     p0.on('update', () => this.hud?.note('A new version of the game is out: re-enter to play it.', C.gold2))
   }
   // A soldier drawn once so his materials compile before play.
@@ -196,6 +201,8 @@ export class Game {
       if (e.code === 'F9' && this.state === 'menu') { this.start('freeroam', { ...this.menus.setup }); return }
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
+      if (e.code === 'NumpadSubtract' && this.state === 'menu') { this.start('online', { fresh: true }); return }
+      if (e.code === 'NumpadMultiply' && this.modeId === 'online') { p0.log('dbg online', JSON.stringify({ players: p0.room?.players, host: p0.room?.isHost, me: p0.me?.id, team: this.mode.team, remotes: [...this.mode.remotes.keys()], rows: this.mode.rows().map(r => r.id + ':' + r.team), stateKeys: Object.keys(p0.room?.state || {}) })) }
       if (e.code === 'F12' && this.state === 'menu') { this.dbgMission = ((this.dbgMission ?? -1) + 1) % 12; this.start('campaign', { mission: 'm' + (this.dbgMission + 1) }); p0.log('dbg mission', this.dbgMission + 1); return }
       if (e.code === 'Pause') { const m = this.playerSquad?.alive.find(q => q !== this.player.s); if (m) { const s = this.player.s; s.yaw = Math.atan2(m.pos.x - s.pos.x, m.pos.z - s.pos.z); this.player.pitch = -0.05 } }
       if (e.code === 'End' && this.mode?.markers) {
@@ -342,6 +349,7 @@ export class Game {
     const target = guided ? this.findLockTarget(sh.origin, sh.dir, guided, s.vehicle) : null
     if (target && s.isPlayer) this.hud.note('Missile locked')
     this.ballistics.fire({ origin: sh.origin, dir: sh.dir, v: sh.v, ammo: sh.ammo, owner: s, tracer: sh.tracer, suppressed: sh.suppressed, target })
+    this.mode?.onShot?.(s, sh)
     const a = AMMO[sh.ammo]
     const fp = s.isPlayer && this.player.view === 'fp'
     const m = fp ? this.player.camPos.clone().addScaledVector(sh.dir, 0.9).add(_v.set(0, -0.08, 0)) : sh.origin.clone().addScaledVector(sh.dir, 0.7)
@@ -392,6 +400,7 @@ export class Game {
     const n = { type, def: t.def, pos: e.addScaledVector(d, 0.5), vel: d.multiplyScalar(speed).add(s.vel), t: 0, owner: s, done: false }
     n.vel.y += 2.5
     this.grenades.push(n)
+    this.mode?.onGrenade?.(s, n)
     this.sfx.ui('throw')
     if (s.isPlayer) this.hud.note(`${t.def.name} out!`)
     else this.radioNear(s, 'Grenade out!')

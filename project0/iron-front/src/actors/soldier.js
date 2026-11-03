@@ -173,7 +173,10 @@ export class Soldier {
   // ---------- body ----------
   // A hit on `part` for `dmg` (before armour), with penetration `pen` from direction `dir`.
   hurt(part, dmg, pen = 1, src = null, dir = null, kind = 'bullet') {
-    if (this.dead) return 0
+    // another player's stand-in: only their own game can hurt them (it hears our shots)
+    if (this.dead || this.remote) return 0
+    // no friendly fire from team-mates in an online battle
+    if (src?.remote && src.team === this.team) return 0
     const armorPart = part === 'head' ? 'head' : part === 'torso' ? 'torso' : part.startsWith('arm') ? 'arms' : 'legs'
     const armor = this.inv.armor(armorPart)
     const red = kind === 'bullet' ? Math.max(0.12, Math.min(1, 1 - armor * 0.17 + pen * 0.1)) : Math.max(0.5, 1 - armor * 0.06)

@@ -204,7 +204,7 @@ export class Game {
         const e1 = o?.squads?.flatMap(q => q.alive)[0]
         const m = e1 ? e1.pos : this.mode.markers()[0]; if (!m) return
         const dx = s.pos.x - m.x, dz = s.pos.z - m.z, d = Math.hypot(dx, dz) || 1
-        const x = m.x + dx / d * 70, z = m.z + dz / d * 70
+        const k = o ? 70 : 3, x = m.x + dx / d * k, z = m.z + dz / d * k
         s.pos.set(x, heightAt(x, z), z); s.yaw = Math.atan2(m.x - x, m.z - z); this.preload(x, z)
         for (const q of this.playerSquad?.alive || []) if (q !== s) q.pos.set(x + Math.random() * 6 - 3, heightAt(x, z), z - 4)
         p0.log('dbg moved near objective')

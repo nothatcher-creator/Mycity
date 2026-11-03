@@ -33,7 +33,7 @@ export class VehicleControl {
           pitch: (input.down('forward') ? 1 : 0) - (input.down('back') ? 1 : 0),
           roll: (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0),
           climb: (input.down('vUp') ? 1 : 0) - (input.down('vDown') ? 1 : 0),
-          yaw: assist ? THREE.MathUtils.clamp(-look.yaw * 18, -1, 1) : (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0),
+          yaw: assist ? THREE.MathUtils.clamp(look.yaw * 18, -1, 1) : (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0),
         }
         if (!assist) { this.orbit.yaw += look.yaw; this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.6, 1.2) }
         else this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.6, 1.2)
@@ -51,12 +51,13 @@ export class VehicleControl {
           v.ctl = {
             thrust, brake: input.down('vDown'),
             pitch: THREE.MathUtils.clamp(local.y * 4, -1, 1),
-            roll: kb ? kb : THREE.MathUtils.clamp(-local.x * 3 - Math.sin(v.roll) * 0.6 * (1 - Math.abs(local.x)), -1, 1),
-            yaw: THREE.MathUtils.clamp(-local.x * 2, -1, 1),
+            // the world's left is +x: a target on the left (local.x > 0) banks and turns the plane left (positive roll and yaw)
+            roll: kb ? -kb : THREE.MathUtils.clamp(local.x * 3 - Math.sin(v.roll) * 0.6 * (1 - Math.abs(local.x)), -1, 1),
+            yaw: THREE.MathUtils.clamp(local.x * 2, -1, 1),
           }
           if (v.onGround) v.ctl.pitch = input.down('vUp') ? 1 : local.y > 0.1 ? 1 : 0
         } else {
-          v.ctl = { thrust, brake: input.down('vDown'), pitch: THREE.MathUtils.clamp(look.pitch * 25, -1, 1) + (input.down('vUp') ? 1 : 0), roll: THREE.MathUtils.clamp(-look.yaw * 25, -1, 1) + ((input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0)), yaw: (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0) }
+          v.ctl = { thrust, brake: input.down('vDown'), pitch: THREE.MathUtils.clamp(look.pitch * 25, -1, 1) + (input.down('vUp') ? 1 : 0), roll: THREE.MathUtils.clamp(look.yaw * 25, -1, 1) - ((input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0)), yaw: (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0) }
         }
       } else {
         // cars, tracks, boats

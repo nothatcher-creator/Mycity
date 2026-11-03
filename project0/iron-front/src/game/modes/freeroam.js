@@ -112,7 +112,7 @@ export class FreeRoam extends Mode {
       const side = this.control[pt.place] || 'vdf'
       const i = this.spawnedPoints.size
       const type = pt.kind === 'heli' ? HELI[side][i % HELI[side].length] : pt.kind === 'plane' ? PLANE[i % PLANE.length] : pt.kind === 'boat' ? BOAT[i % BOAT.length] : MIL_VEH[side][i % MIL_VEH[side].length]
-      this.park(type, pt.x, pt.z, pt.yaw || 0, { faction: pt.kind === 'boat' && !pt.military ? null : side })
+      this.park(type, pt.x, pt.z, pt.yaw || 0, { faction: pt.kind === 'boat' && !pt.military ? null : side, exact: pt.kind !== 'vehicle', search: 12 })
     }
     // roaming patrols
     this.patrolT -= 1
@@ -143,10 +143,7 @@ export class FreeRoam extends Mode {
       if (!onRoad(x, z)) continue
       // beside the road, along it
       const yaw = Math.random() * Math.PI * 2
-      const g = this.findGround(x, z, 5, 6)
-      if (!g) continue
-      this.park(CIVIL[placed % CIVIL.length], g[0], g[1], yaw)
-      placed++
+      if (this.park(CIVIL[placed % CIVIL.length], x, z, yaw, { search: 6 })) placed++
     }
   }
   standDown(P) {
@@ -218,7 +215,13 @@ export class FreeRoam extends Mode {
   admin(action, arg) {
     const g = this.g, s = g.player.s
     const ahead = (d) => [s.pos.x + Math.sin(s.yaw) * d, s.pos.z + Math.cos(s.yaw) * d]
-    if (action === 'vehicle') { const [x, z] = ahead(arg === 'fighter' || arg === 'groundattack' || arg === 'transportplane' ? 30 : 12); const v = this.park(arg, x, z, s.yaw, { faction: this.faction }); g.hud.note(`Spawned ${v.def.name}`) }
+    if (action === 'vehicle') {
+      const big = arg === 'fighter' || arg === 'groundattack' || arg === 'transportplane'
+      const [x, z] = ahead(big ? 40 : 14)
+      const v = this.park(arg, x, z, s.yaw, { faction: this.faction, search: big ? 120 : 40 })
+      g.hud.note(v ? `${v.def.name} is waiting ${Math.round(Math.hypot(v.pos.x - s.pos.x, v.pos.z - s.pos.z))} m away` : 'No clear ground for that here: try in the open')
+      return v
+    }
     else if (action === 'squad') { const enemy = arg === 'enemy'; const f = enemy ? (Object.keys(FACTIONS).find(k => this.enemyOf(k)) || 'nlf') : this.faction; const [x, z] = ahead(enemy ? 220 : 15); const c = this.findGround(x, z, 40) || [x, z]; const q = this.spawnSquad(f, c[0], c[1], 5, enemy ? { type: 'attack', pos: s.pos.clone() } : { type: 'defend', pos: new THREE.Vector3(c[0], 0, c[1]), radius: 20 }); this.patrols.push(q); g.hud.note(enemy ? 'Enemy squad attacking from ahead' : 'Friendly squad placed') }
     else if (action === 'time') { g.sky.hour = arg; g.hud.note(`Time ${String(Math.floor(arg)).padStart(2, '0')}:00`) }
     else if (action === 'weather') { g.sky.setWeather(arg); g.hud.note(`Weather: ${WEATHER[arg].name}`) }

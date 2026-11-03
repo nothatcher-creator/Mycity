@@ -164,7 +164,9 @@ export class Game {
       if (this.state !== 'play' || !this.mode?.admin) return
       const s = this.player.s
       if (e.code === 'F8') { const x = s.pos.x + Math.sin(s.yaw) * 90, z = s.pos.z + Math.cos(s.yaw) * 90; const q = this.mode.spawnSquad('nlf', x, z, 4, { type: 'attack', pos: s.pos.clone() }); this.mode.patrols.push(q); p0.log('dbg enemy squad at', x.toFixed(0), z.toFixed(0)) }
-      if (e.code === 'F7' || e.code === 'F6' || e.code === 'F5') { const type = e.code === 'F7' ? 'jeep' : e.code === 'F6' ? 'scoutheli' : 'mbt'; this.mode.admin('vehicle', type); const v = this.vehicles.list[this.vehicles.list.length - 1]; if (this.vehicles.enter(s, v)) this.vcontrol.entered(v) }
+      if (e.code === 'F7' || e.code === 'F6' || e.code === 'F5' || e.code === 'F3') { const type = { F7: 'jeep', F6: 'scoutheli', F5: 'mbt', F3: 'fighter' }[e.code]; const v = this.mode.admin('vehicle', type); if (v && this.vehicles.enter(s, v)) { this.vcontrol.entered(v); p0.log('dbg entered', type) } }
+      if (e.code === 'F4') { this.mode.admin('teleport', { x: 60, z: 1650 }); p0.log('dbg teleported') }
+      if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), ctl: v.ctl }) : 'none') }
     })
     p0.on('pointermove', e => {
       this.ui.move(e.x, e.y)
@@ -520,6 +522,7 @@ export class Game {
     this.ui.blocking = this.map.visible || this.invui.visible || this.menus.visible
     if (!this.ui.blocking || s.dead) {
       if (s.vehicle && !s.dead) {
+        this.hud.prompt = ''
         this.vcontrol.update(dt, s, inp)
         if (s.vehicle) { this.camPos.copy(this.vcontrol.camPos); this.camQuat.copy(this.vcontrol.camQuat); this.fov = this.vcontrol.fov }
       } else {

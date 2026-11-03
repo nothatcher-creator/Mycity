@@ -154,7 +154,7 @@ export class Vehicle {
     const swim = d.amphibious && deep > 1.2
     // engine force, brakes, rolling drag, the slope
     let a = 0
-    if (this.throttle > 0) a = this.speed < -0.5 ? 12 * this.throttle : d.accel * this.throttle * (1 - Math.max(0, this.speed) / maxV) * (swim ? 0.3 : 1)
+    if (this.throttle > 0) a = this.speed < -0.5 ? 12 * this.throttle : d.accel * this.throttle * (1 - (Math.max(0, this.speed) / maxV) ** 2) * (swim ? 0.3 : 1)
     else if (this.throttle < 0) a = this.speed > 0.5 ? 12 * this.throttle : d.accel * 0.6 * this.throttle * (1 + Math.min(0, this.speed) / 8)
     if (this.brake) a -= Math.sign(this.speed) * Math.min(Math.abs(this.speed) / Math.max(dt, 1e-3), 14 * this.brake)
     a -= this.speed * (onRoad ? 0.02 : 0.08) + Math.sign(this.speed) * (onRoad ? 0.15 : 0.6)
@@ -251,14 +251,15 @@ export class Vehicle {
   heli(dt) {
     const d = this.def, drv = this.driver
     const inp = this.ctl || {}
-    this.rpm += ((this.engine && drv ? 1 : 0) - this.rpm) * Math.min(1, dt * 0.35)
+    this.rpm += ((this.engine && drv ? 1 : 0) - this.rpm) * Math.min(1, dt * 0.7)
     const g = this.groundAt(this.pos.x, this.pos.z)
     const wl = waterLevel(this.pos.x, this.pos.z)
     const floor = Math.max(g, wl)
     this.alt = this.pos.y - floor
     // cyclic: tilt towards where the controls ask
     const assist = this.game.settings.flightAssist
-    const tp = (inp.pitch || 0) * 0.32, tr = (inp.roll || 0) * 0.42
+    // forward stick: nose down (negative pitch); right stick: bank right (the world's right is -x)
+    const tp = -(inp.pitch || 0) * 0.32, tr = -(inp.roll || 0) * 0.42
     this.pitch += (tp - this.pitch) * Math.min(1, dt * 2.2)
     this.roll += (tr - this.roll) * Math.min(1, dt * 2.6)
     this.yaw += (inp.yaw || 0) * dt * 1.4
@@ -267,7 +268,7 @@ export class Vehicle {
       const climb = (inp.climb || 0) * 8
       const wantVy = climb
       const err = wantVy - this.vel.y
-      this.collective = THREE.MathUtils.clamp(1 / 1.6 / Math.max(0.3, Math.cos(this.pitch) * Math.cos(this.roll)) + err * 0.06, 0, 1)
+      this.collective = THREE.MathUtils.clamp(1 / 1.6 / Math.max(0.3, this.rpm) / Math.max(0.3, Math.cos(this.pitch) * Math.cos(this.roll)) + err * 0.08, 0, 1)
       if (this.onGround && climb <= 0) this.collective = Math.min(this.collective, 0.45)
     } else this.collective = THREE.MathUtils.clamp(this.collective + (inp.climb || 0) * dt * 0.5, 0, 1)
     // forces: lift along the rotor axis, gravity, drag

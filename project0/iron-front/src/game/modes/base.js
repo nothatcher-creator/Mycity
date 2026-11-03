@@ -6,6 +6,7 @@ import { isBuilt, POINTS } from '../../world/places.js'
 import { PLACES } from '../../world/blueprint.js'
 import { FACTIONS, ROLES } from '../../actors/factions.js'
 import { C, text } from '../../ui/ui.js'
+import { VEHICLES } from '../../vehicles/vehicle-data.js'
 
 export const NAMES = ['Adler', 'Brandt', 'Cole', 'Doran', 'Engel', 'Falk', 'Grau', 'Hale', 'Ivers', 'Jansen', 'Kade', 'Lorn', 'Marek', 'Novak', 'Orsk', 'Petrov',
   'Quist', 'Rook', 'Sten', 'Tarn', 'Ulric', 'Voss', 'Wren', 'Yuri', 'Zane', 'Baker', 'Mills', 'Hart', 'Reyes', 'Silva', 'Kovac', 'Lind', 'Moss', 'Price', 'Ross', 'Vance']
@@ -25,17 +26,25 @@ export class Mode {
   update(dt) { this.t += dt }
   // ---- placing things ----
   // Clear ground near (x, z) within r: on land, not in a building, not too steep.
-  findGround(x, z, r, tries = 24, rand = Math.random) {
+  // `clear` > 0: nothing solid (walls, props, trees, vehicles) within that many metres either.
+  findGround(x, z, r, tries = 24, rand = Math.random, clear = 0) {
     for (let i = 0; i < tries; i++) {
-      const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * r
+      const a = rand() * Math.PI * 2, d = i === 0 && clear ? 0 : Math.sqrt(rand()) * r
       const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d
       const h = heightAt(px, pz)
-      if (h < waterLevel(px, pz) + 0.3 || isBuilt(px, pz, 1.5)) continue
+      if (h < waterLevel(px, pz) + 0.3 || isBuilt(px, pz, 1.5 + clear)) continue
       const s = Math.abs(heightAt(px + 2, pz) - h) + Math.abs(heightAt(px, pz + 2) - h)
       if (s > 1.6) continue
+      if (clear && !this.isClear(px, pz, h, clear)) continue
       return [px, pz]
     }
     return null
+  }
+  isClear(x, z, h, r) {
+    let ok = true
+    this.g.collision.query(x - r, z - r, x + r, z + r, c => { if (c.maxY > h + 0.25 && c.minY < h + 4 && c.kind !== 'floor') { ok = false; return false } })
+    if (ok) for (const v of this.g.vehicles.list) if (Math.hypot(v.pos.x - x, v.pos.z - z) < r + Math.max(v.def.size[0], v.def.size[2]) / 2) return false
+    return ok
   }
   // A squad of `n` soldiers of `faction` near (x, z) with an order.
   spawnSquad(faction, x, z, n, order, o = {}) {
@@ -74,9 +83,13 @@ export class Mode {
     g.playerSquad = q
     return q
   }
+  // A vehicle on clear ground near (x, z) (helicopters and planes need the most room).
   park(type, x, z, yaw, o = {}) {
-    const v = this.g.vehicles.spawn(type, x, z, yaw, o)
-    return v
+    const d = VEHICLES[type]
+    const need = Math.max(d.size[0], d.size[2]) / 2 + (d.kind === 'heli' ? 4 : 0.8)
+    const p = o.exact ? [x, z] : (this.findGround(x, z, o.search ?? 25, 30, Math.random, need) || (d.kind === 'boat' ? [x, z] : null))
+    if (!p) return null
+    return this.g.vehicles.spawn(type, p[0], p[1], yaw, o)
   }
   // ---- the player ----
   spawnPoints(place) { return POINTS.filter(p => p.kind === 'spawn' && (!place || p.place === place)) }

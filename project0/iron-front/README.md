@@ -41,7 +41,7 @@ Independent Resistance (RES).
 
 Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with flight assist on.
 
-**Phones and tablets:** the city's stick moves you and its left and right turn you (the platform follows one finger at a time, so moving and looking with two fingers is not possible; a setting switches the stick back to strafing); drag anywhere else to look, also up and down; buttons for fire (hold), aim,
+**Phones and tablets:** the city's stick moves you and its left and right turn you (the platform follows one finger at a time, so moving and looking with two fingers is not possible; a setting switches the stick back to strafing); aim assist pulls the view onto a visible enemy within about 5° while aiming or firing (a setting turns it off); drag anywhere else to look, also up and down; buttons for fire (hold), aim,
 reload, stance, jump, use, grenade, view, map, inventory, heal and the menu.
 
 ## How it works

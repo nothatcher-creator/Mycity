@@ -10,7 +10,7 @@ import { ATTACHMENTS, AMMO, weapon } from '../combat/weapons-data.js'
 import { zeroAngle } from '../combat/ballistics.js'
 import { raycastTerrain } from '../world/collision.js'
 import { heightAt } from '../world/heightfield.js'
-import { FACTIONS } from './factions.js'
+import { FACTIONS, hostile } from './factions.js'
 import { STAND, CROUCH, PRONE } from './soldier.js'
 
 export class Player {
@@ -101,6 +101,8 @@ export class Player {
       s.yaw += look.yaw
       this.pitch = Math.max(-1.45, Math.min(1.45, this.pitch + look.pitch))
     }
+    // touch aim assist: aiming or firing, the view drifts onto the nearest enemy you can see within ~5 degrees
+    if (input.touch && g.settings.aimAssist !== false && (s.ads || this.touchFire) && s.w) this.assist(dt)
     // recoil: the view kicks up and recovers
     const rk = s.recoil
     this.pitch = Math.min(1.45, this.pitch + rk.pitch * 0.55 * dt * 14)
@@ -192,6 +194,33 @@ export class Player {
     this.updateCamera(dt)
     this.updateViewmodel(dt)
     this.updateLight()
+  }
+  assist(dt) {
+    const s = this.s, g = this.game, e = s.eye(_v1)
+    this.assistT = (this.assistT || 0) - dt
+    if (this.assistT <= 0) {
+      // choose a target a few times a second (the nearest to the aim line that can be seen)
+      this.assistT = 0.25; this.assistTarget = null
+      const fx = Math.sin(s.yaw) * Math.cos(this.pitch), fy = Math.sin(this.pitch), fz = Math.cos(s.yaw) * Math.cos(this.pitch)
+      let best = 0.087, bestS = null
+      for (const o of g.soldiersNear(e.x, e.z, 350)) {
+        if (o.dead || o === s || !hostile(o.team, s.team)) continue
+        const dx = o.pos.x - e.x, dy = o.pos.y + 1.2 - e.y, dz = o.pos.z - e.z, d = Math.hypot(dx, dy, dz)
+        if (d > 350 || d < 1) continue
+        const ang = Math.acos(Math.min(1, (dx * fx + dy * fy + dz * fz) / d))
+        if (ang < best && g.ai.canSee(e.x, e.y, e.z, o.pos.x, o.pos.y + 1.2, o.pos.z, o.vehicle)) { best = ang; bestS = o }
+      }
+      this.assistTarget = bestS
+    }
+    const t = this.assistTarget
+    if (!t || t.dead) return
+    const dx = t.pos.x - e.x, dz = t.pos.z - e.z, dy = t.pos.y + (t.stanceT > 1.5 ? 0.3 : 1.2) - e.y
+    let dyaw = Math.atan2(dx, dz) - s.yaw
+    while (dyaw > Math.PI) dyaw -= Math.PI * 2
+    while (dyaw < -Math.PI) dyaw += Math.PI * 2
+    const dpitch = Math.atan2(dy, Math.hypot(dx, dz)) - this.pitch
+    const k = Math.min(1, dt * 3.5)
+    s.yaw += dyaw * k; this.pitch += dpitch * k
   }
   restingOnSomething() {
     // a wall or sandbags at chest height in front: a rest for the bipod

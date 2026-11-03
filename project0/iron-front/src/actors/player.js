@@ -244,6 +244,12 @@ export class Player {
       let d = dist
       const h = { t: 0 }
       if (this.game.collision.raycast(want.x, want.y, want.z, dir.x, dir.y, dir.z, dist + 0.3, h)) d = Math.max(0.3, h.t - 0.3)
+      // vehicles are not in the collision grid: test the ones close by on their own
+      for (const v of this.game.vehicles.list) {
+        if (v.pos.distanceTo(want) > 14) continue
+        const t = v.raycast(want.x, want.y, want.z, dir.x, dir.y, dir.z, d + 0.3, h)
+        if (t >= 0) d = Math.max(0.3, Math.min(d, t - 0.3))
+      }
       const tg = raycastTerrain(want.x, want.y, want.z, dir.x, dir.y, dir.z, d + 0.3, 0.3)
       if (tg >= 0) d = Math.max(0.3, tg - 0.3)
       this.camPos.copy(want).addScaledVector(dir, d)

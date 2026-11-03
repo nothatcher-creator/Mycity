@@ -196,6 +196,8 @@ export class Game {
       if (e.code === 'F9' && this.state === 'menu') { this.start('freeroam', { ...this.menus.setup }); return }
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
+      if (e.code === 'F12' && this.state === 'menu') { this.dbgMission = ((this.dbgMission ?? -1) + 1) % 6; this.start('campaign', { mission: 'm' + (this.dbgMission + 1) }); p0.log('dbg mission', this.dbgMission + 1); return }
+      if (e.code === 'Home' && this.modeId === 'campaign') { this.mode.dbgSkip = true; p0.log('dbg skip objective', this.mode.idx) }
       if (this.state !== 'play' || !this.mode?.admin) return
       const s = this.player.s
       if (e.code === 'F8') { const x = s.pos.x + Math.sin(s.yaw) * 90, z = s.pos.z + Math.cos(s.yaw) * 90; const q = this.mode.spawnSquad('nlf', x, z, 4, { type: 'attack', pos: s.pos.clone() }); this.mode.patrols.push(q); p0.log('dbg enemy squad at', x.toFixed(0), z.toFixed(0)) }

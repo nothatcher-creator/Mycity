@@ -14,6 +14,7 @@ import { WEATHER } from '../world/sky.js'
 import { mapImage } from './mapimage.js'
 import { CONTROL } from '../game/modes/freeroam.js'
 import { BATTLES, ARENAS } from '../game/modes/battle.js'
+import { MISSIONS, CHAPTER, drawBriefing } from '../game/modes/campaign.js'
 
 export class Menus {
   constructor(game) {
@@ -80,14 +81,15 @@ export class Menus {
     const fr = this.g.save.data.freeroam
     const items = [
       fr ? { id: 'cont', label: 'CONTINUE FREE ROAM', sub: `${FACTIONS[fr.faction]?.short || ''} · ${(fr.liberated || []).length} places liberated`, fn: () => this.g.start('freeroam', { resume: true, squad: this.setup.squad }) } : null,
+      { id: 'camp', label: 'CAMPAIGN', sub: MODE_INFO[2].desc, fn: () => this.open('campaign', true) },
       { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
       { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
-    ].filter((v, i) => v || i === 3)
-    this.column(c, p, x, 200 * s, Math.min(420 * s, W - x * 2), items, s)
+    ].filter((v, i) => v || i === 4)
+    this.column(c, p, x, 180 * s, Math.min(420 * s, W - x * 2), items, s)
     if (Math.floor((this.t || 0) * 2) % 2 === 0) text(c, 'PRESS SPACE TO DEPLOY  ·  or click to choose', x, H - 30 * s, { size: 14 * s, weight: 800, color: C.gold2, shadow: true })
     text(c, 'Single player. Built for Project 0 lot 3084.', W - 20 * s, H - 30 * s, { size: 11 * s, color: C.dim, align: 'right', shadow: true })
   }
@@ -147,15 +149,37 @@ export class Menus {
     p.button(c, 'back', x + 274 * s, y, 140 * s, 50 * s, 'BACK', () => this.back(), { align: 'center' })
     text(c, 'All other soldiers are AI: this game is single player.', x, y + 72 * s, { size: 11 * s, color: C.dim })
   }
+  page_campaign(c, p, W, H, s) {
+    const g = this.g, cs = g.save.data.campaign, x = 60 * s, w = Math.min(420 * s, W - x * 2)
+    let y = 40 * s - this.scroll
+    text(c, 'CAMPAIGN', x, y + 30 * s, { size: 26 * s, weight: 900, color: C.gold2 })
+    text(c, CHAPTER, x, y + 52 * s, { size: 13 * s, color: C.dim }); y += 70 * s
+    const items = []
+    if (cs.at) { const m = MISSIONS.find(q => q.id === cs.at.mission); if (m) items.push({ id: 'resume', label: `CONTINUE: ${m.name.toUpperCase()}`, sub: `From objective ${cs.at.checkpoint + 1} of ${m.objectives.length}`, fn: () => g.start('campaign', { mission: m.id, checkpoint: cs.at.checkpoint }) }) }
+    MISSIONS.forEach((m, i) => {
+      const open = i < (cs.unlocked || 1), done = cs.done.includes(m.id)
+      items.push({ id: 'm' + m.id, label: `${i + 1}. ${m.name.toUpperCase()}${done ? '  ✓' : ''}`, sub: open ? `${m.place}` : 'Finish the mission before it to unlock', disabled: !open, selected: this.mission === m.id, fn: () => { this.mission = m.id; this.panel.dirty = true } })
+    })
+    items.push(null, { id: 'back', label: 'BACK', fn: () => this.back() })
+    this.column(c, p, x, y, w, items, s)
+    // the briefing of the chosen mission
+    const m = MISSIONS.find(q => q.id === this.mission)
+    if (m) {
+      const bx = W > 900 * s ? x + w + 40 * s : x, by = W > 900 * s ? 110 * s : y + items.length * 54 * s + 20 * s, bw = Math.min(560 * s, W - bx - 30 * s)
+      const yy = drawBriefing(c, m, bx, by, bw, s)
+      p.button(c, 'deploy', bx, yy + 10 * s, 240 * s, 50 * s, 'DEPLOY', () => g.start('campaign', { mission: m.id }), { font: FONT(20 * s, 900), color: C.gold2 })
+    } else if (W > 900 * s) text(c, 'Choose a mission for its briefing.', x + w + 40 * s, 130 * s, { size: 14 * s, color: C.dim })
+  }
   page_results(c, p, W, H, s) {
     const g = this.g, r = g.mode?.results?.() || { title: '', lines: [] }, x = W / 2
     text(c, r.title, x, H * 0.24, { size: 48 * s, weight: 900, align: 'center', color: r.title === 'VICTORY' ? C.gold2 : r.title === 'DEFEAT' ? C.red : C.text, shadow: true })
     text(c, r.reason, x, H * 0.24 + 32 * s, { size: 15 * s, align: 'center', color: C.dim })
     let y = H * 0.24 + 74 * s
-    for (const l of r.lines) { text(c, l, x, y, { size: 16 * s, align: 'center' }); y += 26 * s }
+    for (const l of r.lines) { c.font = FONT(16 * s, 600); if (c.measureText(l).width > W - 60 * s) { c.textAlign = 'left'; y = wrap(c, l, 30 * s, y, W - 60 * s, 22 * s, { size: 15 * s }) + 4 * s } else { text(c, l, x, y, { size: 16 * s, align: 'center' }); y += 26 * s } }
     const w = Math.min(380 * s, W - 40 * s)
     this.column(c, p, x - w / 2, y + 10 * s, w, [
-      { id: 'again', label: 'PLAY AGAIN', fn: () => { const o = { ...g.mode.opts }; g.start(g.modeId, o) } },
+      r.next ? { id: 'next', label: `NEXT MISSION: ${r.next.name.toUpperCase()}`, fn: () => g.start('campaign', { mission: r.next.id }) } : null,
+      { id: 'again', label: g.modeId === 'campaign' ? 'PLAY THE MISSION AGAIN' : 'PLAY AGAIN', fn: () => { const o = { ...g.mode.opts }; g.start(g.modeId, o) } },
       { id: 'menu', label: 'MAIN MENU', fn: () => g.quitToMenu() }], s)
   }
   startsFor(f) {

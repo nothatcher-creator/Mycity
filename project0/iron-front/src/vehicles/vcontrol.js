@@ -44,18 +44,21 @@ export class VehicleControl {
         if (assist) {
           // mouse aim: the camera looks where the mouse goes; the plane flies there
           this.aim.yaw += look.yaw; this.aim.pitch = THREE.MathUtils.clamp(this.aim.pitch + look.pitch, -1.3, 1.3)
-          const want = new THREE.Vector3(Math.sin(this.aim.yaw) * Math.cos(this.aim.pitch), Math.sin(this.aim.pitch), Math.cos(this.aim.yaw) * Math.cos(this.aim.pitch))
-          const inv = v.quat.clone().invert()
-          const local = want.clone().applyQuaternion(inv)
+          // the autopilot: bank towards the aim (at most ~60 degrees, so it never rolls over), hold the aim's climb.
+          // A positive heading error is to the left (the world's left is +x): bank left (positive roll) to turn there.
+          let e = this.aim.yaw - v.yaw
+          while (e > Math.PI) e -= Math.PI * 2
+          while (e < -Math.PI) e += Math.PI * 2
           const kb = (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0)
+          const bankWant = kb ? -kb * 1.2 : THREE.MathUtils.clamp(e * 2.5, -1.05, 1.05)
+          const pitchWant = THREE.MathUtils.clamp(this.aim.pitch, -1.1, 1.1)
           v.ctl = {
             thrust, brake: input.down('vDown'),
-            pitch: THREE.MathUtils.clamp(local.y * 4, -1, 1),
-            // the world's left is +x: a target on the left (local.x > 0) banks and turns the plane left (positive roll and yaw)
-            roll: kb ? -kb : THREE.MathUtils.clamp(local.x * 3 - Math.sin(v.roll) * 0.6 * (1 - Math.abs(local.x)), -1, 1),
-            yaw: THREE.MathUtils.clamp(local.x * 2, -1, 1),
+            pitch: THREE.MathUtils.clamp((pitchWant - v.pitch) * 3, -1, 1),
+            roll: THREE.MathUtils.clamp((bankWant - v.roll) * 2.5, -1, 1),
+            yaw: THREE.MathUtils.clamp(e * 2, -1, 1),
           }
-          if (v.onGround) v.ctl.pitch = input.down('vUp') ? 1 : local.y > 0.1 ? 1 : 0
+          if (v.onGround) v.ctl.pitch = input.down('vUp') || this.aim.pitch > 0.1 ? 1 : 0
         } else {
           v.ctl = { thrust, brake: input.down('vDown'), pitch: THREE.MathUtils.clamp(look.pitch * 25, -1, 1) + (input.down('vUp') ? 1 : 0), roll: THREE.MathUtils.clamp(look.yaw * 25, -1, 1) - ((input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0)), yaw: (input.down('leanR') ? -1 : 0) + (input.down('leanL') ? 1 : 0) }
         }

@@ -45,6 +45,8 @@ export class Input {
     })
     p0.on('pointermove', e => {
       if (e.touch) { this.touch = true }
+      // (a jump of hundreds of pixels comes with the pointer lock itself in some browsers: not a real movement)
+      if (Math.abs(e.dx) > 250 || Math.abs(e.dy) > 250) return
       if (!e.touch && (p0.input.pointer.locked || (e.buttons & 2) || (this.dragLook && (e.buttons & 1)))) {
         this.look.dx += e.dx; this.look.dy += e.dy
       }

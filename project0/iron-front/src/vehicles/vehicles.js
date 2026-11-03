@@ -321,6 +321,8 @@ export class Vehicle {
       // stall: below the minimum speed the nose drops
       if (speed < d.minSpeed) this.pitch -= dt * (d.minSpeed - speed) / d.minSpeed * 1.2
       this.pitch = THREE.MathUtils.clamp(this.pitch, -1.45, 1.45)
+      while (this.roll > Math.PI) this.roll -= Math.PI * 2
+      while (this.roll < -Math.PI) this.roll += Math.PI * 2
     } else {
       this.roll *= 1 - dt * 5
       this.yaw += (inp.yaw || inp.roll || 0) * dt * 0.5 * Math.min(1, speed / 10)

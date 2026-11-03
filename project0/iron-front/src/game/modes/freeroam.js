@@ -10,6 +10,7 @@ import { heightAt } from '../../world/heightfield.js'
 import { FACTIONS, hostile } from '../../actors/factions.js'
 import { WEATHER } from '../../world/sky.js'
 import { QUALITY } from '../../core/engine.js'
+import { VEHICLES } from '../../vehicles/vehicle-data.js'
 import { Inventory } from '../inventory.js'
 import { C, text } from '../../ui/ui.js'
 
@@ -215,6 +216,17 @@ export class FreeRoam extends Mode {
   admin(action, arg) {
     const g = this.g, s = g.player.s
     const ahead = (d) => [s.pos.x + Math.sin(s.yaw) * d, s.pos.z + Math.cos(s.yaw) * d]
+    if (action === 'vehicle' && VEHICLES[arg].kind === 'plane') {
+      // aircraft from the sandbox start in the air (no runway needed): 250 m up, at cruising speed, you at the controls
+      if (s.vehicle) g.vehicles.exit(s, true)
+      const [x, z] = ahead(60), d = VEHICLES[arg]
+      const v = g.vehicles.spawn(arg, x, z, s.yaw, { faction: this.faction, y: Math.max(heightAt(x, z), 0) + 250 })
+      const sp = Math.min(d.maxSpeed * 0.7, Math.max(d.minSpeed * 1.5, 60))
+      v.speed = sp; v.vel.set(Math.sin(s.yaw) * sp, 0, Math.cos(s.yaw) * sp); v.throttle = 0.75; v.gearDown = false; v.onGround = false; v.engine = true
+      if (g.vehicles.enter(s, v)) { g.vcontrol.entered(v); g.player.lastView = g.player.view }
+      g.hud.note(`${d.name}: airborne. W/S throttle, the mouse steers, G gear, F bails out (parachute).`, C.gold2)
+      return v
+    }
     if (action === 'vehicle') {
       const big = arg === 'fighter' || arg === 'groundattack' || arg === 'transportplane'
       const [x, z] = ahead(big ? 40 : 14)

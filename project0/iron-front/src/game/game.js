@@ -196,7 +196,19 @@ export class Game {
       if (e.code === 'F9' && this.state === 'menu') { this.start('freeroam', { ...this.menus.setup }); return }
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
-      if (e.code === 'F12' && this.state === 'menu') { this.dbgMission = ((this.dbgMission ?? 5) + 1) % 12; this.start('campaign', { mission: 'm' + (this.dbgMission + 1) }); p0.log('dbg mission', this.dbgMission + 1); return }
+      if (e.code === 'F12' && this.state === 'menu') { this.dbgMission = ((this.dbgMission ?? -1) + 1) % 12; this.start('campaign', { mission: 'm' + (this.dbgMission + 1) }); p0.log('dbg mission', this.dbgMission + 1); return }
+      if (e.code === 'Pause') { const m = this.playerSquad?.alive.find(q => q !== this.player.s); if (m) { const s = this.player.s; s.yaw = Math.atan2(m.pos.x - s.pos.x, m.pos.z - s.pos.z); this.player.pitch = -0.05 } }
+      if (e.code === 'End' && this.mode?.markers) {
+        // to 70 m short of the objective (the nearest living enemy of a 'clear' objective), with the squad
+        const s = this.player.s, o = this.mode.obj
+        const e1 = o?.squads?.flatMap(q => q.alive)[0]
+        const m = e1 ? e1.pos : this.mode.markers()[0]; if (!m) return
+        const dx = s.pos.x - m.x, dz = s.pos.z - m.z, d = Math.hypot(dx, dz) || 1
+        const x = m.x + dx / d * 70, z = m.z + dz / d * 70
+        s.pos.set(x, heightAt(x, z), z); s.yaw = Math.atan2(m.x - x, m.z - z); this.preload(x, z)
+        for (const q of this.playerSquad?.alive || []) if (q !== s) q.pos.set(x + Math.random() * 6 - 3, heightAt(x, z), z - 4)
+        p0.log('dbg moved near objective')
+      }
       if (e.code === 'Home' && this.modeId === 'campaign') { this.mode.dbgSkip = true; p0.log('dbg skip objective', this.mode.idx) }
       if (this.state !== 'play' || !this.mode?.admin) return
       const s = this.player.s
@@ -552,6 +564,7 @@ export class Game {
         const dvs = dv ? `${dv.alive ? 'alive' : 'WRECK'} d${dv.pos.distanceTo(this.player.s.pos).toFixed(0)} v${dv.speed.toFixed(1)} g:${gun?.occupant?.brain?.state} ammo${gun?.w?.mag}` : ''
         const P = this.player
         this.p0.log('dbg', this.state, 'fps', (this.dbgN / this.dbgT).toFixed(1), where, 'soldiers', this.soldiers.filter(o => !o.dead).length, 'dead', this.soldiers.filter(o => o.dead).length, 'veh', this.vehicles.list.length, 'q', this.settings.quality, 'crews', crews, 'dbgveh', dvs)
+        if (this.modeId === 'campaign') { const o = this.mode.obj; this.p0.log('dbgc', 'obj', this.mode.idx, o?.type, 'enemies', o?.squads?.reduce((n, q) => n + q.alive.length, 0), 'squad', this.playerSquad?.alive.length, 'hp', this.player?.s.blood.toFixed(0), 'kills', this.mode.kills) }
         this.p0.log('dbg2', 'score', this.mode?.scoreText?.(), 'yaw', P?.s.yaw.toFixed(2), 'kills', this.mode?.kills, 'scope', P?.scoped, P?.binoculars, P?.s.ads, P?.adsT?.toFixed(2), this.input.mouse.right, P?.view, this.hud?.scope.visible, this.hud?.visible)
         if (s) { let e = null, ed = 1e9; for (const o of this.soldiers) if (!o.dead && o.brain && hostile(o.team, s.team)) { const d = o.pos.distanceTo(s.pos); if (d < ed) { ed = d; e = o } }
           if (e) this.p0.log('dbg enemy', ed.toFixed(0), 'm', e.brain.state, 'tgt', e.brain.target?.name, 'move', e.brain.move ? e.brain.move.distanceTo(e.pos).toFixed(0) : '-', 'spd', e.speed.toFixed(1), 'ammo', e.ammoInWeapon, 'keys', [...this.p0.input.keys].join('+'), 'fwd', s.input.fwd, 'spd', s.speed.toFixed(2), 'ground', s.onGround)

@@ -27,8 +27,8 @@ export class Engine {
     // the first-person weapon: its own scene and camera so it never clips into walls
     this.vmScene = new THREE.Scene()
     this.vmCamera = new THREE.PerspectiveCamera(55, 1, 0.01, 10)
-    this.vmScene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 1.6))
-    this.vmSun = new THREE.DirectionalLight(0xffffff, 1.8)
+    this.vmScene.add(new THREE.HemisphereLight(0xfff8ee, 0x3a3a34, 1.05))
+    this.vmSun = new THREE.DirectionalLight(0xfff2dd, 1.5)
     this.vmSun.position.set(0.4, 1, 0.3)
     this.vmScene.add(this.vmSun)
     // the interface: pixel coordinates, (0, 0) at the top left

@@ -72,7 +72,7 @@ export class Player {
     this.vmMesh = new THREE.Mesh(this.model.geometry, this.vmMat)
     this.vm.add(this.vmMesh)
     const F = FACTIONS[this.s.faction]
-    this.armMat.color.setRGB(...F.uniform)
+    this.armMat.color.setRGB(F.uniform[0] * 0.75, F.uniform[1] * 0.75, F.uniform[2] * 0.75)
     this.zoomIdx = 0
     this.zeroAng = null
   }
@@ -264,7 +264,7 @@ export class Player {
     const a = this.adsT, w = s.w
     // hip and sights positions in camera space (camera looks down -z)
     const relief = this.optic.scope ? 0.1 : this.optic.reticle === 'iron' ? 0.2 : 0.16
-    const hip = _v1.set(0.15, -0.17, -0.4)
+    const hip = _v1.set(0.16, -0.185, -0.45)
     const ads = _v2.set(-m.sight.x, -m.sight.y, -relief - m.sight.z)
     const pos = hip.lerp(ads, easeInOut(a))
     // sprint, reload, switch and bolt animations
@@ -290,10 +290,14 @@ export class Player {
     this.vm.updateMatrixWorld(true)
     const grip = _v3.set(0, -0.05, 0.02).applyMatrix4(this.vm.matrixWorld)
     const sup = _v4.copy(m.support).setY(m.support.y - 0.03).applyMatrix4(this.vm.matrixWorld)
-    limb(this.arms[0], _v5.set(0.22, -0.46, 0.02), grip, 0.075)
-    limb(this.arms[1], grip, grip.clone().add(_v6.set(0, -0.02, 0.0)), 0.06)
-    limb(this.arms[2], _v5.set(-0.26, -0.48, 0.0), sup, 0.07)
-    limb(this.arms[3], sup, sup.clone().add(_v6.set(0, -0.02, 0)), 0.055)
+    // sleeves from off-screen shoulders to the wrists; gloved hands round the grip and the handguard
+    limb(this.arms[0], _v5.set(0.24, -0.5, 0.06), _v7.copy(grip).add(_v6.set(0.01, -0.04, 0.07)), 0.085)
+    limb(this.arms[2], _v5.set(-0.3, -0.52, 0.04), _v7.copy(sup).add(_v6.set(-0.01, -0.04, 0.06)), 0.08)
+    for (const [mesh, at, sx] of [[this.arms[1], grip, 0.055], [this.arms[3], sup, 0.06]]) {
+      mesh.position.copy(at).add(_v6.set(0, -0.025, 0))
+      mesh.quaternion.copy(this.vm.quaternion)
+      mesh.scale.set(sx, 0.07, 0.11)
+    }
     const vc = this.game.engine.vmCamera, vf = this.game.engine.widen(55)
     if (Math.abs(vc.fov - vf) > 0.01) { vc.fov = vf; vc.updateProjectionMatrix() }
   }

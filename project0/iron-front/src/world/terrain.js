@@ -20,6 +20,28 @@ export class Terrain {
     this.group.name = 'terrain'
     parent.add(this.group)
     this.material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })
+    // ground detail: two scales of value noise vary the land's colour in patches (grass, mud, worn ground),
+    // the fine one fading out with distance so it never shimmers. The island offset is the world group's
+    // position (the floating origin), shared by reference.
+    const offset = { value: parent.position }
+    this.material.onBeforeCompile = sh => {
+      sh.uniforms.uIslandOffset = offset
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform vec3 uIslandOffset;\nvarying vec2 vIsland;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvIsland = (modelMatrix * vec4(transformed, 1.0)).xz - uIslandOffset.xz;')
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec2 vIsland;
+float gHash(vec2 p) { vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(gHash(i), gHash(i + vec2(1.0, 0.0)), f.x), mix(gHash(i + vec2(0.0, 1.0)), gHash(i + vec2(1.0, 1.0)), f.x), f.y); }`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  float near = 1.0 - smoothstep(60.0, 160.0, length(vViewPosition));
+  float coarse = gNoise(vIsland * 0.09) - 0.5, fine = gNoise(vIsland * 0.6) - 0.5;
+  float k = 1.0 + coarse * 0.42 + fine * 0.3 * near;
+  // a touch of brown in the darker patches, like worn ground
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.08, 0.95, 0.8), clamp(-coarse * 2.0, 0.0, 0.7)) * k;
+}`)
+    }
     this.cache = new Map()    // key -> { mesh, used }
     this.queue = []
     this.frame = 0

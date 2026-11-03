@@ -10,7 +10,7 @@ import { Terrain } from '../world/terrain.js'
 import { Sky } from '../world/sky.js'
 import { Water } from '../world/water.js'
 import { Rain } from '../world/rain.js'
-import { Collision, raycastTerrain } from '../world/collision.js'
+import { Collision, raycastTerrain, makeBox } from '../world/collision.js'
 import { buildPlaces, POINTS, BUILDINGS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
 import { Vegetation } from '../world/vegetation.js'
@@ -222,6 +222,7 @@ export class Game {
       if (e.code === 'Delete') { const b = POINTS.filter(pt => pt.kind === 'boat').sort((a, c) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(c.x - s.pos.x, c.z - s.pos.z))[0]; this.mode.admin('teleport', { x: b.x, z: b.z + 15 }); const v = this.mode.park('rhib', b.x, b.z, b.yaw || 0, {}); s.pos.set(v.pos.x + 3, 0, v.pos.z); if (this.vehicles.enter(s, v)) this.vcontrol.entered(v); p0.log('dbg boat at', b.x.toFixed(0), b.z.toFixed(0)) }
       if (e.code === 'Numpad0') { const t = performance.now(); let hx = s.pos.x, hz = s.pos.z, hy = s.pos.y + 1.5; const h = { t: 0 }; const d = this.player.aimDirection(); if (this.collision.raycast(this.player.camPos.x, this.player.camPos.y, this.player.camPos.z, d.x, d.y, d.z, 200, h)) { hx = this.player.camPos.x + d.x * (h.t - 0.3); hy = this.player.camPos.y + d.y * (h.t - 0.3); hz = this.player.camPos.z + d.z * (h.t - 0.3) } this.explode(hx, hy, hz, { radius: 6, dmg: 200, heat: 1400 }, s); p0.log('dbg blast', Math.round(performance.now() - t), 'ms walls', this.city.destroyed.size, 'hit', h.t?.toFixed(1)) }
       if (e.code === 'Numpad5') { this.input.touch = true; this.player.touchAds = !this.player.touchAds; p0.log('dbg ads', this.player.touchAds, this.player.s.w?.rec.att?.optic) }
+      if (e.code === 'Numpad8') { const x = s.pos.x + Math.sin(s.yaw) * 2.5, z = s.pos.z + Math.cos(s.yaw) * 2.5, y = heightAt(x, z); this.collision.add(makeBox(x, y + 0.5, z, 1.5, 0.5, 0.2, s.yaw, 'sandbag', 'wall')); const m = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.4), new THREE.MeshLambertMaterial({ color: 0xa68f5f })); m.position.set(x, y + 0.5, z); m.rotation.y = s.yaw; this.engine.world.add(m); p0.log('dbg wall placed') }
       if (e.code === 'Numpad9') p0.log('dbg state y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2))
       if (e.code === 'Numpad7') { const L = [...this.W.ladders].sort((a, b) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(b.x - s.pos.x, b.z - s.pos.z))[0]; if (L) { const bx = L.x - Math.sin(L.yaw) * 0.8, bz = L.z - Math.cos(L.yaw) * 0.8; s.pos.set(bx, L.y0, bz); s.yaw = L.yaw; p0.log('dbg ladder', this.W.ladders.length, JSON.stringify({ x: L.x.toFixed(1), z: L.z.toFixed(1), y0: L.y0.toFixed(1), y1: L.y1.toFixed(1), yaw: L.yaw.toFixed(2) })) } else p0.log('dbg no ladders', this.W.ladders.length) }
       if (e.code === 'NumpadDecimal') { this.sky.setWeather('storm'); p0.log('dbg storm') }

@@ -19,7 +19,7 @@ Independent Resistance (RES).
 | Mode | What it is |
 |---|---|
 | **Campaign** | VARDEN, 12 missions in two chapters: patrols, defence, night raids, a tank assault, a jet strike, a convoy ambush, a boat assault, a helicopter insertion, Camp Sentinel, Port Anselm, the Mount Hallen finale. Briefings, checkpoints, saved progress and unlocks. |
-| **Free Roam** | The whole island at war. Garrisons appear as you approach a place; clear an enemy-held place to liberate it (saved). Patrols, AI-crewed vehicles, parked vehicles at bases, airfields and harbours. Sandbox tools in the pause menu: spawn vehicles (aircraft start airborne), squads and weapons, set time and weather, teleport by the map, invulnerability. |
+| **Free Roam** | The whole island at war. Garrisons appear as you approach a place; clear an enemy-held place to liberate it (saved). Patrols, AI-crewed vehicles, an enemy gunship sweep every few minutes, parked vehicles at bases, airfields and harbours. Sandbox tools in the pause menu: spawn vehicles (aircraft start airborne), squads and weapons, set time and weather, teleport by the map, invulnerability. |
 | **Battle** | Team Deathmatch, Domination, Conquest, King of the Hill, Capture the Flag, Sector Control and Survival, at 12 places, with settings for side, side size, score and time limits, time of day, weather and difficulty. |
 
 ### Controls (keyboard and mouse; every key can be rebound in Controls)
@@ -55,7 +55,8 @@ quads over the 3D view.
 - **Soldiers** (`src/actors/`): one `Soldier` for the player and the AI (stances, lean, stamina, weight,
   vaulting, ladders, swimming, body-part damage, bleeding, armour). AI with senses, cover, flanking,
   grenades, suppression, squad orders and formations (`ai.js`), grid A* pathfinding round buildings
-  (`nav.js`), and AI vehicle crews (gunners and drivers).
+  (`nav.js`), and AI vehicle crews: gunners, drivers, and attack-helicopter pilots that hold altitude,
+  circle their target and fire rockets.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
   thickness, ricochets and near-miss suppression (`ballistics.js`); 48 hand-held weapons and 11 mounted
   ones with attachments (`weapons-data.js`); models built in code (`weapon-models.js`).
@@ -101,7 +102,7 @@ Tested in the Project 0 dev kit (Chromium with its software renderer): booting a
 simulation (no errors, about 4–5 fps at 640 × 360 in software, light mode on); the menus; Free Roam
 movement, firing, AI firefights, liberation logic, the map and the inventory screen; the jeep, tank,
 helicopter, fighter jet (airborne, turning and climbing under the mouse-aim autopilot) and boat; an AI
-crewed vehicle driving in and firing; all seven Battle modes starting and running; all twelve campaign
+crewed vehicle driving in and firing; an AI attack helicopter flying in, firing and circling; all seven Battle modes starting and running; all twelve campaign
 missions starting in place and reaching their end screen with objectives skipped, and the first
 mission's firefight fought out by the AI; touch look on a simulated phone screen.
 
@@ -109,6 +110,6 @@ Not done or not verified:
 
 - No multiplayer: every other soldier is AI.
 - The campaign has not been played through by hand, so difficulty and balance are not tuned.
-- AI cannot fly aircraft; AI drivers do not path round buildings.
+- AI flies attack helicopters only (no planes, no landing); AI drivers do not path round buildings.
 - Mouse aiming could not be checked by hand in the headless browser.
 - Performance on real phones and laptops has not been measured.

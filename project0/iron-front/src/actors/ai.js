@@ -111,9 +111,10 @@ export class AI {
       if (s.vehicle) {
         // crews: gunners look and shoot with the mounted weapon, drivers follow the squad's orders
         const role = s.seat?.role
-        if (far < 1200 && (s.gunner || role === 'driver')) { b.senseT -= dt; if (b.senseT <= 0) { b.senseT = 0.3; this.sense(s, b, 0.3) } }
+        if (far < 1500 && (s.gunner || role === 'driver' || role === 'pilot')) { b.senseT -= dt; if (b.senseT <= 0) { b.senseT = 0.3; this.sense(s, b, 0.3) } }
         if (s.gunner) this.gunner(s, b, dt)
         else if (role === 'driver') this.driver(s, b, dt)
+        else if (role === 'pilot' && s.vehicle.kind === 'heli') this.pilot(s, b, dt)
         else this.inVehicle(s, b, dt)
         continue
       }
@@ -467,6 +468,44 @@ export class AI {
     const err = (0.006 + (1 - b.skill) * 0.012) * (1.4 - G.difficulty * 0.4)
     const yaw = v.yaw + seat.aimYaw + (seat.side ? seat.side * 1.2 : 0) + (Math.random() - 0.5) * err * 2, pitch = seat.aimPitch + v.pitch * 0.5 + (Math.random() - 0.5) * err * 2
     if (G.vehicles.fireSeat(v, seat, _v2.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)), false)) b.burst--
+  }
+  // A helicopter pilot: holds 60-90 m above the ground, flies to the squad's point (or to an enemy seen by
+  // anyone aboard), circles it at a few hundred metres for the gunner, and fires rockets when the nose is on.
+  pilot(s, b, dt) {
+    const G = this.game, v = s.vehicle, o = this.squadOrder(b)
+    if (!v.alive) return
+    v.engine = v.fuel > 0
+    const crew = v.seats.map(q => q.occupant).filter(c => c && c.brain)
+    const seen = crew.map(c => c.brain).find(cb => cb.state === 'combat' && cb.target && !cb.target.dead && G.time - cb.lastSeen < 4)
+    let tgt = seen ? seen.target.pos : null
+    if (!tgt) {
+      if (o.type === 'patrol' && o.route) { tgt = o.route[b.wpIdx % o.route.length]; if (Math.hypot(tgt.x - v.pos.x, tgt.z - v.pos.z) < 80) b.wpIdx++ }
+      else if (o.pos) tgt = o.pos
+    }
+    const want = 75 + Math.sin(G.time * 0.2 + v.id) * 15
+    let climb = Math.max(-1, Math.min(1, (want - v.alt) / 15))
+    if (v.alt < 25) climb = 1
+    let pitch = 0, yaw = 0
+    if (tgt) {
+      const dx = tgt.x - v.pos.x, dz = tgt.z - v.pos.z, d = Math.hypot(dx, dz)
+      // an attack run in to 300 m, then a wide circle back out
+      let head = Math.atan2(dx, dz)
+      if (seen && d < 300) head += 1.4
+      let diff = head - v.yaw
+      while (diff > Math.PI) diff -= Math.PI * 2
+      while (diff < -Math.PI) diff += Math.PI * 2
+      yaw = Math.max(-1, Math.min(1, diff * 1.5))
+      pitch = Math.abs(diff) < 0.8 ? Math.min(1, d / 150) * (seen ? 0.7 : 1) : 0.15
+      // rockets: the nose on a target between 250 and 900 m
+      const ps = v.seats.find(q => q.role === 'pilot')
+      if (seen && ps?.w && d > 250 && d < 900 && Math.abs(diff) < 0.06) {
+        const dy = (seen.target.pos.y + 1) - v.pos.y
+        const dir = _v2.set(dx / d, dy / Math.hypot(d, dy), dz / d).normalize()
+        b.rocketT = (b.rocketT || 0) - dt
+        if (b.rocketT <= 0 && G.vehicles.fireSeat(v, ps, dir, false)) b.rocketT = 0.35 + Math.random() * 0.3
+      }
+    }
+    v.ctl = { pitch, roll: 0, climb, yaw }
   }
   // A driver heads for the squad's next point (patrol route, move or attack position), slows for turns,
   // stops to let the gunner shoot (light vehicles), and backs out when stuck.

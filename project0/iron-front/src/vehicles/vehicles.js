@@ -257,7 +257,7 @@ export class Vehicle {
     const floor = Math.max(g, wl)
     this.alt = this.pos.y - floor
     // cyclic: tilt towards where the controls ask
-    const assist = this.game.settings.flightAssist
+    const assist = this.game.settings.flightAssist || !drv?.isPlayer   // AI pilots always fly with the altitude hold
     // forward stick: nose down (negative pitch); right stick: bank right (the world's right is -x)
     const tp = -(inp.pitch || 0) * 0.32, tr = -(inp.roll || 0) * 0.42
     this.pitch += (tp - this.pitch) * Math.min(1, dt * 2.2)

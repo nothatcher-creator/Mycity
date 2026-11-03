@@ -129,7 +129,7 @@ const TWO = [
     objectives: [
       { type: 'clear', text: 'Break through the checkpoint south of the camp', spawn: [{ faction: 'nlf', x: 500, z: -3880, n: 5, order: 'defend', r: 30 }, { faction: 'nlf', vehicle: 'technical', x: 540, z: -3900, order: 'defend', r: 20 }], radio: 'All units, advance on the checkpoint.' },
       { type: 'destroy', text: 'Destroy the anti-aircraft vehicles in the camp', vehicles: [{ type: 'ifv', x: 450, z: -4150 }, { type: 'ifv', x: 560, z: -4250 }], spawn: [{ faction: 'nlf', x: 500, z: -4180, n: 5, order: 'defend', r: 40 }], radio: 'The AA tracks are inside the wire. Take them out.' },
-      { type: 'clear', text: 'Clear the barracks', spawn: [{ faction: 'nlf', x: 480, z: -4230, n: 6, order: 'defend', r: 40 }], radio: 'AA down! Jets inbound. Clear the barracks.' },
+      { type: 'clear', text: 'Clear the barracks (and the gunship)', spawn: [{ faction: 'nlf', x: 480, z: -4230, n: 6, order: 'defend', r: 40 }, { faction: 'nlf', vehicle: 'attackheli', air: 80, x: 900, z: -4700, order: 'patrol', r: 350 }], radio: 'AA down! But they have a gunship up: rockets or the APCs\' guns can bring it down.' },
     ],
     outro: 'Sentinel fell. But its commander, General Rhuar, escaped south-west with his guard, towards Port Anselm.',
   },
@@ -251,7 +251,7 @@ export class Campaign extends Mode {
     const order = sp.order === 'patrol' ? { type: 'patrol', route: this.patrolRoute(x, z, sp.r || 50) }
       : sp.order === 'attack' ? { type: 'attack', pos: V(sp.tx ?? this.g.player.s.pos.x, sp.tz ?? this.g.player.s.pos.z) }
         : { type: 'defend', pos: V(x, z), radius: sp.r || 25 }
-    const q = sp.vehicle ? (this.crewed(sp.vehicle, sp.faction, x, z, Math.random() * 6, order) || this.g.ai.squad(sp.faction, {})) : this.spawnSquad(sp.faction, x, z, sp.n, order, { spread: 15, formation: sp.order === 'patrol' ? 'file' : 'wedge' })
+    const q = sp.vehicle ? (this.crewed(sp.vehicle, sp.faction, x, z, Math.random() * 6, order, { air: sp.air }) || this.g.ai.squad(sp.faction, {})) : this.spawnSquad(sp.faction, x, z, sp.n, order, { spread: 15, formation: sp.order === 'patrol' ? 'file' : 'wedge' })
     this.squads.push(q)
     return q
   }

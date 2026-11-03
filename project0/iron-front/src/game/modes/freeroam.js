@@ -3,6 +3,7 @@
 // liberated (kept in your save). Vehicles wait at bases, airfields, harbours and in towns. With the
 // sandbox tools (pause menu) you can spawn vehicles and squads, change the time and weather, teleport.
 import * as THREE from 'three'
+const DEBUG_AIR = false
 import { Mode, nearestPlace, onRoad } from './base.js'
 import { PLACES } from '../../world/blueprint.js'
 import { POINTS } from '../../world/places.js'
@@ -136,6 +137,23 @@ export class FreeRoam extends Mode {
         const q = this.spawnSquad(enemy, c[0], c[1], 4, { type: 'patrol', route }, { formation: 'file' })
         this.patrols.push(q)
       }
+    }
+    // now and then an enemy gunship sweeps the area for a few minutes, then flies home
+    this.airT = (this.airT ?? (DEBUG_AIR ? 3 : 240)) - 1
+    if (this.air) {
+      const v = this.air.vehicle, L = this.air.leader
+      if (!v?.alive || !L) this.air = null
+      else {
+        this.air.t++
+        if (this.air.t === 210) this.air.order = { type: 'move', pos: this.air.home }
+        if (this.air.t > 210 && Math.hypot(v.pos.x - px, v.pos.z - pz) > 2500) { this.removeSquad(this.air); this.air = null }
+      }
+    } else if (this.airT <= 0) {
+      this.airT = 420 + Math.random() * 300
+      const enemy = Object.keys(FACTIONS).find(f => this.enemyOf(f)) || 'nlf', a = Math.random() * Math.PI * 2
+      const hx = px + Math.cos(a) * 1600, hz = pz + Math.sin(a) * 1600
+      const q = this.crewed('attackheli', enemy, hx, hz, a + Math.PI, { type: 'patrol', route: this.patrolRoute(px, pz, 350, 4) }, { air: 90 })
+      if (q) { q.home = new THREE.Vector3(hx, 0, hz); q.t = 0; this.air = q; g.hud.radio('Command', 'Enemy gunship in your area. Take cover, or bring it down with a launcher.') }
     }
     // keep the progress
     this.saveT -= 1

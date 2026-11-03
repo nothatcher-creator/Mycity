@@ -215,6 +215,7 @@ export class Game {
       if (e.code === 'F8') { const x = s.pos.x + Math.sin(s.yaw) * 90, z = s.pos.z + Math.cos(s.yaw) * 90; const q = this.mode.spawnSquad('nlf', x, z, 4, { type: 'attack', pos: s.pos.clone() }); this.mode.patrols.push(q); p0.log('dbg enemy squad at', x.toFixed(0), z.toFixed(0)) }
       if (e.code === 'F7' || e.code === 'F6' || e.code === 'F5' || e.code === 'F3') { const type = { F7: 'jeep', F6: 'scoutheli', F5: 'mbt', F3: 'fighter' }[e.code]; const v = this.mode.admin('vehicle', type); if (v && !s.vehicle && this.vehicles.enter(s, v)) { this.vcontrol.entered(v); p0.log('dbg entered', type) } }
       if (e.code === 'F1') { this.vcontrol.aim.yaw += 1.2; this.vcontrol.aim.pitch = 0.25; p0.log('dbg aim left+up') }
+      if (e.code === 'NumpadAdd') { const x = s.pos.x + Math.sin(s.yaw) * 600, z = s.pos.z + Math.cos(s.yaw) * 600; const q = this.mode.crewed('attackheli', 'nlf', x, z, s.yaw + Math.PI, { type: 'attack', pos: s.pos.clone() }, { air: 80 }); this.dbgVeh = q?.vehicle; p0.log('dbg heli', !!q, q?.members.map(m => m.seat?.role).join()) }
       if (e.code === 'Insert') { const x = s.pos.x + Math.sin(s.yaw) * 160, z = s.pos.z + Math.cos(s.yaw) * 160; const q = this.mode.crewed('technical', 'nlf', x, z, s.yaw + Math.PI, { type: 'attack', pos: s.pos.clone() }); p0.log('dbg crewed technical', !!q, q?.members.map(m => m.seat?.role).join()); this.dbgVeh = q?.vehicle }
       if (e.code === 'Delete') { const b = POINTS.filter(pt => pt.kind === 'boat').sort((a, c) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(c.x - s.pos.x, c.z - s.pos.z))[0]; this.mode.admin('teleport', { x: b.x, z: b.z + 15 }); const v = this.mode.park('rhib', b.x, b.z, b.yaw || 0, {}); s.pos.set(v.pos.x + 3, 0, v.pos.z); if (this.vehicles.enter(s, v)) this.vcontrol.entered(v); p0.log('dbg boat at', b.x.toFixed(0), b.z.toFixed(0)) }
       if (e.code === 'F4') { this.mode.admin('teleport', { x: 60, z: 1650 }); p0.log('dbg teleported') }
@@ -336,7 +337,11 @@ export class Game {
   }
   // A soldier fired (the shots from soldier.trigger): the bullet, the flash, the sound, the AI hearing it.
   shoot(s, sh) {
-    this.ballistics.fire({ origin: sh.origin, dir: sh.dir, v: sh.v, ammo: sh.ammo, owner: s, tracer: sh.tracer, suppressed: sh.suppressed })
+    // a guided missile from the shoulder locks on to the vehicle it was fired at (within a narrow cone)
+    const guided = AMMO[sh.ammo]?.rocket?.guided
+    const target = guided ? this.findLockTarget(sh.origin, sh.dir, guided, s.vehicle) : null
+    if (target && s.isPlayer) this.hud.note('Missile locked')
+    this.ballistics.fire({ origin: sh.origin, dir: sh.dir, v: sh.v, ammo: sh.ammo, owner: s, tracer: sh.tracer, suppressed: sh.suppressed, target })
     const a = AMMO[sh.ammo]
     const fp = s.isPlayer && this.player.view === 'fp'
     const m = fp ? this.player.camPos.clone().addScaledVector(sh.dir, 0.9).add(_v.set(0, -0.08, 0)) : sh.origin.clone().addScaledVector(sh.dir, 0.7)

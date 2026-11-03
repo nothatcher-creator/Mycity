@@ -94,12 +94,14 @@ export class Mode {
   // A vehicle with an AI crew (a driver and, where it has one, a gunner) as a squad of its own.
   crewed(type, faction, x, z, yaw, order, o = {}) {
     const g = this.g
-    const v = this.park(type, x, z, yaw, { faction, search: o.search ?? 40 })
+    // aircraft can start in the air (o.air: metres above the ground), engine running
+    const v = o.air ? g.vehicles.spawn(type, x, z, yaw, { faction, y: heightAt(x, z) + o.air }) : this.park(type, x, z, yaw, { faction, search: o.search ?? 40 })
     if (!v) return null
+    if (o.air) { v.rpm = 1; v.engine = true; v.onGround = false; v.gearDown = false }
     const q = g.ai.squad(faction, { order, name: v.def.name })
-    for (const role of ['driver', 'gunner']) {
+    for (const role of ['driver', 'pilot', 'gunner']) {
       if (!v.seats.some(st => st.role === role)) continue
-      const s = g.addSoldier({ faction, role: role === 'driver' ? 'engineer' : 'rifleman', x: v.pos.x, z: v.pos.z, name: `${FACTIONS[faction].ranks[1]} ${nextName()}` })
+      const s = g.addSoldier({ faction, role: role === 'gunner' ? 'rifleman' : 'engineer', x: v.pos.x, z: v.pos.z, name: `${FACTIONS[faction].ranks[1]} ${nextName()}` })
       g.ai.add(s, q, (FACTIONS[faction].skill || 0.5) * (0.75 + g.difficulty * 0.5))
       g.vehicles.enter(s, v, role)
     }

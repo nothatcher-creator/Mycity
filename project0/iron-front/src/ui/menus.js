@@ -11,11 +11,11 @@ import { POINTS } from '../world/places.js'
 import { VEHICLES } from '../vehicles/vehicle-data.js'
 import { WEAPONS, CATEGORIES } from '../combat/weapons-data.js'
 import { WEATHER } from '../world/sky.js'
-import { mapImage } from './mapimage.js'
+import { mapImage, worldToMap } from './mapimage.js'
 import { CONTROL } from '../game/modes/freeroam.js'
 import { BATTLES, ARENAS } from '../game/modes/battle.js'
 import { MISSIONS, CHAPTER, drawBriefing } from '../game/modes/campaign.js'
-import { ONLINE_KINDS, ONLINE_PLACES } from '../game/modes/online.js'
+import { ONLINE_KINDS, ONLINE_PLACES, serverList } from '../game/modes/online.js'
 
 export class Menus {
   constructor(game) {
@@ -47,7 +47,7 @@ export class Menus {
   wheel(dy) { this.scroll = Math.max(0, this.scroll + Math.sign(dy) * 60); this.panel.dirty = true }
   toggleSquad() { if (this.page === 'squad') this.close(); else this.open('squad') }
   // the title screen redraws only when its tip changes (every 8 s): a full-screen canvas is costly to upload
-  update(dt) { this.t = (this.t || 0) + dt; if (this.page === 'main' && Math.floor(this.t / 8) !== this.lastBlink) { this.lastBlink = Math.floor(this.t / 8); this.panel.dirty = true } }
+  update(dt) { this.t = (this.t || 0) + dt; if ((this.page === 'online' || this.page === 'host') && Math.floor(this.t) !== this.lastTick) { this.lastTick = Math.floor(this.t); this.panel.dirty = true } if (this.page === 'main' && Math.floor(this.t / 8) !== this.lastBlink) { this.lastBlink = Math.floor(this.t / 8); this.panel.dirty = true } }
   // ---------- drawing ----------
   draw(c, p) {
     const W = p.w, H = p.h, s = this.s
@@ -126,7 +126,7 @@ export class Menus {
       { id: 'camp', label: 'CAMPAIGN', sub: MODE_INFO[2].desc, fn: () => this.open('campaign', true) },
       { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
       { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
-      { id: 'online', label: 'ONLINE BATTLE', sub: `${(this.g.p0.room?.players || []).length} in this lot now · ${MODE_INFO[3].desc}`, fn: () => this.open('online', true) },
+      { id: 'online', label: 'MULTIPLAYER', sub: `Server browser · ${(this.g.p0.room?.players || []).length} in this lot now · ${serverList(this.g.p0.room).length} server${serverList(this.g.p0.room).length === 1 ? '' : 's'}`, fn: () => this.open('online', true) },
       { id: 'life', label: 'LIFE', sub: this.g.save.data.life ? `Continue · $${this.g.save.data.life.money ?? 0} in your wallet` : MODE_INFO[4].desc, fn: () => this.g.start('life', { resume: !!this.g.save.data.life }) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
@@ -228,28 +228,131 @@ export class Menus {
       p.button(c, 'deploy', bx, yy + 10 * s, 240 * s, 50 * s, 'DEPLOY', () => g.start('campaign', { mission: m.id }), { font: FONT(20 * s, 900), color: C.gold2 })
     } else if (W > 900 * s) text(c, 'Choose a mission for its briefing.', x + w + 40 * s, 130 * s, { size: 14 * s, color: C.dim })
   }
+  // The server browser: every server hosted in this lot's session (the city puts everyone inside a lot in one
+  // session of up to 16; a game cannot see other sessions), with its mode, map, players and time, a map of
+  // the battle area, the teams, and Join, Host and Invite.
   page_online(c, p, W, H, s) {
-    const g = this.g, room = g.p0.room, x = 60 * s, w = Math.min(640 * s, W - x * 2), o = this.osetup
-    let y = 40 * s - this.scroll
-    text(c, 'ONLINE BATTLE', x, y + 30 * s, { size: 26 * s, weight: 900, color: C.gold2 }); y += 50 * s
-    const players = room?.players || [], st = room?.state || {}, m = st.match
-    const running = m && st.over?.match !== m.id && (Date.now() - m.start) / 60000 < m.minutes
-    const inMatch = running ? Object.entries(st).filter(([k, v]) => k.startsWith('pl:') && v?.match === m.id && players.map(String).includes(k.slice(3))) : []
-    text(c, `${players.length} player${players.length === 1 ? '' : 's'} in this lot's session. Real players only: no AI in online battles.`, x, y, { size: 13 * s, color: C.dim }); y += 26 * s
-    if (running) {
-      text(c, `A match is on: ${ONLINE_KINDS[m.kind].name} at ${PLACES.find(q => q.id === m.place).name}, ${inMatch.length} playing, ${Math.max(0, Math.round(m.minutes - (Date.now() - m.start) / 60000))} min left.`, x, y, { size: 14 * s }); y += 16 * s
-      for (const [, v] of inMatch.slice(0, 10)) { y += 18 * s; text(c, `${v.team === 'A' ? 'VDF' : 'NLF'}   ${v.name}   ${v.k || 0} kills`, x + 20 * s, y, { size: 12 * s, color: v.team === 'A' ? '#5ab0ff' : '#e0483a' }) }
-      y += 24 * s
-      p.button(c, 'join', x, y, 300 * s, 50 * s, 'JOIN THE MATCH', () => g.start('online', {}), { font: FONT(20 * s, 900), color: C.gold2 })
-      y += 70 * s
-      text(c, 'Or start a new match for everyone (ends the current one):', x, y, { size: 12 * s, color: C.dim }); y += 14 * s
-    } else { text(c, players.length < 2 ? 'Nobody else is here yet. Start a match and others who enter the lot can join it.' : 'No match is running. Start one: the others can join from this screen.', x, y, { size: 14 * s }); y += 16 * s }
+    const g = this.g, room = g.p0.room, here = room?.players || [], all = serverList(room)
+    const f = this.ofilter || 'all', list = all.filter(v => f === 'all' || (f === 'open' ? v.rows.length < v.max : v.kind === f))
+    const narrow = W < 820 * s, x0 = 22 * s
+    let y = (g.input.touch ? 58 : 24) * s - this.scroll
+    text(c, 'MULTIPLAYER', x0, y + 26 * s, { size: 28 * s, weight: 900, color: C.gold2 })
+    text(c, `SERVER BROWSER  ·  ${here.length} player${here.length === 1 ? '' : 's'} in this lot's session  ·  ${all.length} server${all.length === 1 ? '' : 's'}`, x0, y + 46 * s, { size: 12 * s, weight: 700, color: C.dim })
+    y += 60 * s
+    const fl = [['all', 'ALL'], ['tdm', 'TEAM DEATHMATCH'], ['domination', 'DOMINATION'], ['open', 'NOT FULL']]
+    let fx = x0
+    for (const [id, label] of fl) { c.font = FONT(11.5 * s, 700); const bw = c.measureText(label).width + 26 * s; p.button(c, 'flt' + id, fx, y, bw, 28 * s, label, () => { this.ofilter = id; this.panel.dirty = true }, { selected: f === id, align: 'center', font: FONT(11.5 * s, 700) }); fx += bw + 6 * s }
+    y += 38 * s
+    // ---- the list ----
+    const tw = narrow ? W - x0 * 2 : Math.min(W * 0.6, 820 * s), rowH = 30 * s
+    const cols = narrow ? [['SERVER', 0], ['MODE', 0.5], ['PLAYERS', 0.78]] : [['SERVER', 0], ['MODE', 0.4], ['MAP', 0.6], ['PLAYERS', 0.76], ['TIME', 0.9]]
+    box(c, x0, y, tw, rowH)
+    for (const [label, at] of cols) text(c, label, x0 + 10 * s + at * tw, y + 19 * s, { size: 10.5 * s, weight: 800, color: C.gold })
+    y += rowH + 2 * s
+    const sel = list.find(v => v.id === this.osel) || list[0] || null
+    const listTop = y, maxRows = Math.max(3, Math.floor((narrow ? H * 0.32 : H - y - 90 * s) / (rowH + 3 * s)))
+    if (!list.length) {
+      box(c, x0, y, tw, rowH * 2.4)
+      text(c, all.length ? 'No servers match the filter.' : 'No servers in this session yet.', x0 + 14 * s, y + 26 * s, { size: 14 * s, weight: 700 })
+      text(c, all.length ? '' : 'Host one: everyone who enters the lot sees it here and can join.', x0 + 14 * s, y + 46 * s, { size: 12 * s, color: C.dim })
+      y += rowH * 2.4 + 6 * s
+    }
+    for (const v of list.slice(0, maxRows)) {
+      const on = v === sel, full = v.rows.length >= v.max
+      p.button(c, 'srv' + v.id, x0, y, tw, rowH, '', () => { this.osel = v.id; this.panel.dirty = true }, { selected: on })
+      const dot = v.status === 'In progress' ? C.green : v.status === 'Waiting for players' ? C.amber : C.dim
+      c.fillStyle = dot; c.beginPath(); c.arc(x0 + 12 * s, y + rowH / 2, 4 * s, 0, Math.PI * 2); c.fill()
+      const cell = (str, at, o = {}) => text(c, str, x0 + 10 * s + at * tw + (at === 0 ? 12 * s : 0), y + 19.5 * s, { size: 12 * s, weight: at === 0 ? 700 : 500, color: o.color || C.text, max: o.max })
+      cell(v.name, 0, { max: tw * (narrow ? 0.46 : 0.37) - 14 * s })
+      cell(ONLINE_KINDS[v.kind]?.name || v.kind, cols[1][1], { max: tw * 0.2 })
+      if (!narrow) cell(PLACES.find(q => q.id === v.place)?.name.replace('Camp ', '') || v.place, 0.6, { max: tw * 0.15 })
+      cell(`${v.rows.length} / ${v.max}`, narrow ? 0.78 : 0.76, { color: full ? C.red : C.text })
+      if (!narrow) cell(v.left > 0 ? `${Math.floor(v.left / 60)}:${String(Math.floor(v.left % 60)).padStart(2, '0')}` : 'next round', 0.9)
+      y += rowH + 3 * s
+    }
+    if (list.length > maxRows) { text(c, `+ ${list.length - maxRows} more (scroll)`, x0, y + 12 * s, { size: 11 * s, color: C.dim }); y += 18 * s }
+    // ---- the selected server: map, details, teams ----
+    const dx = narrow ? x0 : x0 + tw + 18 * s, dw = narrow ? W - x0 * 2 : W - dx - x0
+    let dy = narrow ? y + 8 * s : listTop - rowH - 2 * s
+    if (sel) {
+      const P = PLACES.find(q => q.id === sel.place)
+      const ms = Math.min(dw, narrow ? 200 * s : 260 * s)
+      this.mapPreview(c, dx, dy, ms, P, s)
+      let ty = dy + 4 * s
+      const tx = narrow ? dx + ms + 12 * s : dx, tW = narrow ? dw - ms - 12 * s : dw
+      if (!narrow) ty = dy + ms + 10 * s
+      text(c, sel.name, tx, ty + 16 * s, { size: 16 * s, weight: 800, color: C.gold2, max: tW })
+      const hour = sel.hour ?? 13, tod = hour < 7 ? 'Dawn' : hour < 17 ? 'Day' : hour < 20 ? 'Dusk' : 'Night'
+      const lines = [['Mode', ONLINE_KINDS[sel.kind]?.name], ['Map', P?.name], ['Host', sel.hostName || '—'], ['Players', `${sel.rows.length} of ${sel.max}`], ['Round', `${sel.round}, ${sel.minutes} min, to ${sel.limit}`], ['Time, weather', `${tod}, ${WEATHER[sel.weather]?.name || 'Clear'}`], ['Status', sel.status]]
+      ty += 24 * s
+      for (const [k, v] of lines) { text(c, k.toUpperCase(), tx, ty + 12 * s, { size: 10 * s, weight: 700, color: C.dim }); text(c, v || '', tx + 92 * s, ty + 12 * s, { size: 12 * s, weight: 600, max: tW - 92 * s }); ty += 17 * s }
+      const teams = { A: sel.rows.filter(r => r.team === 'A'), B: sel.rows.filter(r => r.team === 'B') }
+      ty = Math.max(ty, narrow ? dy + ms : 0) + 8 * s
+      const half = (dw - 10 * s) / 2
+      for (const [i, t] of ['A', 'B'].entries()) {
+        const cx = dx + i * (half + 10 * s)
+        text(c, `${t === 'A' ? 'VDF' : 'NLF'}  (${teams[t].length})`, cx, ty + 12 * s, { size: 11 * s, weight: 800, color: t === 'A' ? '#5ab0ff' : '#e0483a' })
+        teams[t].slice(0, 8).forEach((r, k) => text(c, `${r.name || 'Player'}   ${r.k || 0}/${r.d || 0}`, cx, ty + 30 * s + k * 15 * s, { size: 11 * s, max: half }))
+        if (!teams[t].length) text(c, '—', cx, ty + 30 * s, { size: 11 * s, color: C.dim })
+      }
+      dy = ty + 30 * s + Math.max(1, teams.A.length, teams.B.length) * 15 * s
+    } else dy += 10 * s
+    // ---- actions ----
+    const by = Math.max(narrow ? dy + 8 * s : H - 70 * s - this.scroll, y + 8 * s), full = sel && sel.rows.length >= sel.max
+    let bx = x0, bY = by
+    // two to a row on a narrow screen
+    const half = (W - x0 * 2 - 8 * s) / 2
+    const act = (id, label, fn, w, o = {}) => {
+      if (narrow) { w = half; if (bx + w > W - x0 + 1) { bx = x0; bY += 54 * s } }
+      p.button(c, id, bx, bY, w, 46 * s, label, fn, { align: 'center', font: FONT(15 * s, 900), ...o }); bx += w + 8 * s
+    }
+    act('join', sel ? (full ? 'SERVER FULL' : 'JOIN') : 'JOIN', sel && !full ? () => g.start('online', { server: sel.id }) : null, 150 * s, { color: C.gold2 })
+    act('host', 'HOST SERVER', () => this.open('host', true), 170 * s)
+    if (g.p0.invite) act('invite', 'INVITE', sel ? () => { try { g.p0.invite({ kind: 'team', note: `Join ${sel.name}: ${ONLINE_KINDS[sel.kind]?.name} at ${PLACES.find(q => q.id === sel.place)?.name}`, data: { srv: sel.id } }) } catch {} } : null, 120 * s)
+    act('back', 'BACK', () => this.back(), 110 * s)
+    text(c, 'Real players only, no AI. Several servers can run at once in the session.', x0, bY + 62 * s, { size: 11 * s, color: C.dim })
+  }
+  // a piece of the island map round a place, with a grid, the battle area and its name (like a map screen)
+  mapPreview(c, x, y, size, P, s) {
+    box(c, x, y, size, size)
+    const img = mapImage()
+    if (img && P) {
+      const R = Math.max(500, Math.min(900, P.r * 2.2)), [mx, my] = worldToMap(P.x, P.z, img.width), pr = R / 12000 * img.width
+      c.save(); c.beginPath(); c.rect(x + 2, y + 2, size - 4, size - 4); c.clip()
+      c.drawImage(img, mx - pr, my - pr, pr * 2, pr * 2, x, y, size, size)
+      // grid every 200 m
+      c.strokeStyle = 'rgba(20,24,16,0.35)'; c.lineWidth = 1
+      const k = size / (R * 2), g0x = Math.ceil((P.x - R) / 200) * 200, g0z = Math.ceil((P.z - R) / 200) * 200
+      for (let gx = g0x; gx < P.x + R; gx += 200) { const px = x + (gx - P.x + R) * k; c.beginPath(); c.moveTo(px, y); c.lineTo(px, y + size); c.stroke() }
+      for (let gz = g0z; gz < P.z + R; gz += 200) { const py = y + (gz - P.z + R) * k; c.beginPath(); c.moveTo(x, py); c.lineTo(x + size, py); c.stroke() }
+      // the battle area
+      const ar = Math.max(150, Math.min(P.r * 0.8, 280)) * 1.25 * k
+      c.strokeStyle = 'rgba(224,72,58,0.9)'; c.lineWidth = 2; c.setLineDash([6 * s, 4 * s]); c.beginPath(); c.arc(x + size / 2, y + size / 2, ar, 0, Math.PI * 2); c.stroke(); c.setLineDash([])
+      c.restore()
+      text(c, P.name.toUpperCase(), x + 8 * s, y + size - 10 * s, { size: 11 * s, weight: 800, color: '#fff', shadow: true })
+      text(c, `${Math.round(R * 2 / 100) / 10} km`, x + size - 8 * s, y + 16 * s, { size: 10 * s, align: 'right', color: '#fff', shadow: true })
+    }
+  }
+  // hosting: name, mode, map, length, slots, time of day, weather
+  page_host(c, p, W, H, s) {
+    const g = this.g, o = this.osetup, me = g.p0.me?.name || 'Player'
+    const narrow = W < 820 * s, x = 30 * s, w = Math.min(640 * s, W - x * 2)
+    let y = (g.input.touch ? 58 : 26) * s - this.scroll
+    text(c, 'HOST A SERVER', x, y + 26 * s, { size: 26 * s, weight: 900, color: C.gold2 }); y += 46 * s
+    const names = [`${me}'s server`, 'Casual', 'Hardcore', 'Clan war', 'Newcomers welcome']
+    if (!names.includes(o.name)) o.name = names[0]
+    y = this.choices(c, p, x, y, w, 'Name', names.map(n => ({ label: n.length > 16 ? n.slice(0, 15) + '…' : n, v: n })), o.name, v => { o.name = v }, s)
     y = this.choices(c, p, x, y, w, 'Mode', Object.entries(ONLINE_KINDS).map(([k, v]) => ({ label: v.name, v: k })), o.kind, v => { o.kind = v }, s)
-    y = this.choices(c, p, x, y, w, 'Place', ONLINE_PLACES.map(id => ({ label: PLACES.find(q => q.id === id).name.replace('Camp ', ''), v: id })), o.place, v => { o.place = v }, s)
-    y = this.choices(c, p, x, y, w, 'Length', [8, 12, 20].map(n => ({ label: `${n} min`, v: n })), o.minutes, v => { o.minutes = v }, s)
-    y += 8 * s
-    p.button(c, 'start', x, y, 300 * s, 50 * s, running ? 'START A NEW MATCH' : 'START THE MATCH', () => g.start('online', { ...o, fresh: true }), { font: FONT(18 * s, 900) })
-    p.button(c, 'back', x + 314 * s, y, 140 * s, 50 * s, 'BACK', () => this.back(), { align: 'center' })
+    y = this.choices(c, p, x, y, w, 'Map', ONLINE_PLACES.map(id => ({ label: PLACES.find(q => q.id === id).name.replace('Camp ', ''), v: id })), o.place, v => { o.place = v }, s)
+    y = this.choices(c, p, x, y, w, 'Round length', [8, 12, 20, 30].map(n => ({ label: `${n} min`, v: n })), o.minutes, v => { o.minutes = v }, s)
+    y = this.choices(c, p, x, y, w, 'Slots', [4, 8, 12, 16].map(n => ({ label: String(n), v: n })), o.max ?? 16, v => { o.max = v }, s)
+    y = this.choices(c, p, x, y, w, 'Time of day', [[6.5, 'Dawn'], [13, 'Day'], [18.5, 'Dusk'], [23, 'Night']].map(([v, label]) => ({ label, v })), o.hour ?? 13, v => { o.hour = v }, s)
+    y = this.choices(c, p, x, y, w, 'Weather', ['clear', 'overcast', 'fog', 'rain'].map(k => ({ label: WEATHER[k].name, v: k })), o.weather || 'clear', v => { o.weather = v }, s)
+    const ms = Math.min(220 * s, narrow ? W - x * 2 : W - x - w - 50 * s)
+    if (ms > 120 * s) { if (narrow) { this.mapPreview(c, x, y + 6 * s, ms, PLACES.find(q => q.id === o.place), s); y += ms + 14 * s } else this.mapPreview(c, x + w + 24 * s, 110 * s - this.scroll, ms, PLACES.find(q => q.id === o.place), s) }
+    y += 10 * s
+    p.button(c, 'create', x, y, 260 * s, 50 * s, 'CREATE AND JOIN', () => g.start('online', { ...o }), { align: 'center', font: FONT(17 * s, 900), color: C.gold2 })
+    p.button(c, 'back', x + 272 * s, y, 130 * s, 50 * s, 'BACK', () => this.back(), { align: 'center' })
   }
   page_results(c, p, W, H, s) {
     const g = this.g, r = g.mode?.results?.() || { title: '', lines: [] }, x = W / 2
@@ -261,6 +364,7 @@ export class Menus {
     this.column(c, p, x - w / 2, y + 10 * s, w, [
       r.next ? { id: 'next', label: `NEXT MISSION: ${r.next.name.toUpperCase()}`, fn: () => g.start('campaign', { mission: r.next.id }) } : null,
       { id: 'again', label: g.modeId === 'campaign' ? 'PLAY THE MISSION AGAIN' : 'PLAY AGAIN', fn: () => { const o = { ...g.mode.opts }; g.start(g.modeId, o) } },
+      g.modeId === 'online' ? { id: 'browser', label: 'SERVER BROWSER', fn: () => { g.quitToMenu(); this.open('online', true) } } : null,
       { id: 'menu', label: 'MAIN MENU', fn: () => g.quitToMenu() }], s)
   }
   startsFor(f) {

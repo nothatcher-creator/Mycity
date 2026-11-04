@@ -1,12 +1,14 @@
 // Online Battle: real players in this lot's session, two teams, no AI. Team Deathmatch or Domination at one
-// place on the island. The city only relays messages; every client runs its own game:
+// place on the island. Players host servers (matches) from the server browser; several can run at once in
+// the one session, each under its own keys in the shared state (`srv:<id>` the server, `fl:`, `sc:`, `ov:`
+// its flags, score and end). The city only relays messages; every client runs its own game:
 //   - each player sends where they are (10 times a second) and the shots they fire (in batches);
 //   - every client draws the others as stand-ins and simulates everyone's bullets and grenades, but a
 //     client only ever damages its own player (the victim decides: what you see hit you, hits you);
 //   - deaths are announced by the victim, with the killer's id, and each player keeps their own score row
 //     in the shared state (`pl:<id>`), so newcomers see the same table;
-//   - the match (kind, place, seed, start) lives in the shared state; the host turns the flags and calls
-//     the end of the match.
+//   - the server (name, kind, place, seed, start, round, slots, time of day, weather) lives in the shared
+//     state; its host (whoever made it, or the next player in it) turns the flags and calls the end.
 import * as THREE from 'three'
 import { Mode } from './base.js'
 import { PLACES } from '../../world/blueprint.js'
@@ -18,6 +20,18 @@ import { C, text, bar } from '../../ui/ui.js'
 
 export const ONLINE_KINDS = { tdm: { name: 'Team Deathmatch', limit: 30 }, domination: { name: 'Domination', limit: 250 } }
 export const ONLINE_PLACES = ['tovar', 'kaldor', 'halvik', 'dresk', 'sentinel', 'koriv']
+// The servers hosted in this session, for the browser: each with the players in it now
+export function serverList(room) {
+  const st = room?.state || {}, here = new Set((room?.players || []).map(String)), out = []
+  for (const [k, v] of Object.entries(st)) {
+    if (!k.startsWith('srv:') || !v) continue
+    const mid = v.id + '.' + v.round
+    const rows = Object.entries(st).filter(([kk, r]) => kk.startsWith('pl:') && r?.match === mid && here.has(kk.slice(3))).map(([kk, r]) => ({ id: kk.slice(3), ...r }))
+    const left = v.minutes * 60 - (Date.now() - v.start) / 1000, over = st['ov:' + v.id]?.round === v.round
+    out.push({ ...v, rows, left, status: over || left <= 0 ? 'Between rounds' : rows.length < 2 ? 'Waiting for players' : 'In progress', hostHere: here.has(String(v.host)) })
+  }
+  return out.sort((a, b) => b.rows.length - a.rows.length || a.created - b.created)
+}
 const TEAM_F = { A: 'vdf', B: 'nlf' }
 const LETTERS = 'ABC'
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
@@ -32,17 +46,25 @@ export class OnlineBattle extends Mode {
     this.remotes = new Map()           // player id -> { s: Soldier, target: {...}, last: time }
     this.sendT = 0; this.shots = []
     g.difficulty = 0.5
-    // a match: the one running, or a new one from the setup screen
-    let m = room?.state?.match
-    if (!m || room.state.over?.match === m.id || o.fresh) {
-      m = { id: Math.floor(Math.random() * 1e9), kind: o.kind || 'tdm', place: o.place || 'tovar', seed: Math.floor(Math.random() * 1e9), start: Date.now(), minutes: o.minutes || 12 }
+    // the server joined from the browser, or a new one hosted from it
+    let m = o.server ? room?.state?.['srv:' + o.server] : null
+    const me = this.me
+    if (!m) {
+      const id = Math.floor(Math.random() * 1e9).toString(36)
+      m = { id, name: o.name || `${me?.name || 'Player'}'s server`, host: me?.id ?? null, hostName: me?.name || '', kind: o.kind || 'tdm', place: o.place || 'tovar', minutes: o.minutes || 12, max: o.max || 16, hour: o.hour ?? 13, weather: o.weather || 'clear', seed: Math.floor(Math.random() * 1e9), start: Date.now(), round: 1, created: Date.now() }
       m.limit = ONLINE_KINDS[m.kind].limit
-      try { room?.set('match', m); room?.set('flags', null) } catch {}
+      try { room?.set('srv:' + id, m) } catch {}
+    } else if (room.state['ov:' + m.id]?.round === m.round || (Date.now() - m.start) / 60000 > m.minutes) {
+      // the last round is over: the next one starts now, on a new layout
+      m = { ...m, round: m.round + 1, seed: Math.floor(Math.random() * 1e9), start: Date.now() }
+      try { room.set('srv:' + m.id, m); room.set('fl:' + m.id, null); room.set('sc:' + m.id, null) } catch {}
     }
     this.m = m
+    this.mid = m.id + '.' + m.round
+    this.opts = { server: m.id }      // 'play again' rejoins this server
     this.kind = m.kind
     this.place = PLACES.find(p => p.id === m.place)
-    g.sky.hour = 13; g.sky.setWeather('clear'); g.sky.cycle = false
+    g.sky.hour = m.hour ?? 13; g.sky.setWeather(m.weather || 'clear'); g.sky.cycle = false
     // bases and flags, the same on every client (from the match's seed)
     const rand = mulberry(m.seed), P = this.place, a = rand() * Math.PI * 2, R = Math.max(150, Math.min(P.r * 0.8, 280))
     this.axis = a
@@ -68,12 +90,23 @@ export class OnlineBattle extends Mode {
   // ---- the score table in the shared state ----
   rows() {
     const st = this.room?.state || {}, here = new Set((this.room?.players || []).map(String))   // ids compared as text: the state keys are text
-    return Object.entries(st).filter(([k, v]) => k.startsWith('pl:') && v && v.match === this.m?.id && here.has(k.slice(3))).map(([k, v]) => ({ id: k.slice(3), ...v }))
+    return Object.entries(st).filter(([k, v]) => k.startsWith('pl:') && v && v.match === this.mid && here.has(k.slice(3))).map(([k, v]) => ({ id: k.slice(3), ...v }))
   }
-  publishRow() { try { this.room?.set('pl:' + this.me.id, { match: this.m.id, team: this.team, k: this.kills, d: this.deaths, name: this.me.name }) } catch {} }
+  publishRow() { try { this.room?.set('pl:' + this.me.id, { match: this.mid, team: this.team, k: this.kills, d: this.deaths, name: this.me.name }) } catch {} }
+  // Who runs this server's flags and end: its host while they are here, otherwise the first player in it
+  // (who then becomes its host)
+  auth() {
+    const room = this.room, here = (room?.players || []).map(String), me = String(this.me?.id)
+    if (here.includes(String(this.m.host))) return String(this.m.host) === me
+    const ids = this.rows().map(r => r.id).sort()
+    if (ids[0] !== me) return false
+    this.m = { ...this.m, host: this.me.id, hostName: this.me.name }
+    try { room.set('srv:' + this.m.id, this.m) } catch {}
+    return true
+  }
   teamScore(t) {
     if (this.kind === 'tdm') return this.rows().filter(r => r.team === t).reduce((n, r) => n + (r.k || 0), 0)
-    return Math.floor(this.room?.state?.score?.[t] || 0)
+    return Math.floor(this.room?.state?.['sc:' + this.m.id]?.[t] || 0)
   }
   spawnMe() {
     const g = this.g, [bx, bz] = this.base[this.team]
@@ -103,11 +136,12 @@ export class OnlineBattle extends Mode {
   }
   onNet(type, a, b, c) {
     if (type === 'leave') { this.dropRemote(a.id || a); return }
-    if (type === 'state' && a === 'over' && b?.match === this.m.id && !this.over) { this.finish(b.winner, b.reason); return }
-    if (type === 'state' && a === 'flags' && b && !this.room.isHost) { b.forEach((f, i) => { if (this.flags[i]) { this.flags[i].owner = f.o; this.flags[i].progress = f.p } }) }
+    if (type === 'state' && a === 'ov:' + this.m.id && b?.round === this.m.round && !this.over) { this.finish(b.winner, b.reason); return }
+    if (type === 'state' && a === 'fl:' + this.m.id && b && String(c) !== String(this.me?.id)) { b.forEach((f, i) => { if (this.flags[i]) { this.flags[i].owner = f.o; this.flags[i].progress = f.p } }) }
+    if (type === 'state' && a === 'srv:' + this.m.id && b && b.round === this.m.round) this.m = b
     if (type !== 'message') return
     const data = a, from = b
-    if (!data || data.m !== this.m.id) return
+    if (!data || data.m !== this.mid) return
     const r = this.ensureRemote(from, data.tm)
     if (!r) return
     const s = r.s
@@ -140,13 +174,13 @@ export class OnlineBattle extends Mode {
     if (sol !== this.g.player?.s) return
     this.deaths++
     this.publishRow()
-    try { this.room?.send({ m: this.m.id, t: 'k', by: killer?.netId || null }) } catch {}
+    try { this.room?.send({ m: this.mid, t: 'k', by: killer?.netId || null }) } catch {}
   }
   onShot(s, sh) {
     if (!s.isPlayer) return
     this.shots.push([r1(sh.origin.x), r1(sh.origin.y), r1(sh.origin.z), +sh.dir.x.toFixed(4), +sh.dir.y.toFixed(4), +sh.dir.z.toFixed(4), Math.round(sh.v), sh.ammo, sh.tracer ? 1 : 0])
   }
-  onGrenade(s, n) { if (s.isPlayer) try { this.room?.send({ m: this.m.id, t: 'g', type: n.type, p: n.pos.toArray().map(r1), v: n.vel.toArray().map(r1) }) } catch {} }
+  onGrenade(s, n) { if (s.isPlayer) try { this.room?.send({ m: this.mid, t: 'g', type: n.type, p: n.pos.toArray().map(r1), v: n.vel.toArray().map(r1) }) } catch {} }
   update(dt) {
     super.update(dt)
     const g = this.g, s = g.player.s, room = this.room
@@ -156,8 +190,8 @@ export class OnlineBattle extends Mode {
     if (this.sendT <= 0) {
       this.sendT = 0.1
       try {
-        room.send({ m: this.m.id, t: 's', tm: this.team, p: [r1(s.pos.x), r1(s.pos.y), r1(s.pos.z)], y: +s.yaw.toFixed(2), a: +g.player.pitch.toFixed(2), st: s.stance, w: s.w?.def.id, d: s.dead ? 1 : 0 })
-        if (this.shots.length) { room.send({ m: this.m.id, t: 'f', s: this.shots.splice(0, 12) }) }
+        room.send({ m: this.mid, t: 's', tm: this.team, p: [r1(s.pos.x), r1(s.pos.y), r1(s.pos.z)], y: +s.yaw.toFixed(2), a: +g.player.pitch.toFixed(2), st: s.stance, w: s.w?.def.id, d: s.dead ? 1 : 0 })
+        if (this.shots.length) { room.send({ m: this.mid, t: 'f', s: this.shots.splice(0, 12) }) }
       } catch {}
     }
     // the stand-ins glide to where their players are
@@ -179,8 +213,9 @@ export class OnlineBattle extends Mode {
     this.tick = 1
     if (this.over) return
     // the host turns the flags and keeps the score; anyone notices the end
-    if (room.isHost && this.kind === 'domination') {
-      const score = { ...(room.state.score || { A: 0, B: 0 }) }
+    const auth = this.auth()
+    if (auth && this.kind === 'domination') {
+      const score = { ...(room.state['sc:' + this.m.id] || { A: 0, B: 0 }) }
       for (const f of this.flags) {
         const n = { A: 0, B: 0 }
         for (const o of g.soldiersNear(f.x, f.z, f.r)) if (!o.dead && Math.hypot(o.pos.x - f.x, o.pos.z - f.z) < f.r) { const t = o.isPlayer ? this.team : this.remoteTeam(o); if (t) n[t]++ }
@@ -189,13 +224,13 @@ export class OnlineBattle extends Mode {
         f.owner = f.progress >= 1 ? 'A' : f.progress <= -1 ? 'B' : Math.abs(f.progress) < 0.05 ? null : f.owner
         if (f.owner) score[f.owner] = (score[f.owner] || 0) + 1
       }
-      try { room.set('flags', this.flags.map(f => ({ o: f.owner, p: +f.progress.toFixed(2) }))); room.set('score', score) } catch {}
+      try { room.set('fl:' + this.m.id, this.flags.map(f => ({ o: f.owner, p: +f.progress.toFixed(2) }))); room.set('sc:' + this.m.id, score) } catch {}
     }
-    if (room.isHost) {
+    if (auth) {
       const A = this.teamScore('A'), B = this.teamScore('B'), left = this.m.minutes * 60 - (Date.now() - this.m.start) / 1000
       let winner = null, reason = ''
       if (A >= this.m.limit) { winner = 'A'; reason = 'Score limit reached' } else if (B >= this.m.limit) { winner = 'B'; reason = 'Score limit reached' } else if (left <= 0) { winner = A > B ? 'A' : B > A ? 'B' : 'draw'; reason = 'Time is up' }
-      if (winner) try { room.set('over', { match: this.m.id, winner, reason }) } catch {}
+      if (winner) try { room.set('ov:' + this.m.id, { round: this.m.round, winner, reason }) } catch {}
     }
   }
   remoteTeam(o) { for (const r of this.remotes.values()) if (r.s === o) return r.team; return null }
@@ -208,7 +243,7 @@ export class OnlineBattle extends Mode {
   results() {
     const o = this.over || {}, rows = this.rows().sort((a, b) => (b.k || 0) - (a.k || 0))
     return { title: o.winner === this.team ? 'VICTORY' : o.winner === 'draw' ? 'DRAW' : 'DEFEAT', reason: o.reason || '', lines: [
-      `${ONLINE_KINDS[this.kind].name} at ${this.place.name}   VDF ${this.teamScore('A')} - ${this.teamScore('B')} NLF`,
+      `${this.m.name}: ${ONLINE_KINDS[this.kind].name} at ${this.place.name}   VDF ${this.teamScore('A')} - ${this.teamScore('B')} NLF`,
       ...rows.slice(0, 8).map(r => `${r.team === 'A' ? 'VDF' : 'NLF'}  ${r.name}   ${r.k || 0} kills  ${r.d || 0} deaths${r.id === String(this.me.id) ? '  (you)' : ''}`)] }
   }
   respawnOptions() { return this.over ? [] : [{ id: 'base', label: 'Respawn at your base', sub: '' }] }
@@ -227,6 +262,8 @@ export class OnlineBattle extends Mode {
   dispose() {
     if (this.group) this.g.engine.world.remove(this.group)
     try { if (this.me) this.room?.set('pl:' + this.me.id, null) } catch {}
+    // the last one out closes the server
+    try { if (this.m && this.room && !this.rows().some(r => r.id !== String(this.me?.id))) for (const k of ['srv:', 'fl:', 'sc:', 'ov:']) this.room.set(k + this.m.id, null) } catch {}
   }
   markers() { return this.flags.map(f => ({ x: f.x, z: f.z, color: f.owner === this.team ? '#5ab0ff' : f.owner ? '#e0483a' : '#e8e4d4' })) }
   objectives() {
@@ -238,7 +275,7 @@ export class OnlineBattle extends Mode {
   drawHud(c, p, k) {
     const left = Math.max(0, this.m.minutes * 60 - (Date.now() - this.m.start) / 1000)
     const rows = this.rows()
-    this.panelTitle(c, k, `ONLINE · ${ONLINE_KINDS[this.kind].name.toUpperCase()}`, `VDF ${this.teamScore('A')} - ${this.teamScore('B')} NLF  (to ${this.m.limit})   ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`)
+    this.panelTitle(c, k, `${this.m.name.toUpperCase().slice(0, 26)} · ${ONLINE_KINDS[this.kind].name.toUpperCase()}`, `VDF ${this.teamScore('A')} - ${this.teamScore('B')} NLF  (to ${this.m.limit})   ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`)
     text(c, `${rows.length} player${rows.length === 1 ? '' : 's'} in the match: ${rows.filter(r => r.team === 'A').length} VDF, ${rows.filter(r => r.team === 'B').length} NLF${rows.length < 2 ? '  (waiting for others)' : ''}`, 10 * k, 62 * k, { size: 12 * k, color: C.dim, shadow: true })
     this.flags.forEach((f, i) => { this.objectives(); const col = f.owner === this.team ? '#5ab0ff' : f.owner ? '#e0483a' : '#c9c3a0'; c.fillStyle = 'rgba(0,0,0,0.55)'; c.fillRect(10 * k + i * 36 * k, 72 * k, 30 * k, 26 * k); text(c, LETTERS[i], 25 * k + i * 36 * k, 91 * k, { size: 14 * k, weight: 900, align: 'center', color: col }) })
   }

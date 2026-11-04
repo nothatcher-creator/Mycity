@@ -128,6 +128,8 @@ export class Game {
     L(1, 'ready')
     this.state = 'menu'
     this.menus.open('main')
+    // invited to a server: straight to the server browser with it selected
+    try { const inv = p0.invitation; if (inv?.data?.srv) { this.menus.osel = String(inv.data.srv); this.menus.open('online', true) } } catch {}
     p0.hud('OPERATION: IRON FRONT. Click to start and for sound. WASD move, mouse aim/fire, Shift sprint, C crouch, Z prone, Q/E lean, R reload, F use/enter, V view, M map, Tab inventory, T squad, P pause. Enter is chat, Esc leaves.')
     p0.loop((dt) => this.frame(Math.min(dt, 0.1)))
     // the session: other players' messages and the shared state go to the mode that uses them (Online Battle)
@@ -211,6 +213,7 @@ export class Game {
       if (e.code === 'Home' && this.state === 'menu') { this.start('life', {}); return }
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
+      if (e.code === 'F3' && this.state === 'menu') { const room = p0.room; try { if (room && !Object.keys(room.state).some(k => k.startsWith('srv:'))) { room.set('srv:dbg1', { id: 'dbg1', name: 'Kaldor nights', host: p0.me.id, hostName: p0.me.name, kind: 'domination', place: 'kaldor', minutes: 20, max: 12, hour: 23, weather: 'fog', seed: 7, start: Date.now(), round: 1, created: Date.now(), limit: 250 }); room.set('srv:dbg2', { id: 'dbg2', name: 'Casual', host: 'nobody', hostName: 'Someone', kind: 'tdm', place: 'tovar', minutes: 12, max: 8, hour: 13, weather: 'clear', seed: 9, start: Date.now() - 300000, round: 2, created: Date.now(), limit: 30 }); room.set('pl:' + p0.me.id, { match: 'dbg1.1', team: 'A', k: 3, d: 1, name: p0.me.name }) } } catch (err) { p0.log('dbg srv', err.message) } this.menus.open('online', true); return }
       if (e.code === 'NumpadSubtract' && this.state === 'menu') { this.start('online', { fresh: true }); return }
       if (e.code === 'NumpadDivide' && this.state === 'menu') { this.start('online', { fresh: true, kind: 'domination' }); return }
       if (e.code === 'NumpadMultiply' && this.modeId === 'online') { p0.log('dbg online', JSON.stringify({ flags: this.mode.flags?.map(f => (f.owner || '-') + f.progress.toFixed(1)), score: p0.room?.state?.score,  players: p0.room?.players, host: p0.room?.isHost, me: p0.me?.id, team: this.mode.team, remotes: [...this.mode.remotes.keys()], rows: this.mode.rows().map(r => r.id + ':' + r.team), stateKeys: Object.keys(p0.room?.state || {}) })) }

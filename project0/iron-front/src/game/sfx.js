@@ -3,9 +3,10 @@
 // distant shot. The platform cannot change a playing sound's volume, so loops (engine, wind) restart at a
 // new level when it changes enough. Browsers start sound only after the first click or key.
 import { weapon, AMMO } from '../combat/weapons-data.js'
+import { heightAt } from '../world/heightfield.js'
 
 const FILES = ['bolt', 'crack', 'dry', 'explosion', 'explosion_far', 'horn', 'impact_body', 'impact_dirt', 'impact_hard', 'impact_metal',
-  'loop_boat', 'loop_car', 'loop_fire', 'loop_heli', 'loop_jet', 'loop_rain', 'loop_tank', 'loop_wind', 'reload', 'ricochet', 'shot_cannon', 'shot_far',
+  'loop_birds', 'loop_boat', 'loop_car', 'loop_crickets', 'loop_fire', 'loop_heli', 'loop_jet', 'loop_rain', 'loop_tank', 'loop_wind', 'reload', 'ricochet', 'shot_cannon', 'shot_far',
   'shot_heavy', 'shot_pistol', 'shot_rifle', 'shot_rocket', 'shot_shotgun', 'shot_smg', 'shot_suppressed', 'step', 'ui_click', 'ui_hurt',
   'ui_pickup', 'ui_radio', 'ui_throw']
 const SET = new Set(FILES)
@@ -87,6 +88,15 @@ export class SFX {
     const rain = this.g.sky?.w?.rain || 0
     if (this.on) { if (rain > 0.05) this.loop('rain', 'loop_rain', 0.12 + rain * 0.3); else this.stopLoop('rain') }
     // wind: stronger up high and in storms
+    // thunder after a lightning flash
+    const sk = this.g.sky
+    if (sk?.thunder > 0) { sk.thunder -= dt; if (sk.thunder <= 0) { sk.thunder = 0; this.play('explosion_far', sk.thunderVol || 0.5, 0.55 + Math.random() * 0.2) } }
+    // birdsong by day and crickets at night, near the ground and out of the rain (not in Online or high up)
+    if (this.on) {
+      const sky = this.g.sky, cp = this.g.camPos, low = cp.y - heightAt(cp.x, cp.z) < 40, wet = (sky?.w?.rain || 0) > 0.3
+      const day = low && !wet && sky && sky.night < 0.25, night = low && !wet && sky && sky.night > 0.7
+      if (day) this.loop('amb', 'loop_birds', 0.16); else if (night) this.loop('amb', 'loop_crickets', 0.12); else this.stopLoop('amb')
+    }
     if (this.on) { const h = this.g.camPos.y; this.loop('wind', 'loop_wind', Math.min(0.5, 0.12 + Math.max(0, h - 80) / 1500 + (this.g.sky?.w?.wind || 0) * 0.1)) }
   }
   pauseAll() { try { this.p0.sound?.pauseAll() } catch {} }

@@ -150,5 +150,16 @@ export class Sky {
     this.hemi.groundColor.setRGB(0.35 * (0.2 + day), 0.3 * (0.2 + day), 0.22 * (0.2 + day))
     this.dome.position.copy(anchor)
     this.day = day; this.night = night
+    // lightning in a storm: a double flicker that lights everything for a moment; the thunder follows
+    // (this.thunder: seconds until it is heard, read by the sound)
+    if (this.weatherKey === 'storm' && dt > 0) {
+      this.boltT = (this.boltT ?? 6) - dt
+      if (this.boltT <= 0) { this.boltT = 8 + Math.random() * 18; this.flashT = 0.35; this.thunder = 0.6 + Math.random() * 3.5; this.thunderVol = 0.35 + Math.random() * 0.45 }
+    }
+    if (this.flashT > 0) {
+      this.flashT -= dt
+      const f = this.flashT > 0.22 || (this.flashT > 0.04 && this.flashT < 0.12) ? 1 : 0
+      this.hemi.intensity += f * 2.6; this.sun.intensity += f * 1.2
+    }
   }
 }

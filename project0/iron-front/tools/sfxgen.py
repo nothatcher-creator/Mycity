@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Synthesises every sound effect in the game (original procedural sounds, no samples), then encodes
-them as mono MP3s in sfx/. Run: python3 tools/sfxgen.py  (needs numpy and ffmpeg)."""
+them as mono MP3s in sfx/. Run: python3 tools/sfxgen.py  (needs numpy and ffmpeg); --only a,b makes just those."""
 import numpy as np, subprocess, os, sys, wave
 
 SR = 22050
@@ -121,8 +121,33 @@ SOUNDS['loop_fire'] = loop_noise(4, 1500, 1.7, 0.4)
 _r = loop_noise(5, 7000, 0.23, 0.25)
 SOUNDS['loop_rain'] = norm(hp(_r, 900) + hp(_r, 2500) * 0.5, 0.7)
 
+# ambience (seamless: every event wraps round the end of the loop)
+def wrap_add(buf, x, at):
+    for i in range(len(x)): buf[(at + i) % len(buf)] += x[i]
+amb = np.random.default_rng(11)
+# birds by day: short rising and falling whistles in little phrases, near and far, over a soft air bed
+_b = lp(noise(12), 300) * 0.04
+for _ in range(26):
+    at = int(amb.uniform(0, 12) * SR); f0 = amb.uniform(2400, 4600); far = amb.uniform(0.25, 1.0)
+    for k in range(int(amb.integers(2, 6))):
+        d = amb.uniform(0.05, 0.14); tt = t(d)
+        sweep = f0 * (1 + amb.uniform(-0.25, 0.35) * np.sin(np.pi * tt / d))
+        chirp = np.sin(2 * np.pi * np.cumsum(sweep) / SR) * np.sin(np.pi * tt / d) ** 2 * far * 0.5
+        wrap_add(_b, chirp, at + int(k * amb.uniform(0.09, 0.2) * SR))
+SOUNDS['loop_birds'] = norm(_b, 0.6)
+# crickets at night: two of them, trains of quick pulses on a high tone, slightly out of step
+_c = lp(noise(8), 200) * 0.03
+for f, rate, gap, g in [(4300, 26, 0.9, 0.5), (3900, 22, 1.3, 0.35)]:
+    tt = t(8); tone = np.sin(2 * np.pi * f * tt)
+    pulses = (np.sin(2 * np.pi * rate * tt) > 0.3).astype(float)
+    train = ((tt % gap) < gap * 0.45).astype(float)
+    _c += lp(tone * pulses * train, 6000) * g
+SOUNDS['loop_crickets'] = norm(_c, 0.5)
+
+ONLY = sys.argv[sys.argv.index('--only') + 1].split(',') if '--only' in sys.argv else None
 os.makedirs(OUT, exist_ok=True)
 for name, x in SOUNDS.items():
+    if ONLY and name not in ONLY: continue
     x = np.clip(x, -1, 1)
     wav = os.path.join(OUT, name + '.wav')
     with wave.open(wav, 'wb') as f:

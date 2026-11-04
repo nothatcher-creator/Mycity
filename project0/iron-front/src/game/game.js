@@ -712,6 +712,7 @@ export class Game {
     this.engine.setView(cp, this.camQuat, this.fov || 70)
     this.sky.update(this.state === 'paused' ? 0 : dt, this.engine.camera.position)
     this.city.night.value = Math.max(0, Math.min(1, (this.sky.night - 0.35) / 0.4))
+    if (this.debug && this.sky.flashT > 0.3 && !this.dbgFlash) { this.dbgFlash = true; this.p0.log('dbg lightning, hemi', this.sky.hemi.intensity.toFixed(2), 'thunder in', this.sky.thunder.toFixed(1)) } else if (!(this.sky.flashT > 0.3)) this.dbgFlash = false
     this.water.update(dt, cp, this.sky)
     this.rain.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.sfx)
     this.fx.update(this.state === 'paused' ? 0 : dt, cp); T.push(performance.now())

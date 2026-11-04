@@ -57,6 +57,8 @@ gesture to the frame the first touched, so the game never saw a second finger.)
 
 ### Look
 
+At night a share of the windows glow warm (the same ones every night: a hash of each pane's place), on the near buildings' glass and on the painted windows of the distant ones; storms flash with lightning and the thunder rolls in a few seconds later; birds sing by day and crickets at night (both loops made by `tools/sfxgen.py`, like every sound). In Free Roam the towns your side holds have a few townspeople on the pavements, fewer at night, who run from shooting and blasts and crouch in cover until it has been quiet a while (`src/game/civilians.js`); killing one is noted against you.
+
 Colours are written as display values and converted to linear once where each mesh is built
 (`src/core/color.js`); before, raw palettes were lit past white and the island looked washed out. The
 ground has large dry patches, darker lush hollows and fine mottling close by; trees stand at most 6.4 m apart, with a lone tree

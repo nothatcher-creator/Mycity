@@ -477,7 +477,7 @@ export class HUD {
       util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
       util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
       if (air) util(2, 'flares', 'FLARE', 'flare', () => g.input.pressed.add('vFlares'))
-      text(c, air ? 'Stick: forward and turn  ·  drag: aim' : 'Stick: drive  ·  drag: look and aim', W / 2, H * 0.58, { size: 12, align: 'center', color: 'rgba(236,232,216,0.6)', weight: 600 })
+      text(c, air ? 'Left thumb: fly  ·  right thumb: aim' : 'Left thumb: drive  ·  right thumb: look and aim', W / 2, H * 0.46, { size: 12, align: 'center', color: 'rgba(236,232,216,0.6)', weight: 600 })
       return
     }
     btn('fire', R, B - r * 0.4, 'FIRE', 'fire', () => { P.touchFire = true }, r * 1.25, { main: true, ring: 'rgba(255,90,69,0.7)' })   // held until the finger lifts
@@ -493,6 +493,6 @@ export class HUD {
     util(2, 'inv', 'KIT', 'bag', () => g.input.pressed.add('inventory'))
     util(3, 'heal', 'HEAL', 'cross', () => g.input.pressed.add('heal'))
     // the hint, for the first half minute
-    if ((g.mode?.t ?? 99) < 30) text(c, g.settings.stickTurns !== false ? 'Stick: move and turn  ·  drag right side: look' : 'Drag right side to look', W / 2, H * 0.58, { size: 12, align: 'center', color: 'rgba(236,232,216,0.7)', weight: 600 })
+    if ((g.mode?.t ?? 99) < 30) text(c, g.settings.stickTurns ? 'Left thumb: move and turn  ·  right thumb: look' : 'Left thumb: move  ·  right thumb: look and shoot', W / 2, H * 0.46, { size: 12, align: 'center', color: 'rgba(236,232,216,0.7)', weight: 600 })
   }
 }

@@ -286,7 +286,7 @@ export class Menus {
     const tog = (label, cur, set) => { y = this.choices(c, p, x, y, w, label, [{ label: 'On', v: true }, { label: 'Off', v: false }], cur, v => { set(v); g.save.store() }, s) }
     tog('Invert mouse Y', st.invertY, v => { st.invertY = v; g.input.invertY = v })
     tog('Flight assist', st.flightAssist, v => { st.flightAssist = v })
-    tog('Touch: stick turns', st.stickTurns !== false, v => { st.stickTurns = v })
+    tog('Touch: stick turns', !!st.stickTurns, v => { st.stickTurns = v })
     tog('Touch: aim assist', st.aimAssist !== false, v => { st.aimAssist = v })
     y = this.choices(c, p, x, y, w, 'Default view', [{ label: 'First person', v: 'fp' }, { label: 'Third person', v: 'tp' }], st.view, v => { st.view = v; g.save.store() }, s)
     tog('Compass', st.hud.compass, v => { st.hud.compass = v })

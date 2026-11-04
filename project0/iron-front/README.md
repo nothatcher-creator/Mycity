@@ -43,14 +43,23 @@ Independent Resistance (RES).
 
 Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with flight assist on.
 
-**Phones and tablets:** the city's stick moves you and its left and right turn you (the platform follows one finger at a time, so moving and looking with two fingers is not possible; a setting switches the stick back to strafing); aim assist pulls the view onto a visible enemy within about 5° while aiming or firing (a setting turns it off); drag anywhere else to look, also up and down; buttons for fire (hold), aim,
-reload, stance, jump, use, grenade, view, map, inventory, heal and the menu.
+**Phones and tablets:** two thumbs at once. The game draws its own movement stick (the city's is hidden
+with `"stick": false` in `experience.json`): put your left thumb down anywhere in the lower left and it
+appears under it, pushed to the rim you sprint. Drag anywhere else with the right thumb to look; hold FIRE
+and drag to aim while shooting. Each finger keeps its own job, so lifting one never stops another
+(`src/core/touch.js`: events carry no finger id, but each one's dx/dy runs from that finger's last
+position, which tells them apart). A setting makes the stick turn you instead of strafing; aim assist
+pulls the view onto a visible enemy within about 5° while aiming or firing (a setting turns it off).
+Buttons for fire (hold), aim, reload, stance, jump, use, grenade, gear, view, map, kit, heal and the menu.
+(Before, the city's stick and the game were in different frames, and the browser sends every finger of a
+gesture to the frame the first touched, so the game never saw a second finger.)
 
 ### Look
 
 Colours are written as display values and converted to linear once where each mesh is built
 (`src/core/color.js`); before, raw palettes were lit past white and the island looked washed out. The
-ground has large dry patches, darker lush hollows and fine mottling close by; grass clumps (medium and
+ground has large dry patches, darker lush hollows and fine mottling close by; trees stand at most 6.4 m apart, with a lone tree
+here and there in the open (far away two in five are drawn, wider); grass clumps (medium and
 high quality, `src/world/grass.js`) cover the ground round you in 16 m chunks, sway in the wind and fade
 into the ground at the edge, with tall golden stalks in the wheat. The sky has layered clouds lit from
 the sun's side, a sun disc and glow, a warm band at dawn and dusk, and small twinkling stars only in full

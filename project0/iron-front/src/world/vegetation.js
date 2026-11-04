@@ -10,7 +10,8 @@ import { makeBox } from './collision.js'
 import { isBuilt } from './places.js'
 
 const TILE = 256
-const SPACING = 10
+// 6.4 m apart at most (40 to a tile): woods close up, with the odd tree out in the open
+const SPACING = 6.4
 
 function colored(geo, color) {
   const g = geo.index ? geo.toNonIndexed() : geo
@@ -66,7 +67,7 @@ export class Vegetation {
   }
   setQuality(q) {
     this.density = { low: 0.45, medium: 0.75, high: 1 }[q] ?? 0.75
-    this.nearR = { low: 220, medium: 320, high: 420 }[q] ?? 320
+    this.nearR = { low: 160, medium: 230, high: 270 }[q] ?? 230
     this.farR = { low: 900, medium: 1500, high: 2100 }[q] ?? 1500
     for (const t of this.tiles.values()) this.dropTile(t)
     this.tiles.clear()
@@ -83,8 +84,8 @@ export class Vegetation {
       const h = heightAt(x, z)
       if (h < 2) continue
       const f = forestAt(x, z, h)
-      const meadow = 0.015 + (fieldAt(x, z) ? -1 : 0)
-      if (r1 * 0.5 + r2 * 0.5 > f * 1.08 && hash2(gx, gz, 14) > meadow) continue
+      const meadow = 0.03 + (fieldAt(x, z) ? -1 : 0)
+      if (r1 * 0.5 + r2 * 0.5 > f * 1.35 && hash2(gx, gz, 14) > meadow) continue
       if (waterLevel(x, z) > h - 0.6) continue
       const rd = roadAt(x, z)
       if (rd && rd.d < rd.w / 2 + 3) continue
@@ -104,7 +105,8 @@ export class Vegetation {
     const groups = near ? { pine: [], leaf: [], birch: [], bush: [] } : { far: [], farLeaf: [] }
     for (const tr of t.trees) {
       if (near) groups[tr.kind].push(tr)
-      else if (tr.kind !== 'bush') groups[tr.kind === 'pine' ? 'far' : 'farLeaf'].push(tr)
+      // far away two trees in five stand for the rest, drawn wider so the wood still reads solid
+      else if (tr.kind !== 'bush' && hash2(Math.floor(tr.x), Math.floor(tr.z), 41) < 0.4) groups[tr.kind === 'pine' ? 'far' : 'farLeaf'].push(tr)
     }
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), p = new THREE.Vector3()
     const meshes = []
@@ -113,7 +115,7 @@ export class Vegetation {
       const im = new THREE.InstancedMesh(this.models[k], this.mat, list.length)
       list.forEach((tr, i) => {
         q.setFromAxisAngle(up, tr.rot)
-        const w = tr.kind === 'pine' ? tr.s * 0.45 : tr.kind === 'bush' ? tr.s : tr.s * 0.7
+        const w = (tr.kind === 'pine' ? tr.s * 0.45 : tr.kind === 'bush' ? tr.s : tr.s * 0.7) * (near ? 1 : 1.45)
         m4.compose(p.set(tr.x, tr.y, tr.z), q, sc.set(w, tr.s, w))
         im.setMatrixAt(i, m4)
       })

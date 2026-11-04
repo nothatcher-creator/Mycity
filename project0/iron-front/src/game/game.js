@@ -35,6 +35,7 @@ import { Vehicles } from '../vehicles/vehicles.js'
 import { VehicleControl } from '../vehicles/vcontrol.js'
 import { SFX } from './sfx.js'
 import { Gear } from './gear.js'
+import { Touch } from '../core/touch.js'
 import { Save } from './save.js'
 import { MODES } from './modes/index.js'
 
@@ -109,6 +110,7 @@ export class Game {
     this.menuCam = { t: 0 }
     this.preload(this.camPos.x, this.camPos.z)
     this.hud = new HUD(this)
+    this.touchCtl = new Touch(this)
     this.hud.show(false)
     this.map = new MapView(this)
     this.invui = new InventoryUI(this)
@@ -184,11 +186,14 @@ export class Game {
     this.veg.setQuality(q); this.grass.setQuality(q); this.city.setQuality(q); this.sky.setQuality(q)
     this.save.store()
   }
+  touchPlay() { return this.state === 'play' && !!this.player && !this.menus.visible && !this.map.visible && !this.invui.visible }
   bindPointer() {
     const p0 = this.p0
     p0.on('pointerdown', e => {
       this.sfx.unlock()
       if (e.touch && !this.touchSeen) { this.touchSeen = true; this.input.touch = true; this.hud.layout(); this.menus.layout(); this.invui.layout(); this.map.layout() }
+      // in play on a touch screen every finger is tracked (stick, look, buttons at once)
+      if (e.touch && this.touchPlay()) { this.touchCtl.down(e); return }
       if (this.map.visible) { this.ui.click(e.x, e.y); if (this.map.visible) this.map.pointerDown(e.x, e.y, e.button); return }
       if (this.ui.click(e.x, e.y)) { this.input.mouse.left = false; return }
       if (this.invui.visible) { this.invui.pointerDown(e.x, e.y, e.button); return }
@@ -239,14 +244,15 @@ export class Game {
       if (e.code === 'Numpad4') { const L = ['luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1) }
       if (e.code === 'Numpad3') { s.blood = 40; s.bleed = 0.2; p0.log('dbg wounded', s.blood) }
       if (e.code === 'Numpad9') for (const [m, b] of this.ai.brains) if (!m.dead && m !== s) p0.log('dbg ai', m.team, m.name, m.role, Math.round(m.pos.x), Math.round(m.pos.z), Math.round(m.blood), b.state, 'target', b.target?.name || '-', 'spot', (b.spot.get(s) || 0).toFixed(2), 'slot', m.slot, 'd', Math.round(m.pos.distanceTo(s.pos)), 'yaw', m.yaw.toFixed(1), 'react', b.reactT.toFixed(1), 'cover', !!b.cover, 'peek', b.peeking, 'seen', (this.ai.time - b.lastSeen).toFixed(1), 'gtime', (this.time - b.lastSeen).toFixed(1), 'rk', b.dbgR || '-', 'spd', m.speed.toFixed(1), 'st', m.stance, 'mv', b.move ? Math.round(b.move.distanceTo(m.pos)) : -1, 'path', b.path ? b.path.length : -1, 'stuck', b.stuckT.toFixed(1), 'fwd', m.input.fwd.toFixed(2), 'spr', m.input.sprint, 'pause', (b.pause || 0).toFixed(1))
-      if (e.code === 'Numpad9') p0.log('dbg state blood', Math.round(s.blood), 'bleed', s.bleed.toFixed(2), 'y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2))
+      if (e.code === 'Numpad9') p0.log('dbg state blood', Math.round(s.blood), 'bleed', s.bleed.toFixed(2), 'y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2), 'xz', s.pos.x.toFixed(1), s.pos.z.toFixed(1), 'yaw', s.yaw.toFixed(2), 'ammo', s.w?.rec.mag, 'fingers', this.touchCtl.fingers.map(f => f.role + (f.hold ? ':' + f.hold : '')).join('|'), 'stick', this.input.stick ? this.input.stick.x.toFixed(2) + ',' + this.input.stick.y.toFixed(2) : '-')
       if (e.code === 'Numpad7') { const L = [...this.W.ladders].sort((a, b) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(b.x - s.pos.x, b.z - s.pos.z))[0]; if (L) { const bx = L.x - Math.sin(L.yaw) * 0.8, bz = L.z - Math.cos(L.yaw) * 0.8; s.pos.set(bx, L.y0, bz); s.yaw = L.yaw; p0.log('dbg ladder', this.W.ladders.length, JSON.stringify({ x: L.x.toFixed(1), z: L.z.toFixed(1), y0: L.y0.toFixed(1), y1: L.y1.toFixed(1), yaw: L.yaw.toFixed(2) })) } else p0.log('dbg no ladders', this.W.ladders.length) }
       if (e.code === 'NumpadDecimal') { this.sky.setWeather('storm'); p0.log('dbg storm') }
-      if (e.code === 'F4') { this.mode.admin('teleport', { x: 60, z: 1650 }); p0.log('dbg teleported') }
+      if (e.code === 'F4') { this.dbgTp = !this.dbgTp; this.mode.admin('teleport', this.dbgTp ? { x: 60, z: 1650 } : { x: -3000, z: -360 }); if (!this.dbgTp) { s.yaw = Math.PI / 2; this.player.pitch = 0.05 } p0.log('dbg teleported') }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
     if (DEBUG) for (const ev of ['pointerdown', 'pointermove', 'pointerup']) p0.on(ev, e => { if (e.touch && (this.dbgPtr = (this.dbgPtr || 0) + 1) < 60) p0.log('dbg ptr', ev, JSON.stringify(e)) })
     p0.on('pointermove', e => {
+      if (e.touch && this.touchPlay()) { this.touchCtl.move(e); return }
       if (e.touch && this.touchLook) {
         const k = 2.4
         // a jump of more than 120 px is another finger (the platform reports one touch at a time): not a drag
@@ -259,7 +265,7 @@ export class Game {
       if (this.map.visible) this.map.pointerMove(e.x, e.y)
       if (this.invui.visible) this.invui.pointerMove(e.x, e.y)
     })
-    p0.on('pointerup', e => { if (e.touch) { this.touchLook = null; if (this.player) { const P = this.player; P.touchFire = P.touchAlt = P.touchUp = P.touchDown = false } } if (this.map.visible) this.map.pointerUp(e.x, e.y); if (this.invui.visible) this.invui.pointerUp(e.x, e.y) })
+    p0.on('pointerup', e => { if (e.touch && this.touchPlay()) { this.touchCtl.up(e); return } if (e.touch) { this.touchLook = null; if (this.player) { const P = this.player; P.touchFire = P.touchAlt = P.touchUp = P.touchDown = false } } if (this.map.visible) this.map.pointerUp(e.x, e.y); if (this.invui.visible) this.invui.pointerUp(e.x, e.y) })
     p0.on('wheel', e => {
       const dy = e.dy ?? e.deltaY ?? 0
       if (this.map.visible) { this.input.mouse.wheel = 0; this.map.wheel(dy, this.ui.pointer.x, this.ui.pointer.y) }
@@ -655,6 +661,7 @@ export class Game {
   }
   resume() { this.menus.close(); this.state = 'play'; if (!this.input.touch) this.p0.input.lockPointer() }
   playFrame(dt) {
+    this.touchCtl.update()
     const p = this.player, s = p.s, inp = this.input
     if (inp.hit('pause') && !this.map.visible && !this.invui.visible) { this.state = 'paused'; this.menus.open('pause'); this.p0.input.unlockPointer(); return }
     if (inp.hit('map')) { if (this.map.visible) this.closeMap(); else { this.invui.close(); this.openMap() } }

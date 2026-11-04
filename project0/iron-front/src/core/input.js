@@ -35,6 +35,7 @@ export class Input {
     this.pressed = new Set()     // actions pressed this frame
     this.mouse = { left: false, right: false, wheel: 0 }
     this.touch = false
+    this.stick = null
     this.listeners = []
     this.rebinding = null
     p0.on('keydown', e => {
@@ -54,9 +55,15 @@ export class Input {
     // touches are not mouse buttons: the game reads them as look drags and on-screen buttons (game.js)
     p0.on('pointerdown', e => { if (e.touch) { this.touch = true; return } if (e.button === 0) this.mouse.left = true; if (e.button === 2) this.mouse.right = true })
     p0.on('pointerup', e => { if (e.touch) return; if (e.button === 0) this.mouse.left = false; if (e.button === 2) this.mouse.right = false })
+    p0.on('blur', () => { this.stick = null })
     p0.on('wheel', e => { this.mouse.wheel += Math.sign(e.dy || e.deltaY || 0) })
   }
-  down(action) { const c = this.binds[action]; return !!c && this.p0.input.keys.has(c) }
+  // the touch stick (core/touch.js) counts as the movement keys, and as sprint when pushed to the rim
+  down(action) {
+    const s = this.stick
+    if (s) { if (action === 'forward' && s.y > 0.35 || action === 'back' && s.y < -0.35 || action === 'right' && s.x > 0.35 || action === 'left' && s.x < -0.35 || action === 'sprint' && Math.hypot(s.x, s.y) > 0.95 && s.y > 0.5) return true }
+    const c = this.binds[action]; return !!c && this.p0.input.keys.has(c)
+  }
   hit(action) { return this.pressed.has(action) }
   // Read and clear the look movement since the last frame (radians).
   takeLook(scale = 1) {

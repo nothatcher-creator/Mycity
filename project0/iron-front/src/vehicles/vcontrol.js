@@ -29,7 +29,7 @@ export class VehicleControl {
     const P = g.player
     const fire = input.mouse.left || P.touchFire, alt = input.mouse.right || P.touchAlt
     const up = input.down('vUp') || P.touchUp, down = input.down('vDown') || P.touchDown
-    const touchTurn = input.touch && g.settings.stickTurns !== false
+    const touchTurn = input.touch
     // ---- driving / flying ----
     if (driving) {
       if (v.kind === 'heli') {

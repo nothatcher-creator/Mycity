@@ -5,7 +5,7 @@ import { DEFAULT_BINDS } from '../core/input.js'
 
 export const DEFAULT_SETTINGS = {
   quality: 'medium', qualityChosen: false, fov: 70, sens: 1, invertY: false, volume: 1, view: 'fp',
-  hud: { compass: true, weapon: true, minimap: true, crosshair: true }, minimapRange: 300, flightAssist: true, stickTurns: true,
+  hud: { compass: true, weapon: true, minimap: true, crosshair: true }, minimapRange: 300, flightAssist: true, stickTurns: false, touch2: true,
   difficulty: 0.5, binds: {},
 }
 
@@ -17,6 +17,8 @@ export class Save {
     const st = s.settings || {}
     this.settings = { ...DEFAULT_SETTINGS, ...st, hud: { ...DEFAULT_SETTINGS.hud, ...(st.hud || {}) } }
     // only keep bindings for actions that still exist
+    // two-thumb touch (core/touch.js): the stick strafes again unless the player turns turning back on
+    if (!this.settings.touch2) { this.settings.stickTurns = false; this.settings.touch2 = true }
     this.settings.binds = Object.fromEntries(Object.entries(this.settings.binds || {}).filter(([a]) => a in DEFAULT_BINDS))
     this.data.settings = this.settings
     this.timer = null

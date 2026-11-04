@@ -63,7 +63,10 @@ here and there in the open (far away two in five are drawn, wider); grass clumps
 high quality, `src/world/grass.js`) cover the ground round you in 16 m chunks, sway in the wind and fade
 into the ground at the edge, with tall golden stalks in the wheat. The sky has layered clouds lit from
 the sun's side, a sun disc and glow, a warm band at dawn and dusk, and small twinkling stars only in full
-night; nights are darker and bluer. Soldiers wear camouflage in square blotches, plate carriers with
+night; nights are darker and bluer. Soldiers die in three beats: the knees give and the body slumps, it topples the way the hit pushed it (back when
+shot from the front, forward from behind, with a twist), arms flung out, lands with a small bounce and lies
+sprawled, each a little differently, the rifle on the ground beside it; your own view drops and rolls to the
+ground before rising over your body. Soldiers wear camouflage in square blotches, plate carriers with
 pouches and a radio, belts, knee pads, boots and rounded helmets, and have faces. Weapons have rail
 teeth, ejection ports, charging handles, trigger guards and gas blocks; the one in your hands is shiny.
 Military vehicles carry blocky camouflage on their painted panels, mud low down, visible lamps,

@@ -365,13 +365,22 @@ export class Player {
     L.target.position.copy(L.position).addScaledVector(d, 10)
   }
   deathCam(dt) {
-    // after death the camera rises and looks down at the body
-    const s = this.s
-    const t = Math.min(1, s.deadT / 2.5)
-    this.camPos.set(s.pos.x - Math.sin(s.yaw) * 3 * t, s.pos.y + 1.6 + 4 * t, s.pos.z - Math.cos(s.yaw) * 3 * t)
-    const look = _v1.set(s.pos.x, s.pos.y + 0.3, s.pos.z).sub(this.camPos).normalize()
-    const yaw = Math.atan2(look.x, look.z), pitch = Math.asin(look.y)
-    this.camQuat.setFromEuler(_e.set(pitch, yaw + Math.PI, 0, 'YXZ'))
+    // you go down with him: the view drops to the ground and rolls over (0.8 s), stays there a moment,
+    // then rises behind and above to look down at the body
+    const s = this.s, d = s.deadT
+    if (d < 1.4) {
+      const k = Math.min(1, d / 0.8), fall = k * k, back = (s.fallDir || 1) < 0
+      const roll = (s.id % 2 ? 1 : -1) * 1.15 * fall
+      const eye = 1.6 - 1.35 * fall
+      this.camPos.set(s.pos.x - Math.sin(s.yaw) * (back ? 0.6 : -0.6) * fall, s.pos.y + Math.max(0.22, eye), s.pos.z - Math.cos(s.yaw) * (back ? 0.6 : -0.6) * fall)
+      this.camQuat.setFromEuler(_e.set(this.pitch * (1 - fall) + (back ? 0.9 : -0.5) * fall, s.yaw + Math.PI, roll, 'YXZ'))
+    } else {
+      const t = Math.min(1, (d - 1.4) / 2.2), e = t * t * (3 - 2 * t)
+      this.camPos.set(s.pos.x - Math.sin(s.yaw) * 3 * e, s.pos.y + 0.25 + 5.3 * e, s.pos.z - Math.cos(s.yaw) * 3 * e)
+      const look = _v1.set(s.pos.x, s.pos.y + 0.3, s.pos.z).sub(this.camPos).normalize()
+      const yaw = Math.atan2(look.x, look.z), pitch = Math.asin(Math.max(-1, Math.min(1, look.y)))
+      this.camQuat.setFromEuler(_e.set(pitch, yaw + Math.PI, 0, 'YXZ'))
+    }
     this.vm.visible = false
     for (const a of this.arms) a.visible = false
     this.fov = this.game.settings.fov

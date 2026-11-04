@@ -200,6 +200,7 @@ export class Soldier {
     this.dead = true; this.down = false; this.deadT = 0
     this.killer = src
     this.fallDir = dir && (Math.sin(this.yaw) * dir.x + Math.cos(this.yaw) * dir.z) < 0 ? -1 : 1
+    this.deathProne = this.stanceT > 1.5 || this.down
     this.blood = 0
     if (this.onDeath) this.onDeath(this, src)
   }

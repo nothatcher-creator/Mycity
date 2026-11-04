@@ -121,6 +121,7 @@ export class Rig {
     const root = _root.makeRotationY(s.yaw).setPosition(s.pos.x, s.pos.y, s.pos.z)
     const crouch = Math.min(1, s.stanceT), prone = Math.max(0, s.stanceT - 1)
     const dead = s.deadT || 0
+    if (s.dead || dead > 0) return this.drawDead(s, root, col)
     // walk cycle
     const amp = Math.min(1, s.speed / 3.5) * (1 - prone)
     const ph = s.phase || 0
@@ -182,6 +183,64 @@ export class Rig {
       const target = side < 0 ? grip : support
       this.arm(shoulder, target, side, spine, dead && dead > 0.3 ? null : true)
     }
+  }
+  // A death: the knees give and the body slumps (0.3 s), then it topples the way the hit pushed it, faster
+  // and faster, arms flung out, lands with a little bounce and lies sprawled: legs apart, one knee bent, the
+  // head rolled to one side, the arms out or one caught under. The rifle falls beside the body. Each soldier
+  // falls a little differently (from his id); someone already lying down just slumps where he is.
+  drawDead(s, root, col) {
+    const t = s.deadT || 0, h = hash2(s.id | 0, 7, 51), h2 = hash2(s.id | 0, 8, 52)
+    const sm = (a, b, x) => { const k = Math.max(0, Math.min(1, (x - a) / (b - a))); return k * k * (3 - 2 * k) }
+    const proneDeath = s.deathProne
+    const back = !proneDeath && (s.fallDir || 1) < 0
+    const buckle = proneDeath ? 1 : sm(0, 0.3, t)
+    const f0 = proneDeath ? 1 : Math.max(0, Math.min(1, (t - 0.12) / 0.55)), fall = f0 * f0
+    const land = t - 0.67, bounce = !proneDeath && land > 0 ? Math.exp(-land * 8) * Math.sin(land * 28) * 0.07 : 0
+    const sgn = back ? -1 : 1
+    const twist = (h - 0.5) * 1.1 * fall
+    // the body: lifted by its own thickness as it lies, rotated over the feet towards the fall
+    const body = _body.copy(root).multiply(_m.makeRotationY(twist)).multiply(_m2.makeTranslation(0, 0.13 * fall, 0)).multiply(_m3.makeRotationX(sgn * (Math.PI / 2 - 0.04) * (fall - bounce)))
+    // knees give: the pelvis sinks while standing, and lies on the ground once down
+    const pelvisY = 0.95 - 0.3 * buckle * (1 - fall) - 0.62 * fall
+    const pel = _pel.copy(body).multiply(_m.makeTranslation(0, pelvisY, 0)).multiply(_m2.makeRotationZ((h2 - 0.5) * 0.3 * fall))
+    this.put('pelvis', pel, col('uniform'))
+    for (const side of [1, -1]) {
+      // legs: buckled at the knee as he drops, then spread, the one bent more on one side
+      const bentLeg = (side > 0) === (h > 0.5)
+      const spread = side * (0.12 + 0.18 * fall * (bentLeg ? 0.6 : 1.2))
+      const thighA = -0.55 * buckle * (1 - fall) + (back ? 0.15 : -0.2) * fall + (bentLeg ? -0.5 * fall : 0)
+      const kneeA = 1.3 * buckle * (1 - fall) + (bentLeg ? 1.1 : 0.15) * fall
+      const hip = _hip.copy(pel).multiply(_m.makeTranslation(side * 0.09, -0.07, 0)).multiply(_m2.makeRotationX(thighA)).multiply(_m3.makeRotationZ(spread))
+      this.put('thigh', hip, col('uniform'))
+      this.put('shin', _knee.copy(hip).multiply(_m.makeTranslation(0, -0.44, 0)).multiply(_m2.makeRotationX(kneeA)), col('uniform'))
+    }
+    // the trunk slumps forward as the knees go, then lies flat (a little twist)
+    const slump = 0.45 * buckle * (1 - fall)
+    const spine = _spine.copy(pel).multiply(_m.makeTranslation(0, 0.07, 0)).multiply(_m2.makeRotationX(slump)).multiply(_m3.makeRotationY((h2 - 0.5) * 0.4 * fall))
+    this.put('torso', spine, col('uniform'))
+    if (!s.noVest) this.put('vest', spine, col('gear'))
+    if (s.pack) this.put('pack', spine, col('gear'))
+    const F = FACTIONS[s.faction] || FACTIONS.vdf
+    const neck = _neck.copy(spine).multiply(_m.makeTranslation(0, 0.5, 0)).multiply(_m2.makeRotationX(0.5 * buckle * (1 - fall) - 0.2 * fall * sgn)).multiply(_m3.makeRotationZ((h > 0.5 ? 1 : -1) * 0.75 * fall))
+    this.put('head', neck, col('skin'))
+    const hg = s.headgear || F.headgear
+    if (hg === 'helmet') this.put('helmet', neck, col('helmet')); else if (hg !== 'none') this.put('cap', neck, col('helmet'))
+    // arms: dropped from the gun, flung out with the fall, then splayed (or one caught under him)
+    col('uniform')
+    for (const side of [-1, 1]) {
+      const under = !back && (side > 0) === (h2 > 0.6)
+      // on his back the arms lie along the ground, spread or one thrown over the head; on his front, out or under
+      const overhead = back && (side > 0) === (h > 0.45)
+      const out = side * (0.25 + (under ? 0.1 : back ? (overhead ? 2.5 : 1.35) : 1.25) * fall) + side * 0.6 * Math.sin(Math.min(1, f0) * Math.PI) * (1 - fall * 0.5)
+      const fwd = (under ? -0.3 : back ? -0.15 : -0.5) * fall - 0.5 * buckle * (1 - fall)
+      const sh = _arm.copy(spine).multiply(_m.makeTranslation(side * 0.22, 0.44, 0)).multiply(_m2.makeRotationZ(out)).multiply(_m3.makeRotationX(fwd))
+      this.put('upper', sh, _c)
+      this.put('fore', _arm2.copy(sh).multiply(_m.makeTranslation(0, -0.3, 0)).multiply(_m2.makeRotationX(-0.25 - (under ? 1.2 : 0.4) * fall)), _c)
+    }
+    // the rifle: still in the hands for a moment, then on the ground beside him, on its side
+    const kind = s.weaponKind || 'rifle'
+    if (t < 0.25) this.put('w_' + kind, _gun.copy(spine).multiply(_m.makeTranslation(-0.13, 0.3 - t * 1.2, 0.3)).multiply(_m2.makeRotationX(0.6 + t * 2)), null)
+    else this.put('w_' + kind, _gun.copy(root).multiply(_m.makeRotationY(h * 2.4 - 1.2)).multiply(_m2.makeTranslation((h2 - 0.5) * 1.2 + 0.35, 0.04, back ? 0.6 : 0.9)).multiply(_m3.makeRotationZ(Math.PI / 2)), null)
   }
   // Two-bone arm from the shoulder to the hand target (elbow bending down and out).
   arm(S, Tgt, side, spine, reach) {

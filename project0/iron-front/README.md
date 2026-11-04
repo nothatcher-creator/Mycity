@@ -46,6 +46,17 @@ Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with 
 **Phones and tablets:** the city's stick moves you and its left and right turn you (the platform follows one finger at a time, so moving and looking with two fingers is not possible; a setting switches the stick back to strafing); aim assist pulls the view onto a visible enemy within about 5° while aiming or firing (a setting turns it off); drag anywhere else to look, also up and down; buttons for fire (hold), aim,
 reload, stance, jump, use, grenade, view, map, inventory, heal and the menu.
 
+### Interface
+
+All interface is drawn by the game on canvases (`src/ui/`): dark olive glass panels with chamfered
+corners and amber corner brackets, segmented bars, line icons and the Chakra Petch display face
+(embedded in `src/ui/fonts-data.js`, SIL Open Font License; licence text in `assets/font/OFL.txt`).
+The title screen has numbered modes and a field report (campaign progress, liberated places, players in
+the lot, tips). Desktop: status bottom left, weapon bottom right, compass top centre, minimap top right.
+Phones keep 60 px clear for the city's bar; narrow screens get a compact HUD (health and ammo side by
+side at the top, compass and minimap below) and round icon buttons (fire, aim, reload, stance, jump,
+use, grenade, gear) in an arc for the right thumb, with view, map, kit and heal down the right edge.
+
 ## How it works
 
 The game runs in a Web Worker with no page of its own: all interface is drawn on canvases shown as

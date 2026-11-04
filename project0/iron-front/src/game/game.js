@@ -15,7 +15,7 @@ import { buildPlaces, POINTS, BUILDINGS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
 import { Vegetation } from '../world/vegetation.js'
 import { CityStream } from '../world/citystream.js'
-import { UI, C } from '../ui/ui.js'
+import { UI, C, loadFonts } from '../ui/ui.js'
 import { HUD } from '../ui/hud.js'
 import { MapView } from '../ui/mapview.js'
 import { buildMapImage } from '../ui/mapimage.js'
@@ -97,6 +97,8 @@ export class Game {
     this.input.sens = this.settings.sens; this.input.invertY = this.settings.invertY
     this.sfx = new SFX(this)
     this.ui = new UI(this.engine)
+    // the display face: embedded, loaded in the background; everything redraws in it when ready
+    loadFonts(() => { for (const p of this.ui.panels) p.dirty = true; if (this.debug) this.p0.log('fonts loaded') })
     this.W = { collision: this.collision, ladders: [] }
     L(0.7, 'warming up'); await pause()
     this.camPos = new THREE.Vector3(560, heightAt(560, 1100) + 60, 1100)
@@ -184,7 +186,7 @@ export class Game {
     const p0 = this.p0
     p0.on('pointerdown', e => {
       this.sfx.unlock()
-      if (e.touch && !this.touchSeen) { this.touchSeen = true; this.input.touch = true; this.hud.layout() }
+      if (e.touch && !this.touchSeen) { this.touchSeen = true; this.input.touch = true; this.hud.layout(); this.menus.layout(); this.invui.layout(); this.map.layout() }
       if (this.map.visible) { this.ui.click(e.x, e.y); if (this.map.visible) this.map.pointerDown(e.x, e.y, e.button); return }
       if (this.ui.click(e.x, e.y)) { this.input.mouse.left = false; return }
       if (this.invui.visible) { this.invui.pointerDown(e.x, e.y, e.button); return }

@@ -1,7 +1,7 @@
 // The in-game display. Small panels that redraw only when what they show changes (the compass every
 // frame it turns, the minimap four times a second), so the interface stays cheap.
 import * as THREE from 'three'
-import { Panel, C, FONT, MONO, text, box, bar } from './ui.js'
+import { Panel, C, FONT, MONO, text, box, bar, chip, icon, chamfer, header } from './ui.js'
 import { AMMO, ATTACHMENTS } from '../combat/weapons-data.js'
 import { FACTIONS } from '../actors/factions.js'
 import { mapImage, worldToMap, gridRef } from './mapimage.js'
@@ -38,27 +38,45 @@ export class HUD {
   layout() {
     const W = this.g.engine.width, H = this.g.engine.height
     const touch = this.g.input.touch
-    const s = Math.min(1.25, Math.max(0.5, Math.min(W / 1280, H / 720) * (touch ? 1.15 : 1.05)))
-    this.s = s
-    this.compass.place(W / 2 - Math.min(240 * s, W * 0.3), 8, Math.min(480 * s, W * 0.6), 34 * s)
-    const ms = (touch ? 140 : 190) * s
-    this.mini.place(W - ms - 14, 14, ms, ms)
-    if (touch) {
-      // phones: the city's stick is at the bottom left and the fire buttons at the bottom right,
-      // so the status and weapon panels go up top
-      this.status.place(14, 104 * s, 270 * s, 98 * s)
-      this.weapon.place(W / 2 - 145 * s, 48 * s, 290 * s, 98 * s)
-      this.feed.place(W - 300 * s - 14, ms + 22, 300 * s, 130 * s)
-      this.vehP.place(W / 2 - Math.min(230 * s, W / 2 - 8), 48 * s, Math.min(460 * s, W - 16), 92 * s)
+    // phones: keep clear of the city's bar at the top; narrow screens get a compact one-line HUD
+    const safe = touch ? 60 : 0
+    this.safe = safe
+    this.compact = touch && W < 760
+    if (this.compact) {
+      const s = this.s = Math.max(0.85, Math.min(1.1, W / 400))
+      const half = (W - 24) / 2
+      this.status.place(8, safe, half, 50 * s)
+      this.weapon.place(16 + half, safe, half, 50 * s)
+      const ms = 104 * s
+      this.mini.place(W - ms - 8, safe + 58 * s, ms, ms)
+      this.compass.place(8, safe + 58 * s, W - ms - 24, 28 * s)
+      this.modeP.place(8, safe + 92 * s, W - ms - 24, 120 * s)
+      this.feed.place(8, H * 0.36, W - 16, 150 * s)
+      this.vehP.place(8, safe + 58 * s, W - ms - 24, 92 * s)
+    } else if (touch) {
+      const s = this.s = Math.max(0.8, Math.min(1.2, Math.min(W / 1000, H / 560)))
+      const ms = 130 * s
+      this.mini.place(W - ms - 14, 14, ms, ms)
+      this.status.place(14, safe + 4, 260 * s, 98 * s)
+      this.weapon.place(14, safe + 10 + 98 * s, 260 * s, 98 * s)
+      this.compass.place(W / 2 - Math.min(200 * s, W * 0.22), safe + 4, Math.min(400 * s, W * 0.44), 32 * s)
+      this.modeP.place(W / 2 - 150 * s, safe + 40 * s, 300 * s, 120 * s)
+      this.feed.place(W - 320 * s - 14, ms + 22, 320 * s, 130 * s)
+      this.vehP.place(14, safe + 10 + 98 * s, Math.min(400 * s, W * 0.45), 92 * s)
     } else {
+      const s = this.s = Math.min(1.25, Math.max(0.5, Math.min(W / 1280, H / 720) * 1.05))
+      this.compass.place(W / 2 - Math.min(240 * s, W * 0.3), 8, Math.min(480 * s, W * 0.6), 34 * s)
+      const ms = 190 * s
+      this.mini.place(W - ms - 14, 14, ms, ms)
       this.status.place(14, H - 112 * s, 270 * s, 98 * s)
       this.weapon.place(W - 290 * s - 14, H - 112 * s, 290 * s, 98 * s)
       this.feed.place(W - 340 * s - 14, ms + 22, 340 * s, 150 * s)
+      this.modeP.place(14, 14, 360 * s, 190 * s)
+      this.vehP.place(W / 2 - 230 * s, H - 104 * s, 460 * s, 92 * s)
     }
+    const s = this.s
     this.cross.place(W / 2 - 60, H / 2 - 60, 120, 120)
-    this.center.place(W / 2 - 260 * s, H / 2 + 60 * s, 520 * s, 120 * s)
-    this.modeP.place(14, 14, 360 * s, 190 * s)
-    if (!touch) this.vehP.place(W / 2 - 230 * s, H - 104 * s, 460 * s, 92 * s)
+    this.center.place(W / 2 - Math.min(260 * s, W / 2 - 8), H / 2 + 60 * s, Math.min(520 * s, W - 16), 120 * s)
     this.scope.place(0, 0, W, H)
     this.vign.place(0, 0, W, H)
     this.touch.place(0, 0, W, H)
@@ -80,10 +98,10 @@ export class HUD {
     const head = Math.round(((g.camHeading() * 180 / Math.PI) % 360 + 360) % 360)
     if (head !== this.last.head) { this.last.head = head; this.compass.dirty = true }
     this.compass.show(o.compass)
-    const key = [Math.round(s.blood), Math.round(s.stamina * 50), s.stance, Math.round(s.bleed * 100), Object.values(s.parts).map(Math.round).join(), s.down].join()
+    const key = [Math.round(s.blood), Math.round(s.stamina * 50), s.stance, Math.round(s.bleed * 100), Object.values(s.parts).map(Math.round).join(), s.down, s.fedT > 0, s.legHurt].join()
     if (key !== this.last.status) { this.last.status = key; this.status.dirty = true }
     const w = s.w
-    const wk = w ? [w.def.id, w.rec.mag, w.rec.chamber, s.mode, Math.round(w.reloadT * 10), g.player.zero, s.inv.countAmmo(w.def), s.inv.count('frag'), s.inv.count('smoke'), g.player.zoom, s.bipod].join() : 'none'
+    const wk = w ? [w.def.id, w.rec.mag, w.rec.chamber, s.mode, Math.round(w.reloadT * 10), g.player.zero, s.inv.countAmmo(w.def), s.inv.count('frag'), s.inv.count('smoke'), g.player.zoom, s.bipod, g.gear?.label(s), s.inv.count('bandage') + s.inv.count('firstaid') + s.inv.count('medkit'), w.reloadT > 0 ? Math.round(w.reloadT * 10) : 0].join() : 'none'
     if (wk !== this.last.weapon) { this.last.weapon = wk; this.weapon.dirty = true }
     this.weapon.show(!s.vehicle && o.weapon)
     this.vehP.show(!!s.vehicle)
@@ -109,7 +127,8 @@ export class HUD {
     this.dmgDirs = this.dmgDirs.filter(d => g.time - d.t < 1.5)
     if (scoped && g.player.binoculars) this.scope.dirty = true
     else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
-    if (g.input.touch && !!s.vehicle !== this.lastTouchVeh) { this.lastTouchVeh = !!s.vehicle; this.touch.dirty = true }
+    if (this.compact) this.modeP.show(!s.vehicle && this.visible)
+    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
     this.touch.show(g.input.touch)
   }
   crossSpread() {
@@ -121,75 +140,125 @@ export class HUD {
   // ---------- drawing ----------
   drawCompass(c, p) {
     const W = p.w, H = p.h, s = this.s
-    c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(0, 0, W, H)
+    // a strip that fades out at both ends
+    const gr = c.createLinearGradient(0, 0, W, 0)
+    gr.addColorStop(0, 'rgba(8,10,7,0)'); gr.addColorStop(0.15, 'rgba(8,10,7,0.62)'); gr.addColorStop(0.85, 'rgba(8,10,7,0.62)'); gr.addColorStop(1, 'rgba(8,10,7,0)')
+    c.fillStyle = gr; c.fillRect(0, 0, W, H - 6 * s)
+    c.fillStyle = 'rgba(224,165,38,0.35)'; c.fillRect(W * 0.15, H - 6 * s, W * 0.7, 1)
     const head = this.g.camHeading()
     const pxPerRad = W / 1.6
-    c.font = FONT(13 * s, 700); c.textAlign = 'center'; c.textBaseline = 'middle'
+    c.textAlign = 'center'; c.textBaseline = 'middle'
     for (let deg = 0; deg < 360; deg += 5) {
       let d = deg * Math.PI / 180 - head
       while (d > Math.PI) d -= Math.PI * 2
       while (d < -Math.PI) d += Math.PI * 2
       const x = W / 2 + d * pxPerRad
-      if (x < 0 || x > W) continue
+      if (x < 4 || x > W - 4) continue
+      const fade = 1 - Math.min(1, Math.abs(x - W / 2) / (W / 2)) ** 2
       const major = deg % 45 === 0
+      c.globalAlpha = 0.25 + 0.75 * fade
       c.fillStyle = major ? C.gold2 : C.text
-      c.fillRect(x, H - (major ? 10 : deg % 15 ? 4 : 7), 1, major ? 10 : deg % 15 ? 4 : 7)
-      if (major) c.fillText(HEAD[deg / 45], x, H * 0.38)
-      else if (deg % 15 === 0) { c.font = FONT(10 * s, 500); c.fillText(String(deg), x, H * 0.38); c.font = FONT(13 * s, 700) }
+      const L = major ? 9 * s : deg % 15 ? 3 * s : 6 * s
+      c.fillRect(x, H - 6 * s - L, 1, L)
+      if (major) { c.font = FONT(14 * s, 700); c.fillText(HEAD[deg / 45], x, H * 0.36) }
+      else if (deg % 15 === 0) { c.font = FONT(9.5 * s, 600); c.fillStyle = C.dim; c.fillText(String(deg), x, H * 0.38) }
     }
+    c.globalAlpha = 1
     // objective and waypoint markers on the strip
     const me = this.g.player.s.pos
     for (const m of this.g.markers()) {
       let d = Math.atan2(m.x - me.x, -(m.z - me.z)) - head
       while (d > Math.PI) d -= Math.PI * 2
       while (d < -Math.PI) d += Math.PI * 2
-      const x = Math.max(6, Math.min(W - 6, W / 2 + d * pxPerRad))
-      c.fillStyle = m.color || C.gold; c.beginPath(); c.moveTo(x, H - 2); c.lineTo(x - 5, H - 11); c.lineTo(x + 5, H - 11); c.fill()
+      const x = Math.max(8, Math.min(W - 8, W / 2 + d * pxPerRad))
+      c.fillStyle = m.color || C.gold; c.beginPath(); c.moveTo(x, H - 8 * s); c.lineTo(x - 5 * s, H - 17 * s); c.lineTo(x, H - 14 * s); c.lineTo(x + 5 * s, H - 17 * s); c.fill()
     }
-    c.fillStyle = C.white; c.fillRect(W / 2 - 1, 0, 2, H)
-    text(c, String(Math.round(((head * 180 / Math.PI) % 360 + 360) % 360)).padStart(3, '0'), W / 2, H - 1, { size: 9 * s, align: 'center', base: 'bottom', color: C.white })
+    // the heading under a notch in the middle
+    c.fillStyle = C.gold2; c.beginPath(); c.moveTo(W / 2, H - 7 * s); c.lineTo(W / 2 - 6 * s, H + 1); c.lineTo(W / 2 + 6 * s, H + 1); c.fill()
+    c.fillStyle = 'rgba(255,207,90,0.9)'; c.fillRect(W / 2 - 0.75, 2, 1.5, H - 10 * s)
   }
   drawStatus(c, p) {
-    const s = this.g.player.s, sc = this.s, W = p.w
-    box(c, 0, 0, W, p.h)
-    // the body, by part: green fine, yellow hurt, red badly hurt
-    const pc = v => v > 60 ? C.red : v > 25 ? '#e0b030' : '#6ab04c'
-    const bx = 14 * sc, by = 10 * sc, u = 8 * sc
-    c.fillStyle = pc(s.parts.head); c.fillRect(bx + u * 1.2, by, u * 1.6, u * 1.6)
-    c.fillStyle = pc(s.parts.torso); c.fillRect(bx + u, by + u * 1.8, u * 2, u * 3.2)
-    c.fillStyle = pc(s.parts.armR); c.fillRect(bx, by + u * 1.8, u * 0.85, u * 3)
-    c.fillStyle = pc(s.parts.armL); c.fillRect(bx + u * 3.15, by + u * 1.8, u * 0.85, u * 3)
-    c.fillStyle = pc(s.parts.legR); c.fillRect(bx + u, by + u * 5.15, u * 0.95, u * 3.6)
-    c.fillStyle = pc(s.parts.legL); c.fillRect(bx + u * 2.05, by + u * 5.15, u * 0.95, u * 3.6)
-    const x0 = 64 * sc
-    text(c, 'HEALTH', x0, 20 * sc, { size: 10 * sc, color: C.dim })
-    bar(c, x0, 25 * sc, W - x0 - 14, 9 * sc, s.blood / 100, s.blood < 35 ? C.red : '#6ab04c')
-    text(c, 'STAMINA', x0, 50 * sc, { size: 10 * sc, color: C.dim })
-    bar(c, x0, 55 * sc, W - x0 - 14, 6 * sc, s.stamina, '#5aa8e0')
-    const stance = ['STANDING', 'CROUCHED', 'PRONE'][s.stance]
-    text(c, s.down ? 'DOWN - WAITING FOR A MEDIC' : stance, x0, 80 * sc, { size: 12 * sc, color: s.down ? C.red : C.text, weight: 700 })
-    if (s.bleed > 0.05) text(c, 'BLEEDING  [H] bandage', x0, 94 * sc, { size: 10 * sc, color: C.red, weight: 700 })
-    else if (s.legHurt) text(c, 'LEG INJURED', x0, 94 * sc, { size: 10 * sc, color: '#e0b030' })
+    const s = this.g.player.s, sc = this.s, W = p.w, H = p.h
+    box(c, 0, 0, W, H)
+    if (this.compact) {
+      // one line: health number and bar, stamina under it, the stance on the right, a warning chip
+      const hc = s.blood < 35 ? C.red : s.blood < 65 ? C.amber : C.green
+      icon(c, 'cross', 9 * sc, 9 * sc, 12 * sc, hc)
+      text(c, String(Math.max(0, Math.round(s.blood))), 26 * sc, 21 * sc, { size: 17 * sc, weight: 700, color: s.blood < 35 ? C.red : C.text })
+      icon(c, ['stand', 'crouch', 'prone'][s.stance], W - 24 * sc, 5 * sc, 18 * sc, s.down ? C.red : C.text)
+      bar(c, 9 * sc, 29 * sc, W - 18 * sc, 7 * sc, s.blood / 100, hc)
+      bar(c, 9 * sc, 39 * sc, W - 18 * sc, 3 * sc, s.stamina, C.blue, { segments: 0 })
+      const warn = s.down ? 'DOWN' : s.bleed > 0.05 ? 'BLEEDING' : s.legHurt ? 'LEG' : ''
+      if (warn) chip(c, warn, W - 30 * sc, 6 * sc, 16 * sc, { align: 'right', size: 9 * sc, fill: 'rgba(255,90,69,0.2)', stroke: C.red, color: C.red })
+      return
+    }
+    // the body, by part: green fine, amber hurt, red badly hurt
+    const pc = v => v > 60 ? C.red : v > 25 ? C.amber : 'rgba(139,211,92,0.9)'
+    const bx = 16 * sc, by = 12 * sc, u = 7.6 * sc
+    const part = (v, x, y, w, h) => { chamfer(c, x, y, w, h, Math.min(w, h) * 0.3); c.fillStyle = pc(v); c.fill() }
+    c.beginPath(); c.arc(bx + u * 2, by + u * 0.85, u * 0.85, 0, Math.PI * 2); c.fillStyle = pc(s.parts.head); c.fill()
+    part(s.parts.torso, bx + u, by + u * 1.95, u * 2, u * 3.3)
+    part(s.parts.armR, bx - u * 0.05, by + u * 2.0, u * 0.85, u * 3.2)
+    part(s.parts.armL, bx + u * 3.2, by + u * 2.0, u * 0.85, u * 3.2)
+    part(s.parts.legR, bx + u, by + u * 5.4, u * 0.92, u * 3.8)
+    part(s.parts.legL, bx + u * 2.08, by + u * 5.4, u * 0.92, u * 3.8)
+    const x0 = 64 * sc, bw = W - x0 - 16 * sc
+    icon(c, 'cross', x0, 9 * sc, 13 * sc, s.blood < 35 ? C.red : C.green)
+    text(c, 'HEALTH', x0 + 18 * sc, 20 * sc, { size: 10.5 * sc, weight: 700, color: C.dim })
+    text(c, String(Math.max(0, Math.round(s.blood))), W - 16 * sc, 22 * sc, { size: 22 * sc, weight: 700, color: s.blood < 35 ? C.red : C.text, align: 'right' })
+    bar(c, x0, 28 * sc, bw, 9 * sc, s.blood / 100, s.blood < 35 ? C.red : s.blood < 65 ? C.amber : C.green)
+    icon(c, 'bolt', x0, 43 * sc, 12 * sc, C.blue)
+    text(c, 'STAMINA', x0 + 18 * sc, 53 * sc, { size: 10 * sc, weight: 700, color: C.dim })
+    bar(c, x0, 58 * sc, bw, 5 * sc, s.stamina, C.blue, { segments: 0 })
+    const st = ['stand', 'crouch', 'prone'][s.stance]
+    icon(c, st, x0 - 2 * sc, 68 * sc, 18 * sc, C.text)
+    text(c, s.down ? 'DOWN' : ['STANDING', 'CROUCHED', 'PRONE'][s.stance], x0 + 20 * sc, 82 * sc, { size: 12 * sc, weight: 700, color: s.down ? C.red : C.text })
+    if (s.down) chip(c, 'WAITING FOR A MEDIC', W - 14 * sc, 70 * sc, 18 * sc, { align: 'right', size: 10 * sc, fill: 'rgba(255,90,69,0.2)', stroke: C.red, color: C.red })
+    else if (s.bleed > 0.05) chip(c, `BLEEDING  ${this.g.input.touch ? 'HEAL' : '[H]'}`, W - 14 * sc, 70 * sc, 18 * sc, { align: 'right', size: 10 * sc, fill: 'rgba(255,90,69,0.2)', stroke: C.red, color: C.red })
+    else if (s.legHurt) chip(c, 'LEG INJURED', W - 14 * sc, 70 * sc, 18 * sc, { align: 'right', size: 10 * sc })
+    else if (s.fedT > 0) chip(c, 'FED', W - 14 * sc, 70 * sc, 18 * sc, { align: 'right', size: 10 * sc, stroke: C.green, color: C.green, fill: 'rgba(139,211,92,0.14)' })
   }
   drawWeapon(c, p) {
-    const g = this.g, s = g.player.s, w = s.w, sc = this.s, W = p.w
-    box(c, 0, 0, W, p.h)
-    if (!w) { text(c, 'NO WEAPON', 14, 30 * sc, { size: 14 * sc }); return }
-    text(c, w.def.name.toUpperCase(), 14, 22 * sc, { size: 14 * sc, weight: 800, max: W - 120 * sc })
-    text(c, `${s.mode.toUpperCase()}${s.bipod ? '  BIPOD' : ''}`, W - 12, 22 * sc, { size: 11 * sc, color: C.gold2, align: 'right', weight: 700 })
+    const g = this.g, s = g.player.s, w = s.w, sc = this.s, W = p.w, H = p.h
+    box(c, 0, 0, W, H)
+    if (!w) { text(c, 'NO WEAPON', 16, 30 * sc, { size: 14 * sc, weight: 700 }); return }
+    if (this.compact) {
+      const inMag = w.rec.mag, empty = inMag === 0 && !w.rec.chamber
+      c.font = FONT(22 * sc, 700); c.fillStyle = empty ? C.red : C.white; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(String(inMag), 10 * sc, 30 * sc)
+      const wd = c.measureText(String(inMag)).width
+      text(c, `/ ${s.inv.countAmmo(w.def)}`, 14 * sc + wd, 29 * sc, { size: 12 * sc, color: C.dim, weight: 600 })
+      chip(c, s.mode.toUpperCase(), W - 8 * sc, 6 * sc, 15 * sc, { align: 'right', size: 8.5 * sc })
+      text(c, w.def.name.toUpperCase(), 10 * sc, 44 * sc, { size: 9.5 * sc, color: C.dim, weight: 600, max: W * 0.55 })
+      text(c, `F${s.inv.count('frag')}  M${s.inv.count('bandage') + s.inv.count('firstaid') + s.inv.count('medkit')}`, W - 8 * sc, 44 * sc, { size: 9.5 * sc, color: C.text, weight: 700, align: 'right' })
+      if (w.reloadT > 0) bar(c, 10 * sc, H - 4 * sc, W - 20 * sc, 2.5 * sc, 1 - w.reloadT / (w.reloadDur || 1), C.gold2, { segments: 0 })
+      return
+    }
+    text(c, w.def.name.toUpperCase(), 16 * sc, 21 * sc, { size: 13.5 * sc, weight: 700, max: W - 110 * sc })
+    chip(c, `${s.mode.toUpperCase()}${s.bipod ? ' · BIPOD' : ''}`, W - 14 * sc, 8 * sc, 18 * sc, { align: 'right', size: 10 * sc })
     const inMag = w.rec.mag, ch = w.rec.chamber ? '+1' : ''
     const reserve = s.inv.countAmmo(w.def)
-    c.font = MONO(30 * sc); c.fillStyle = inMag === 0 && !w.rec.chamber ? C.red : C.white; c.textBaseline = 'alphabetic'; c.textAlign = 'left'
-    c.fillText(String(inMag), 14, 62 * sc)
+    const empty = inMag === 0 && !w.rec.chamber
+    c.font = FONT(36 * sc, 700); c.fillStyle = empty ? C.red : C.white; c.textBaseline = 'alphabetic'; c.textAlign = 'left'
+    c.fillText(String(inMag), 16 * sc, 64 * sc)
     const wd = c.measureText(String(inMag)).width
-    text(c, ch, 16 + wd, 48 * sc, { size: 13 * sc, color: C.gold2, weight: 700 })
-    text(c, `/ ${reserve}`, 22 + wd + 18 * sc, 62 * sc, { size: 16 * sc, color: C.dim })
-    text(c, AMMO[w.def.ammo].name, 14, 82 * sc, { size: 10 * sc, color: C.dim })
-    if (w.reloadT > 0) text(c, 'RELOADING', W / 2, 82 * sc, { size: 11 * sc, color: C.gold2, align: 'center', weight: 800 })
+    text(c, ch, 19 * sc + wd, 44 * sc, { size: 12 * sc, color: C.gold2, weight: 700 })
+    text(c, `/ ${reserve}`, 22 * sc + wd + 18 * sc, 63 * sc, { size: 16 * sc, color: C.dim, weight: 600 })
+    text(c, AMMO[w.def.ammo].name, 16 * sc, 83 * sc, { size: 10 * sc, color: C.dim })
+    if (w.reloadT > 0) {
+      const f = 1 - w.reloadT / (w.reloadDur || 1)
+      bar(c, 16 * sc, H - 9 * sc, W - 32 * sc, 4 * sc, f, C.gold2, { segments: 0 })
+      text(c, 'RELOADING', W / 2, 83 * sc, { size: 10.5 * sc, color: C.gold2, align: 'center', weight: 700 })
+    }
     const optic = g.player.optic
-    text(c, `${optic.zooms ? g.player.zoom + 'x' : optic.zoom > 1.5 ? optic.zoom + 'x' : ''} ZERO ${g.player.zero} m`, W - 12, 48 * sc, { size: 11 * sc, color: C.text, align: 'right' })
-    text(c, `FRAG ${s.inv.count('frag')}  SMOKE ${s.inv.count('smoke')}`, W - 12, 66 * sc, { size: 11 * sc, color: C.text, align: 'right' })
-    text(c, `MED ${s.inv.count('bandage') + s.inv.count('firstaid') + s.inv.count('medkit')}`, W - 12, 84 * sc, { size: 11 * sc, color: C.text, align: 'right' })
+    text(c, `${optic.zooms ? g.player.zoom + 'x  ' : optic.zoom > 1.5 ? optic.zoom + 'x  ' : ''}ZERO ${g.player.zero}`, W - 14 * sc, 43 * sc, { size: 10.5 * sc, color: C.dim, align: 'right', weight: 600 })
+    // grenades, medical, gear: icons and counts
+    let x = W - 14 * sc
+    const item = (ic, n, col) => { const t = String(n); c.font = FONT(12 * sc, 700); const tw = c.measureText(t).width; x -= tw; text(c, t, x, 64 * sc, { size: 12 * sc, weight: 700, color: n ? C.text : C.dim }); x -= 16 * sc; icon(c, ic, x, 52 * sc, 14 * sc, n ? col : C.dim); x -= 10 * sc }
+    item('cross', s.inv.count('bandage') + s.inv.count('firstaid') + s.inv.count('medkit'), C.green)
+    item('grenade', s.inv.count('smoke'), '#b8c4c8')
+    item('grenade', s.inv.count('frag'), C.text)
+    const gear = g.gear?.label(s)
+    if (gear) text(c, `${g.input.touch ? 'GEAR' : '[Y]'} ${gear}`, W - 14 * sc, 83 * sc, { size: 10 * sc, color: C.gold2, align: 'right', weight: 600, max: W * 0.55 })
   }
   drawMini(c, p) {
     const g = this.g, s = g.player.s, W = p.w, H = p.h
@@ -222,17 +291,32 @@ export class HUD {
     }
     c.restore()
     // the player in the middle, pointing up (the map turns)
-    c.fillStyle = C.white; c.beginPath(); c.moveTo(W / 2, H / 2 - 7); c.lineTo(W / 2 - 5, H / 2 + 5); c.lineTo(W / 2 + 5, H / 2 + 5); c.fill()
-    c.strokeStyle = C.line; c.lineWidth = 2; c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 2, 0, Math.PI * 2); c.stroke()
-    text(c, 'N', W / 2 + Math.sin(-head) * (W / 2 - 12), H / 2 - Math.cos(-head) * (H / 2 - 12) + 4, { size: 11, align: 'center', color: C.gold2, weight: 800 })
-    text(c, gridRef(s.pos.x, s.pos.z), W / 2, H - 8, { size: 10, align: 'center', color: C.text, shadow: true })
+    c.fillStyle = C.white; c.beginPath(); c.moveTo(W / 2, H / 2 - 7); c.lineTo(W / 2 - 5, H / 2 + 5); c.lineTo(W / 2, H / 2 + 2); c.lineTo(W / 2 + 5, H / 2 + 5); c.fill()
+    // the bezel: a dark ring with ticks, the north mark in amber
+    c.strokeStyle = 'rgba(8,10,7,0.85)'; c.lineWidth = 5; c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 3, 0, Math.PI * 2); c.stroke()
+    c.strokeStyle = C.line; c.lineWidth = 1; c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 6, 0, Math.PI * 2); c.stroke()
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 - head; c.strokeStyle = i % 3 ? 'rgba(236,232,216,0.35)' : C.gold; c.lineWidth = i % 3 ? 1 : 2; c.beginPath(); c.moveTo(W / 2 + Math.sin(a) * (W / 2 - 1), H / 2 - Math.cos(a) * (H / 2 - 1)); c.lineTo(W / 2 + Math.sin(a) * (W / 2 - 6), H / 2 - Math.cos(a) * (H / 2 - 6)); c.stroke() }
+    chip(c, gridRef(s.pos.x, s.pos.z), W / 2, H - 22, 16, { align: 'center', size: 9.5, fill: 'rgba(8,10,7,0.8)', color: C.text, stroke: C.line })
+    const nx = W / 2 + Math.sin(-head) * (W / 2 - 15), ny = H / 2 - Math.cos(-head) * (H / 2 - 15)
+    c.fillStyle = 'rgba(8,10,7,0.9)'; c.beginPath(); c.arc(nx, ny, 8, 0, Math.PI * 2); c.fill()
+    text(c, 'N', nx, ny + 4, { size: 11, align: 'center', color: C.gold2, weight: 700 })
   }
   drawFeed(c, p) {
     const W = p.w, sc = this.s
-    let y = 14 * sc
-    for (const k of this.kills) { text(c, k.text, W - 6, y, { size: 12 * sc, align: 'right', color: C.white, shadow: true, weight: 700 }); y += 16 * sc }
-    y += 4
-    for (const m of this.messages) { text(c, m.text, W - 6, y, { size: 12 * sc, align: 'right', color: m.color, shadow: true, max: W - 10 }); y += 16 * sc }
+    let y = 4 * sc
+    for (const k of this.kills) {
+      c.font = FONT(12 * sc, 700); const tw = c.measureText(k.text).width
+      chamfer(c, W - tw - 22 * sc, y, tw + 18 * sc, 20 * sc, 5 * sc); c.fillStyle = 'rgba(8,10,7,0.66)'; c.fill()
+      c.fillStyle = C.red; c.fillRect(W - 3 * sc, y + 3 * sc, 2 * sc, 14 * sc)
+      text(c, k.text, W - 10 * sc, y + 14.5 * sc, { size: 12 * sc, align: 'right', color: C.white, weight: 700 }); y += 23 * sc
+    }
+    y += 4 * sc
+    for (const m of this.messages) {
+      c.font = FONT(12 * sc, 600); const tw = Math.min(W - 16 * sc, c.measureText(m.text).width)
+      c.fillStyle = 'rgba(8,10,7,0.5)'; c.fillRect(W - tw - 18 * sc, y, tw + 18 * sc, 19 * sc)
+      c.fillStyle = m.color === C.text ? C.line : m.color; c.fillRect(W - 2 * sc, y, 2 * sc, 19 * sc)
+      text(c, m.text, W - 9 * sc, y + 13.5 * sc, { size: 12 * sc, align: 'right', color: m.color, weight: 600, max: W - 22 * sc }); y += 21 * sc
+    }
   }
   drawCross(c, p) {
     const g = this.g, s = g.player.s, W = p.w, H = p.h, cx = W / 2, cy = H / 2
@@ -261,9 +345,17 @@ export class HUD {
   }
   drawCenter(c, p) {
     const W = p.w, sc = this.s
-    if (this.prompt) { box(c, W / 2 - 170 * sc, 0, 340 * sc, 30 * sc, { fill: 'rgba(0,0,0,0.55)' }); text(c, this.prompt, W / 2, 20 * sc, { size: 14 * sc, align: 'center', weight: 700, color: C.gold2 }) }
+    if (this.prompt) {
+      const m = /^\[([^\]]+)\]\s*(.*)$/.exec(this.prompt)
+      const key = m ? (this.g.input.touch && m[1] === 'F' ? 'USE' : m[1]) : null, label = m ? m[2] : this.prompt
+      c.font = FONT(14 * sc, 700); const lw = c.measureText(label).width, kw = key ? (c.measureText(key).width + 22 * sc) : 0
+      const w = lw + kw + 30 * sc, x = W / 2 - w / 2
+      chamfer(c, x, 0, w, 32 * sc, 8 * sc); c.fillStyle = 'rgba(8,10,7,0.74)'; c.fill(); c.strokeStyle = C.line; c.lineWidth = 1; c.stroke()
+      if (key) chip(c, key, x + 10 * sc, 6 * sc, 20 * sc, { size: 11 * sc, fill: 'rgba(224,165,38,0.4)', color: C.white })
+      text(c, label, x + 16 * sc + kw, 21 * sc, { size: 14 * sc, weight: 700, color: C.gold2 })
+    }
     const t = this.g.mode?.centerText?.()
-    if (t) text(c, t, W / 2, 70 * sc, { size: 22 * sc, align: 'center', weight: 800, color: C.white, shadow: true })
+    if (t) { c.save(); c.shadowColor = 'rgba(0,0,0,0.7)'; c.shadowBlur = 8; text(c, t, W / 2, 74 * sc, { size: 24 * sc, align: 'center', weight: 700, color: C.white }); c.restore() }
   }
   drawMode(c, p) {
     const m = this.g.mode
@@ -274,21 +366,23 @@ export class HUD {
     const s = this.g.player.s, v = s.vehicle, sc = this.s, W = p.w
     if (!v) return
     box(c, 0, 0, W, p.h)
-    text(c, v.def.name.toUpperCase(), 14, 22 * sc, { size: 14 * sc, weight: 800 })
-    text(c, s.seat.role.toUpperCase(), W - 12, 22 * sc, { size: 11 * sc, color: C.gold2, align: 'right', weight: 700 })
+    text(c, v.def.name.toUpperCase(), 16 * sc, 21 * sc, { size: 13.5 * sc, weight: 700, max: W * 0.55 })
+    chip(c, s.seat.role.toUpperCase(), W - 14 * sc, 8 * sc, 18 * sc, { align: 'right', size: 10 * sc })
     const air = v.kind === 'heli' || v.kind === 'plane'
-    text(c, `${Math.round(Math.abs(v.speed) * 3.6)} km/h`, 14, 52 * sc, { size: 20 * sc, weight: 800, color: C.white })
-    if (air) text(c, `ALT ${Math.round(v.alt)} m${v.kind === 'plane' ? (v.gearDown ? '  GEAR' : '') : ''}`, 160 * sc, 52 * sc, { size: 14 * sc, weight: 700 })
-    text(c, 'HULL', 14, 70 * sc, { size: 10 * sc, color: C.dim }); bar(c, 50 * sc, 63 * sc, 120 * sc, 7 * sc, v.hp / v.maxHp, v.hp < v.maxHp * 0.3 ? C.red : '#6ab04c')
-    text(c, 'FUEL', 14, 86 * sc, { size: 10 * sc, color: C.dim }); bar(c, 50 * sc, 79 * sc, 120 * sc, 7 * sc, v.fuel / v.maxFuel, '#e0b030')
+    c.font = FONT(26 * sc, 700); const sp = String(Math.round(Math.abs(v.speed) * 3.6)); c.fillStyle = C.white; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(sp, 16 * sc, 54 * sc)
+    const spw = c.measureText(sp).width
+    text(c, 'KM/H', 20 * sc + spw, 54 * sc, { size: 10 * sc, color: C.dim, weight: 700 })
+    if (air) text(c, `ALT ${Math.round(v.alt)} m${v.kind === 'plane' ? (v.gearDown ? '  · GEAR' : '') : ''}`, 70 * sc + spw, 54 * sc, { size: 13 * sc, weight: 700 })
+    text(c, 'HULL', 16 * sc, 72 * sc, { size: 9.5 * sc, color: C.dim, weight: 700 }); bar(c, 52 * sc, 65 * sc, 130 * sc, 7 * sc, v.hp / v.maxHp, v.hp < v.maxHp * 0.3 ? C.red : C.green)
+    text(c, 'FUEL', 16 * sc, 87 * sc, { size: 9.5 * sc, color: C.dim, weight: 700 }); bar(c, 52 * sc, 80 * sc, 130 * sc, 7 * sc, v.fuel / v.maxFuel, C.amber)
     const sw = s.seat?.w
     if (sw) {
-      text(c, sw.def.name, W - 12, 52 * sc, { size: 12 * sc, align: 'right' })
-      text(c, sw.reloadT > 0 ? 'RELOADING' : `${sw.mag} / ${sw.def.mag}`, W - 12, 72 * sc, { size: 16 * sc, align: 'right', weight: 800, color: sw.reloadT > 0 ? C.gold2 : C.white })
+      text(c, sw.def.name, W - 14 * sc, 44 * sc, { size: 11 * sc, align: 'right', color: C.dim, weight: 600 })
+      text(c, sw.reloadT > 0 ? 'RELOADING' : `${sw.mag} / ${sw.def.mag}`, W - 14 * sc, 66 * sc, { size: 18 * sc, align: 'right', weight: 700, color: sw.reloadT > 0 ? C.gold2 : C.white })
       const w2 = s.seat.w2
-      if (w2) text(c, `${w2.def.name}: ${w2.mag}${w2.lockT > 1.2 ? '  LOCKED' : w2.lock ? '  LOCKING' : ''}`, W - 12, 88 * sc, { size: 10 * sc, align: 'right', color: w2.lockT > 1.2 ? C.red : C.dim })
+      if (w2) text(c, `${w2.def.name}: ${w2.mag}${w2.lockT > 1.2 ? '  LOCKED' : w2.lock ? '  LOCKING' : ''}`, W - 14 * sc, 86 * sc, { size: 10 * sc, align: 'right', color: w2.lockT > 1.2 ? C.red : C.dim, weight: 600 })
     }
-    if (v.flares) text(c, `FLARES ${v.flares} [R]`, 190 * sc, 86 * sc, { size: 10 * sc, color: C.dim })
+    if (v.flares) text(c, `FLARES ${v.flares}${this.g.input.touch ? '' : ' [R]'}`, 196 * sc, 87 * sc, { size: 10 * sc, color: C.dim, weight: 600 })
   }
   drawScope(c, p) {
     const g = this.g, W = p.w, H = p.h
@@ -350,45 +444,55 @@ export class HUD {
       gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.85)'); c.fillStyle = gr; c.fillRect(0, 0, W, H)
     }
   }
-  // Touch controls for phones: fire, aim, reload, stance, view, interact, grenade, map, inventory.
+  // Touch controls for phones: round glass buttons with an icon and a label, the main ones in an arc
+  // round the thumb's resting place at the bottom right, small utility buttons down the right edge.
   drawTouch(c, p) {
     const W = p.w, H = p.h, g = this.g
     const r = Math.min(W, H) * 0.075
-    const btn = (id, x, y, label, fn, rr = r) => {
-      c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.fill()
-      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 2; c.stroke()
-      text(c, label, x, y + 5, { size: Math.max(11, rr * 0.38), align: 'center', weight: 800, color: C.white })
+    const btn = (id, x, y, label, ic, fn, rr = r, o = {}) => {
+      const on = !!o.on
+      const gr = c.createRadialGradient(x, y - rr * 0.4, rr * 0.1, x, y, rr)
+      gr.addColorStop(0, on ? 'rgba(224,165,38,0.55)' : 'rgba(40,46,32,0.62)'); gr.addColorStop(1, on ? 'rgba(224,165,38,0.3)' : 'rgba(8,10,7,0.55)')
+      c.fillStyle = gr; c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.fill()
+      c.strokeStyle = on ? C.gold2 : o.ring || 'rgba(236,232,216,0.45)'; c.lineWidth = o.main ? 3 : 2; c.stroke()
+      if (o.main) { c.strokeStyle = 'rgba(224,165,38,0.5)'; c.lineWidth = 1; c.beginPath(); c.arc(x, y, rr + 5, -2.4, -0.7); c.stroke(); c.beginPath(); c.arc(x, y, rr + 5, 0.74, 2.4); c.stroke() }
+      const is = rr * (label ? 0.72 : 0.9)
+      icon(c, ic, x - is / 2, y - is / 2 - (label ? rr * 0.14 : 0), is, on ? C.white : C.text, { width: 2.2 })
+      if (label) text(c, label, x, y + rr * 0.64, { size: Math.max(8.5, rr * 0.26), align: 'center', weight: 700, color: on ? C.white : 'rgba(236,232,216,0.8)' })
       p.buttons.push({ id, x: x - rr, y: y - rr, w: rr * 2, h: rr * 2, fn })
     }
     const R = W - r * 1.6, B = H - r * 1.6
-    const P = g.player
-    if (P.s.vehicle) {
+    const P = g.player, s = P.s
+    const top = this.mini.y + this.mini.h + r * 0.9
+    const util = (i, id, label, ic, fn) => btn(id, W - r * 0.95, top + r * i * 1.55, label, ic, fn, r * 0.66)
+    btn('menu', r * 0.9, this.compact ? top + r * 1.6 : this.weapon.y + this.weapon.h + r * 1.2, '', 'menu', () => g.input.pressed.add('pause'), r * 0.62)
+    if (s.vehicle) {
       // in a vehicle: hold to fire, second weapon, up and down (helicopters, landing); get out, change seat, view
-      const v = P.s.vehicle, air = v.kind === 'heli' || v.kind === 'plane'
-      btn('vfire', R, B - r * 0.4, 'FIRE', () => { P.touchFire = true }, r * 1.25)
-      btn('valt', R - r * 2.6, B + r * 0.2, 'ALT', () => { P.touchAlt = true })
-      if (air) { btn('vup', R - r * 0.2, B - r * 3, 'UP', () => { P.touchUp = true }); btn('vdown', R - r * 2.5, B - r * 2.2, 'DOWN', () => { P.touchDown = true }) }
-      btn('vexit', R - r * 4.4, B + r * 0.2, 'EXIT', () => g.input.pressed.add('interact'), r * 0.8)
-      btn('vseat', R - r * 4.2, B - r * 2.2, 'SEAT', () => g.input.pressed.add('vSeat'), r * 0.8)
-      btn('view', W - r, r * 3.6, 'VIEW', () => g.input.pressed.add('view'), r * 0.7)
-      btn('map', W - r, r * 5.2, 'MAP', () => g.input.pressed.add('map'), r * 0.7)
-      if (air) btn('flares', W - r, r * 6.8, 'FLARE', () => g.input.pressed.add('vFlares'), r * 0.7)
-      btn('menu', r * 0.9, r * 4.5, 'MENU', () => g.input.pressed.add('pause'), r * 0.7)
-      text(c, air ? 'Stick: forward and turn · drag: aim' : 'Stick: drive · drag: look and aim', W * 0.72, H * 0.12, { size: 12, align: 'center', color: 'rgba(255,255,255,0.6)' })
+      const v = s.vehicle, air = v.kind === 'heli' || v.kind === 'plane'
+      btn('vfire', R, B - r * 0.4, 'FIRE', 'fire', () => { P.touchFire = true }, r * 1.25, { main: true, ring: 'rgba(255,90,69,0.7)' })
+      btn('valt', R - r * 2.6, B + r * 0.2, 'ALT', 'alt', () => { P.touchAlt = true })
+      if (air) { btn('vup', R - r * 0.2, B - r * 3, 'UP', 'up', () => { P.touchUp = true }); btn('vdown', R - r * 2.5, B - r * 2.2, 'DOWN', 'down', () => { P.touchDown = true }) }
+      btn('vexit', R - r * 4.4, B + r * 0.2, 'EXIT', 'exit', () => g.input.pressed.add('interact'), r * 0.8)
+      btn('vseat', R - r * 4.2, B - r * 2.2, 'SEAT', 'seat', () => g.input.pressed.add('vSeat'), r * 0.8)
+      util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
+      util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
+      if (air) util(2, 'flares', 'FLARE', 'flare', () => g.input.pressed.add('vFlares'))
+      text(c, air ? 'Stick: forward and turn  ·  drag: aim' : 'Stick: drive  ·  drag: look and aim', W / 2, H * 0.58, { size: 12, align: 'center', color: 'rgba(236,232,216,0.6)', weight: 600 })
       return
     }
-    btn('fire', R, B - r * 0.4, 'FIRE', () => { g.player.touchFire = true }, r * 1.25)   // held until the finger lifts
-    btn('aim', R - r * 2.6, B + r * 0.2, 'AIM', () => { g.player.touchAds = !g.player.touchAds })
-    btn('reload', R - r * 0.2, B - r * 3, 'RLD', () => g.input.pressed.add('reload'))
-    btn('stance', R - r * 2.5, B - r * 2.2, 'STNC', () => g.input.pressed.add(g.player.s.stance === 0 ? 'crouch' : g.player.s.stance === 1 ? 'prone' : 'prone'))
-    btn('jump', R - r * 4.6, B + r * 0.2, 'JUMP', () => g.input.pressed.add('jump'), r * 0.8)
-    btn('use', R - r * 4.2, B - r * 2.2, 'USE', () => g.input.pressed.add('interact'), r * 0.8)
-    btn('nade', R - r * 0.2, B - r * 5.2, 'NADE', () => g.input.pressed.add('grenade'), r * 0.8)
-    btn('view', W - r, r * 3.6, 'VIEW', () => g.input.pressed.add('view'), r * 0.7)
-    btn('map', W - r, r * 5.2, 'MAP', () => g.input.pressed.add('map'), r * 0.7)
-    btn('inv', W - r, r * 6.8, 'INV', () => g.input.pressed.add('inventory'), r * 0.7)
-    btn('heal', W - r, r * 8.4, 'HEAL', () => g.input.pressed.add('heal'), r * 0.7)
-    btn('menu', r * 0.9, r * 4.5, 'MENU', () => g.input.pressed.add('pause'), r * 0.7)
-    text(c, g.settings.stickTurns !== false ? 'Stick: move and turn · drag right side: look' : 'Drag right side to look', W * 0.72, H * 0.12, { size: 12, align: 'center', color: 'rgba(255,255,255,0.6)' })
+    btn('fire', R, B - r * 0.4, 'FIRE', 'fire', () => { P.touchFire = true }, r * 1.25, { main: true, ring: 'rgba(255,90,69,0.7)' })   // held until the finger lifts
+    btn('aim', R - r * 2.6, B + r * 0.2, 'AIM', 'aim', () => { P.touchAds = !P.touchAds }, r, { on: P.touchAds })
+    btn('reload', R - r * 0.2, B - r * 3, 'RELOAD', 'reload', () => g.input.pressed.add('reload'), r, { on: s.reloading })
+    btn('stance', R - r * 2.5, B - r * 2.2, ['STAND', 'CROUCH', 'PRONE'][s.stance], ['stand', 'crouch', 'prone'][s.stance], () => g.input.pressed.add(s.stance === 0 ? 'crouch' : 'prone'))
+    btn('jump', R - r * 4.6, B + r * 0.2, 'JUMP', 'jump', () => g.input.pressed.add('jump'), r * 0.8)
+    btn('use', R - r * 4.2, B - r * 2.2, 'USE', 'hand', () => g.input.pressed.add('interact'), r * 0.8)
+    btn('nade', R - r * 0.2, B - r * 5.2, 'NADE', 'grenade', () => g.input.pressed.add('grenade'), r * 0.8)
+    if (g.gear?.selected(s)) { btn('gear', R - r * 2.3, B - r * 4.4, 'GEAR', 'gear', () => g.input.pressed.add('gear'), r * 0.8); btn('gearnext', R - r * 3.6, B - r * 5.3, '', 'reload', () => g.input.pressed.add('gearNext'), r * 0.5) }
+    util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
+    util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
+    util(2, 'inv', 'KIT', 'bag', () => g.input.pressed.add('inventory'))
+    util(3, 'heal', 'HEAL', 'cross', () => g.input.pressed.add('heal'))
+    // the hint, for the first half minute
+    if ((g.mode?.t ?? 99) < 30) text(c, g.settings.stickTurns !== false ? 'Stick: move and turn  ·  drag right side: look' : 'Drag right side to look', W / 2, H * 0.58, { size: 12, align: 'center', color: 'rgba(236,232,216,0.7)', weight: 600 })
   }
 }

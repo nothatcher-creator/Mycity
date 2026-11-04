@@ -17,7 +17,7 @@ export class InventoryUI {
     this.loot = null
   }
   get visible() { return this.panel.visible }
-  layout() { const e = this.g.engine; this.panel.place(0, 0, e.width, e.height); this.s = Math.max(0.45, Math.min(1.15, Math.min(e.width / 1280, e.height / 720))) }
+  layout() { const e = this.g.engine, t = this.g.input.touch, safe = t ? 60 : 0; this.panel.place(0, safe, e.width, e.height - safe); this.s = t ? Math.max(0.72, Math.min(1.15, Math.min(e.width, e.height - safe) / 640)) : Math.max(0.45, Math.min(1.15, Math.min(e.width / 1280, e.height / 720))) }
   open(loot = null) {
     this.loot = loot; this.sel = null; this.wsel = null
     this.layout(); this.panel.show(true)
@@ -34,8 +34,9 @@ export class InventoryUI {
     const inv = s.inv
     text(c, 'INVENTORY', 24 * k, 38 * k, { size: 24 * k, weight: 900 })
     const wt = inv.weight()
-    text(c, `Load ${wt.toFixed(1)} kg${wt > 30 ? '  (heavy: slower, tires faster)' : ''}`, 200 * k, 36 * k, { size: 13 * k, color: wt > 30 ? C.gold2 : C.dim })
-    p.button(c, 'close', W - 140 * k, 14 * k, 120 * k, 36 * k, 'CLOSE [Tab]', () => this.close(), { align: 'center', font: FONT(13 * k, 700) })
+    const narrow = W < 640 * k
+    text(c, `Load ${wt.toFixed(1)} kg${wt > 30 ? (narrow ? '  heavy' : '  (heavy: slower, tires faster)') : ''}`, narrow ? 24 * k : 200 * k, narrow ? 56 * k : 36 * k, { size: 13 * k, color: wt > 30 ? C.gold2 : C.dim, weight: 600 })
+    p.button(c, 'close', W - 130 * k, 14 * k, 110 * k, 36 * k, g.input.touch ? 'CLOSE' : 'CLOSE [Tab]', () => this.close(), { align: 'center', font: FONT(13 * k, 700) })
     const colW = Math.min(360 * k, (W - 60 * k) / (this.loot ? 3 : 2.2))
     // ---- column 1: worn clothes and weapons ----
     let x = 20 * k, y = 64 * k

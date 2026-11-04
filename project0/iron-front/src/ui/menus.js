@@ -1,7 +1,7 @@
 // Menus: the title screen, setting up a game, settings and key bindings, the pause menu, the sandbox
 // tools, the respawn screen and the squad orders. One full-screen panel; each page draws its own
 // buttons. Works with the mouse and with taps.
-import { Panel, C, FONT, text, wrap, box, bar } from './ui.js'
+import { Panel, C, FONT, text, wrap, box, bar, header, chip, chamfer } from './ui.js'
 import { ACTION_NAMES, DEFAULT_BINDS, keyLabel } from '../core/input.js'
 import { QUALITY } from '../core/engine.js'
 import { MODE_INFO } from '../game/modes/index.js'
@@ -31,7 +31,8 @@ export class Menus {
     this.layout()
   }
   get visible() { return this.panel.visible }
-  layout() { const e = this.g.engine; this.panel.place(0, 0, e.width, e.height); this.s = e.height > e.width ? Math.max(0.42, Math.min(1, e.width / 520)) : Math.max(0.42, Math.min(1.2, Math.min(e.width / 1280, e.height / 720))) }
+  // on phones the panel starts below the city's bar at the top
+  layout() { const e = this.g.engine, t = this.g.input.touch, safe = t ? 60 : 0, H = e.height - safe; this.panel.place(0, safe, e.width, H); this.s = H > e.width ? Math.max(0.42, Math.min(1, e.width / 520)) : t ? Math.max(0.6, Math.min(1.2, Math.min(e.width / 1000, H / 560))) : Math.max(0.42, Math.min(1.2, Math.min(e.width / 1280, H / 720))) }
   open(page, keepStack = false) {
     if (this.page && keepStack) this.stack.push(this.page); else if (!keepStack) this.stack = []
     this.page = page; this.scroll = 0; this.rebinding = null
@@ -54,8 +55,8 @@ export class Menus {
     if (this.g.engine.uiOnly) {
       // before the 3D world is up: the island map, dimmed, behind the menus
       c.fillStyle = '#141a12'; c.fillRect(0, 0, W, H)
-      const img = mapImage(), m = Math.max(W, H) * 1.05
-      if (img) { c.globalAlpha = 0.55; c.drawImage(img, W - m * 0.78, (H - m) / 2, m, m); c.globalAlpha = 1 }
+      const img = mapImage(), m = Math.max(W, H) * 1.35
+      if (img) { c.globalAlpha = 0.55; c.drawImage(img, W - m * 0.9, (H - m) / 2, m, m); c.globalAlpha = 1 }
       const gr = c.createLinearGradient(0, 0, W * 0.7, 0); gr.addColorStop(0, 'rgba(14,18,12,0.95)'); gr.addColorStop(1, 'rgba(14,18,12,0.1)')
       c.fillStyle = gr; c.fillRect(0, 0, W, H)
     } else {
@@ -65,19 +66,48 @@ export class Menus {
     if (fn) fn.call(this, c, p, W, H, s)
   }
   // A column of big buttons at (x, y).
-  column(c, p, x, y, w, items, s) {
-    const h = 46 * s, gap = 8 * s
+  column(c, p, x, y, w, items, s, o = {}) {
+    const h = (o.h || 48) * s, gap = 7 * s
+    let n = 0
     for (const it of items) {
-      if (!it) { y += gap * 2; continue }
-      p.button(c, it.id, x, y, w, h, it.label, it.fn, { sub: it.sub, disabled: it.disabled, selected: it.selected, font: FONT(17 * s, 800) })
+      if (!it) { y += gap * 2.2; continue }
+      n++
+      const b = p.button(c, it.id, x, y, w, h, (o.numbered ? '' : '') + it.label, it.fn, { sub: it.sub, disabled: it.disabled, selected: it.selected, font: FONT(17 * s, 700), arrow: true })
+      if (o.numbered) { c.font = FONT(10 * s, 700); c.fillStyle = 'rgba(224,165,38,0.75)'; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(String(n).padStart(2, '0'), x - 8 * s, b.y + h / 2); c.textAlign = 'left' }
       y += h + gap
     }
     return y
   }
+  // The logo: a stencil-style block. Returns the y below it.
   title(c, x, y, s, big = true) {
-    text(c, 'OPERATION:', x, y, { size: (big ? 22 : 15) * s, weight: 800, color: C.gold, shadow: true })
-    text(c, 'IRON FRONT', x, y + (big ? 52 : 32) * s, { size: (big ? 56 : 32) * s, weight: 900, color: C.text, shadow: true })
-    text(c, 'OPEN WORLD MILITARY WARFARE', x + 2 * s, y + (big ? 78 : 50) * s, { size: (big ? 13 : 10) * s, weight: 700, color: C.dim, shadow: true })
+    const k = big ? 1 : 0.62
+    c.save(); c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 12 * s
+    text(c, 'O P E R A T I O N', x + 2 * s, y, { size: 15 * k * s, weight: 700, color: C.gold })
+    text(c, 'IRON FRONT', x, y + 54 * k * s, { size: 60 * k * s, weight: 700, color: C.text })
+    c.restore()
+    c.font = FONT(60 * k * s, 700); const w = c.measureText('IRON FRONT').width
+    c.fillStyle = C.gold; c.fillRect(x, y + 66 * k * s, w, 3 * s)
+    for (let i = 0; i < 6; i++) { c.fillStyle = `rgba(224,165,38,${0.5 - i * 0.07})`; c.fillRect(x + w + 6 * s + i * 7 * s, y + 66 * k * s, 4 * s, 3 * s) }
+    text(c, 'OPEN WORLD MILITARY WARFARE  ·  ISLAND OF VARDEN', x + 1 * s, y + 86 * k * s, { size: 11.5 * k * s, weight: 600, color: C.dim })
+    return y + 100 * k * s
+  }
+  // The right-hand card on the title screen: the island, your progress, who is here, a tip.
+  intel(c, x, y, w, s) {
+    const g = this.g, d = g.save.data, camp = d.campaign || { done: [] }, fr = d.freeroam
+    const h = 252 * s
+    box(c, x, y, w, h)
+    header(c, 'FIELD REPORT', x + 16 * s, y + 26 * s, w - 32 * s, s)
+    const rows = [
+      ['THEATRE', 'Varden, 12 × 12 km'],
+      ['CAMPAIGN', `${camp.done.length} / ${MISSIONS.length} missions`],
+      ['FREE ROAM', fr ? `${(fr.liberated || []).length} places liberated · ${FACTIONS[fr.faction]?.short || ''}` : 'Not started'],
+      ['IN THIS LOT', `${(g.p0.room?.players || []).length || 1} player${(g.p0.room?.players || []).length === 1 ? '' : 's'}`],
+    ]
+    rows.forEach(([k, v], i) => { const yy = y + (54 + i * 26) * s; text(c, k, x + 16 * s, yy, { size: 10.5 * s, weight: 700, color: C.dim }); text(c, v, x + 116 * s, yy, { size: 13 * s, weight: 600, color: C.text, max: w - 132 * s }) })
+    bar(c, x + 16 * s, y + 160 * s, w - 32 * s, 6 * s, camp.done.length / MISSIONS.length, C.gold, { segments: MISSIONS.length })
+    const tips = ['Crouch or lie down in the woods: the enemy needs far longer to spot you.', 'Medics in your squad patch you up when the shooting stops.', 'A rocket stops an APC; a tank needs three.', 'The field radio calls mortars on wherever you look (60 to 900 m).', 'Plate carriers slow 5.56: aim for the head.', 'AT soldiers fire rockets at vehicles from 25 to 350 m: keep moving.']
+    header(c, 'TIP', x + 16 * s, y + 194 * s, w - 32 * s, s)
+    wrap(c, tips[Math.floor((this.t || 0) / 8) % tips.length], x + 16 * s, y + 216 * s, w - 32 * s, 16 * s, { size: 12.5 * s, color: C.text })
   }
   // small option rows: label + choices
   choices(c, p, x, y, w, label, opts, cur, set, s) {
@@ -87,8 +117,9 @@ export class Menus {
     return y + 38 * s
   }
   page_main(c, p, W, H, s) {
-    const x = 60 * s
-    this.title(c, x, 90 * s, s)
+    const portrait = H > W, x = (portrait ? 26 : 70) * s
+    const top = this.title(c, x, (portrait ? 40 : 84) * s, s, !portrait || W > 420)
+    if (this.g.input.touch) text(c, 'TAP A MODE TO DEPLOY', x, top + 8 * s, { size: 11 * s, weight: 700, color: C.gold2 })
     const fr = this.g.save.data.freeroam
     const items = [
       fr ? { id: 'cont', label: 'CONTINUE FREE ROAM', sub: `${FACTIONS[fr.faction]?.short || ''} · ${(fr.liberated || []).length} places liberated`, fn: () => this.g.start('freeroam', { resume: true, squad: this.setup.squad }) } : null,
@@ -101,9 +132,20 @@ export class Menus {
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
     ].filter((v, i) => v || i === 5)
-    this.column(c, p, x, 170 * s, Math.min(420 * s, W - x * 2), items, s)
-    if (Math.floor((this.t || 0) * 2) % 2 === 0) text(c, 'PRESS SPACE TO DEPLOY  ·  or click to choose', x, H - 30 * s, { size: 14 * s, weight: 800, color: C.gold2, shadow: true })
-    text(c, 'Built for Project 0 lot 3084.', W - 20 * s, H - 30 * s, { size: 11 * s, color: C.dim, align: 'right', shadow: true })
+    const colW = Math.min(430 * s, W - x * 2)
+    this.column(c, p, x, top + (this.g.input.touch ? 26 : 22) * s, colW, items, s, { numbered: !portrait })
+    // the field report on the right, on screens wide enough for it
+    const iw = 330 * s
+    if (!portrait && W - (x + colW) > iw + 80 * s) this.intel(c, W - iw - 50 * s, top + 22 * s, iw, s)
+    // the foot: what the keys do (or a tap hint on phones)
+    const fy = H - 34 * s
+    if (!this.g.input.touch) c.fillStyle = 'rgba(224,165,38,0.35)', c.fillRect(x, fy - 20 * s, W - x * 2, 1)
+    if (!this.g.input.touch) {
+      let cx = x
+      const blink = Math.floor((this.t || 0) * 2) % 2 === 0
+      for (const [k, l] of [['SPACE', 'Deploy'], ['ENTER', 'Chat'], ['ESC', 'Leave']]) { cx += chip(c, k, cx, fy - 13 * s, 20 * s, { size: 10.5 * s, fill: k === 'SPACE' && blink ? 'rgba(224,165,38,0.45)' : undefined }) + 6 * s; text(c, l, cx, fy + 1 * s, { size: 12 * s, weight: 600, color: C.text }); c.font = FONT(12 * s, 600); cx += c.measureText(l).width + 20 * s }
+    }
+    if (!this.g.input.touch) text(c, 'Built for Project 0 lot 3084', W - x, fy, { size: 11 * s, color: C.dim, align: 'right' })
   }
   page_freeroam(c, p, W, H, s) {
     const x = 60 * s, w = Math.min(640 * s, W - x * 2)

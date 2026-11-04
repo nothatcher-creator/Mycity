@@ -24,7 +24,7 @@ export class MapView {
   }
   close() { this.panel.show(false) }
   get visible() { return this.panel.visible }
-  layout() { const e = this.g.engine; this.panel.place(0, 0, e.width, e.height) }
+  layout() { const e = this.g.engine, safe = this.g.input.touch ? 60 : 0; this.panel.place(0, safe, e.width, e.height - safe) }
   // pixels per metre
   get scale() { return Math.min(this.panel.w, this.panel.h) / WORLD * this.zoom }
   toScreen(x, z) { const s = this.scale; return [this.panel.w / 2 + (x - this.cx) * s, this.panel.h / 2 + (z - this.cz) * s] }

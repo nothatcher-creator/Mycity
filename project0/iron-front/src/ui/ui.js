@@ -3,12 +3,35 @@
 // rectangles a panel registers while drawing; pointer events find them.
 import * as THREE from 'three'
 
+import { FONTS } from './fonts-data.js'
+
+// The look: dark olive-black glass, chamfered corners (top left and bottom right cut), amber accents and
+// corner brackets, segmented bars, and Chakra Petch (a squared display face) for headings, buttons and
+// numbers; body text stays in the system sans for reading.
 export const C = {
-  bg: 'rgba(14,18,12,0.86)', bg2: 'rgba(28,34,24,0.92)', line: 'rgba(214,190,120,0.35)', gold: '#d9a521', gold2: '#f0c64a',
-  text: '#e8e4d4', dim: '#a7a48f', red: '#e0483a', green: '#7bd05a', blue: '#5aa8e0', white: '#ffffff', black: '#000000',
-  olive: '#4b5a2e', panel: 'rgba(20,24,18,0.78)', hover: 'rgba(217,165,33,0.22)', sel: 'rgba(217,165,33,0.4)',
+  bg: 'rgba(10,13,9,0.86)', bg2: 'rgba(24,30,20,0.92)', line: 'rgba(224,186,92,0.26)', gold: '#e0a526', gold2: '#ffcf5a',
+  text: '#ece8d8', dim: '#9d9b86', red: '#ff5a45', green: '#8bd35c', blue: '#5ab4f0', white: '#ffffff', black: '#000000',
+  olive: '#4b5a2e', panel: 'rgba(12,15,10,0.8)', panelTop: 'rgba(34,40,28,0.86)', hover: 'rgba(224,165,38,0.2)', sel: 'rgba(224,165,38,0.34)',
+  amber: '#ffb238', track: 'rgba(255,255,255,0.08)',
 }
-export const FONT = (px, w = 600) => `${w} ${px}px "Segoe UI", Roboto, Helvetica, Arial, sans-serif`
+let displayReady = false
+const SANS = '"Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+// weight 600 and up: the display face (once loaded); lighter: the system sans
+export const FONT = (px, w = 600) => w >= 600 && displayReady ? `${w >= 700 ? 700 : 600} ${px}px "Chakra Petch", ${SANS}` : `${w} ${px}px ${SANS}`
+// Loads the embedded display face into the worker; the UI redraws in it when it is ready.
+export async function loadFonts(onReady) {
+  try {
+    const set = self.fonts || globalThis.document?.fonts
+    if (!set || typeof FontFace === 'undefined') return false
+    for (const f of FONTS) {
+      const bin = atob(f.data), buf = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i)
+      const face = new FontFace('Chakra Petch', buf.buffer, { weight: f.weight })
+      await face.load(); set.add(face)
+    }
+    displayReady = true; onReady?.(); return true
+  } catch (e) { return false }
+}
 export const MONO = px => `600 ${px}px "Consolas", "DejaVu Sans Mono", monospace`
 
 export class UI {
@@ -108,20 +131,25 @@ export class Panel {
   }
   // Registers a button and draws it (label, optional sub-label); returns its rectangle.
   button(c, id, x, y, w, h, label, fn, o = {}) {
-    const hov = this.ui.isHover(this, id) && !o.disabled
-    c.fillStyle = o.selected ? C.sel : hov ? C.hover : (o.bg || 'rgba(255,255,255,0.05)')
-    c.fillRect(x, y, w, h)
-    c.strokeStyle = o.selected || hov ? C.gold : C.line
-    c.lineWidth = 1
-    c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1)
-    if (o.selected || hov) { c.fillStyle = C.gold; c.fillRect(x, y, 3, h) }
-    c.fillStyle = o.disabled ? C.dim : o.color || C.text
+    const hov = this.ui.isHover(this, id) && !o.disabled, on = o.selected || hov
+    const k = Math.min(10, h * 0.28)
+    chamfer(c, x, y, w, h, k)
+    const gr = c.createLinearGradient(0, y, 0, y + h)
+    if (o.selected) { gr.addColorStop(0, 'rgba(224,165,38,0.42)'); gr.addColorStop(1, 'rgba(224,165,38,0.22)') }
+    else if (hov) { gr.addColorStop(0, 'rgba(224,165,38,0.26)'); gr.addColorStop(1, 'rgba(224,165,38,0.1)') }
+    else { gr.addColorStop(0, o.bg || 'rgba(40,46,32,0.78)'); gr.addColorStop(1, o.bg || 'rgba(16,20,13,0.82)') }
+    c.fillStyle = gr; c.fill()
+    c.strokeStyle = on ? C.gold : C.line; c.lineWidth = 1; c.stroke()
+    // an accent bar on the left, and a chevron for the menus' big buttons
+    if (on && o.align !== 'center') { c.fillStyle = C.gold; c.fillRect(x + 1, y + k, 3, h - k * 1.6) }
+    if (o.arrow && !o.disabled) { c.strokeStyle = on ? C.gold2 : 'rgba(236,232,216,0.4)'; c.lineWidth = 2; const ax = x + w - 18, ay = y + h / 2; c.beginPath(); c.moveTo(ax - 4, ay - 6); c.lineTo(ax + 2, ay); c.lineTo(ax - 4, ay + 6); c.stroke() }
+    c.fillStyle = o.disabled ? 'rgba(157,155,134,0.6)' : o.color || (o.selected ? C.gold2 : C.text)
     c.font = o.font || FONT(Math.min(18, h * 0.42), 700)
     c.textBaseline = 'middle'
     c.textAlign = o.align || 'left'
-    const tx = o.align === 'center' ? x + w / 2 : x + 14
-    c.fillText(label, tx, o.sub ? y + h * 0.36 : y + h / 2, w - 20)
-    if (o.sub) { c.fillStyle = C.dim; c.font = FONT(Math.min(13, h * 0.26), 500); c.fillText(o.sub, tx, y + h * 0.7, w - 20) }
+    const tx = o.align === 'center' ? x + w / 2 : x + 16
+    c.fillText(label, tx, o.sub ? y + h * 0.37 : y + h / 2 + 1, w - (o.arrow ? 44 : 22))
+    if (o.sub) { c.fillStyle = C.dim; c.font = FONT(Math.min(12.5, h * 0.25), 500); c.fillText(o.sub, tx, y + h * 0.71, w - (o.arrow ? 44 : 22)) }
     c.textAlign = 'left'
     const b = { id, x, y, w, h, fn: o.disabled ? null : fn, data: o.data }
     this.buttons.push(b)
@@ -153,14 +181,91 @@ export function wrap(c, s, x, y, w, lh, o = {}) {
   if (line) { c.fillText(line, x, yy); yy += lh }
   return yy
 }
-export function box(c, x, y, w, h, o = {}) {
-  c.fillStyle = o.fill || C.panel
-  c.fillRect(x, y, w, h)
-  if (o.stroke !== false) { c.strokeStyle = o.stroke || C.line; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1) }
+// A path with the top-left and bottom-right corners cut by k.
+export function chamfer(c, x, y, w, h, k = 8) {
+  k = Math.min(k, w / 3, h / 3)
+  c.beginPath(); c.moveTo(x + k, y); c.lineTo(x + w, y); c.lineTo(x + w, y + h - k); c.lineTo(x + w - k, y + h); c.lineTo(x, y + h); c.lineTo(x, y + k); c.closePath()
 }
+// A panel: chamfered glass with a lighter top, a hairline edge and amber brackets on two corners.
+export function box(c, x, y, w, h, o = {}) {
+  const k = o.cut ?? Math.min(12, h * 0.2)
+  chamfer(c, x + 0.5, y + 0.5, w - 1, h - 1, k)
+  if (o.fill) c.fillStyle = o.fill
+  else { const gr = c.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, C.panelTop); gr.addColorStop(0.35, C.panel); gr.addColorStop(1, 'rgba(8,10,7,0.86)'); c.fillStyle = gr }
+  c.fill()
+  if (o.stroke !== false) { c.strokeStyle = o.stroke || C.line; c.lineWidth = 1; c.stroke() }
+  if (o.ticks !== false && w > 40 && h > 24) {
+    const L = Math.min(14, w * 0.1, h * 0.3)
+    c.strokeStyle = o.accent || C.gold; c.lineWidth = 2
+    c.beginPath(); c.moveTo(x + w - L, y + 1); c.lineTo(x + w - 1, y + 1); c.lineTo(x + w - 1, y + L); c.stroke()
+    c.beginPath(); c.moveTo(x + 1, y + h - L); c.lineTo(x + 1, y + h - 1); c.lineTo(x + L, y + h - 1); c.stroke()
+  }
+}
+// A bar in segments (ten by default), on a faint track, with a bright leading edge.
 export function bar(c, x, y, w, h, f, color, o = {}) {
-  c.fillStyle = o.back || 'rgba(0,0,0,0.5)'
-  c.fillRect(x, y, w, h)
+  f = Math.max(0, Math.min(1, f))
+  c.fillStyle = o.back || C.track; c.fillRect(x, y, w, h)
+  const n = o.segments ?? (w > 60 ? 10 : 0), gap = n ? Math.max(1, w * 0.008) : 0
   c.fillStyle = color
-  c.fillRect(x, y, Math.max(0, Math.min(1, f)) * w, h)
+  if (!n) { c.fillRect(x, y, f * w, h); return }
+  const sw = (w - gap * (n - 1)) / n
+  for (let i = 0; i < n; i++) {
+    const s0 = i / n, part = Math.max(0, Math.min(1, (f - s0) * n))
+    if (part <= 0) break
+    c.fillRect(x + i * (sw + gap), y, sw * part, h)
+  }
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(x, y, f * w, Math.max(1, h * 0.3))
+}
+// A section heading: amber text, a short bar before it and a hairline after.
+export function header(c, label, x, y, w, s = 1, o = {}) {
+  c.fillStyle = o.color || C.gold; c.fillRect(x, y - 9 * s, 3 * s, 11 * s)
+  text(c, label, x + 9 * s, y, { size: (o.size || 12) * s, weight: 700, color: o.color || C.gold })
+  c.font = FONT((o.size || 12) * s, 700); const tw = c.measureText(label).width
+  c.fillStyle = C.line; c.fillRect(x + 16 * s + tw, y - 4 * s, Math.max(0, w - tw - 16 * s), 1)
+}
+// A small labelled tag (key hints, fire mode, counts).
+export function chip(c, label, x, y, h, o = {}) {
+  c.font = FONT(o.size || h * 0.55, 700)
+  const w = c.measureText(label).width + h * 0.9
+  const X = o.align === 'right' ? x - w : o.align === 'center' ? x - w / 2 : x
+  chamfer(c, X, y, w, h, h * 0.3)
+  c.fillStyle = o.fill || 'rgba(224,165,38,0.16)'; c.fill()
+  c.strokeStyle = o.stroke || 'rgba(224,165,38,0.6)'; c.lineWidth = 1; c.stroke()
+  c.fillStyle = o.color || C.gold2; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText(label, X + w / 2, y + h / 2 + 1); c.textAlign = 'left'
+  return w
+}
+// Line icons drawn in a size x size square at (x, y): cross, bolt, bullet, grenade, gear, map, bag,
+// eye, menu, jump, hand, stance (stand/crouch/prone), reload, aim, seat, exit, up, down, flare.
+export function icon(c, name, x, y, size, color = C.text, o = {}) {
+  const s = size / 24
+  c.save(); c.translate(x, y); c.scale(s, s)
+  c.strokeStyle = color; c.fillStyle = color; c.lineWidth = o.width || 2; c.lineCap = 'round'; c.lineJoin = 'round'
+  const P = (...pts) => { c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]) }
+  switch (name) {
+    case 'cross': c.fillRect(9, 3, 6, 18); c.fillRect(3, 9, 18, 6); break
+    case 'bolt': P(14, 2, 5, 14, 11, 14, 9, 22, 19, 9, 13, 9, 14, 2); c.fill(); break
+    case 'bullet': P(9, 22, 9, 9, 12, 3, 15, 9, 15, 22); c.closePath(); c.stroke(); c.fillRect(8, 18, 8, 2); break
+    case 'grenade': c.beginPath(); c.arc(12, 14, 7, 0, Math.PI * 2); c.stroke(); c.fillRect(9, 4, 6, 4); P(15, 6, 20, 3); c.stroke(); break
+    case 'gear': c.strokeRect(4, 7, 16, 13); P(9, 7, 9, 4, 15, 4, 15, 7); c.stroke(); P(4, 12, 20, 12); c.stroke(); break
+    case 'map': P(3, 6, 9, 3, 15, 6, 21, 3, 21, 18, 15, 21, 9, 18, 3, 21); c.closePath(); c.stroke(); P(9, 3, 9, 18); c.stroke(); P(15, 6, 15, 21); c.stroke(); break
+    case 'bag': c.strokeRect(5, 8, 14, 13); P(9, 8, 9, 4, 15, 4, 15, 8); c.stroke(); c.fillRect(9, 13, 6, 3); break
+    case 'eye': c.beginPath(); c.ellipse(12, 12, 9, 5.5, 0, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(12, 12, 2.5, 0, Math.PI * 2); c.fill(); break
+    case 'menu': for (const yy of [6, 12, 18]) c.fillRect(4, yy - 1, 16, 2.4); break
+    case 'jump': P(5, 13, 12, 6, 19, 13); c.stroke(); P(5, 20, 12, 13, 19, 20); c.stroke(); break
+    case 'hand': P(7, 21, 7, 11, 9, 11, 9, 5, 11, 5, 11, 11, 13, 4, 15, 4, 15, 11, 17, 7, 19, 8, 18, 16, 15, 21); c.closePath(); c.stroke(); break
+    case 'stand': c.beginPath(); c.arc(12, 4.5, 2.5, 0, Math.PI * 2); c.fill(); P(12, 8, 12, 15, 9, 22); c.stroke(); P(12, 15, 15, 22); c.stroke(); P(7, 11, 17, 11); c.stroke(); break
+    case 'crouch': c.beginPath(); c.arc(11, 7, 2.5, 0, Math.PI * 2); c.fill(); P(11, 10, 13, 16, 9, 18, 9, 22); c.stroke(); P(13, 16, 17, 22); c.stroke(); P(7, 13, 16, 12); c.stroke(); break
+    case 'prone': c.beginPath(); c.arc(20, 15, 2.5, 0, Math.PI * 2); c.fill(); P(17, 17, 4, 18); c.stroke(); P(14, 17, 13, 21); c.stroke(); break
+    case 'reload': c.beginPath(); c.arc(12, 12, 7, -0.6, Math.PI * 1.5); c.stroke(); P(12, 1.5, 12, 5, 15, 5); c.stroke(); break
+    case 'aim': c.beginPath(); c.arc(12, 12, 7, 0, Math.PI * 2); c.stroke(); P(12, 1, 12, 7); c.stroke(); P(12, 17, 12, 23); c.stroke(); P(1, 12, 7, 12); c.stroke(); P(17, 12, 23, 12); c.stroke(); break
+    case 'seat': P(7, 3, 7, 15, 18, 15, 18, 21); c.stroke(); P(7, 15, 6, 21); c.stroke(); break
+    case 'exit': c.strokeRect(4, 4, 10, 16); P(10, 12, 21, 12); c.stroke(); P(17, 8, 21, 12, 17, 16); c.stroke(); break
+    case 'up': P(5, 16, 12, 8, 19, 16); c.stroke(); break
+    case 'down': P(5, 8, 12, 16, 19, 8); c.stroke(); break
+    case 'flare': for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; P(12 + Math.cos(a) * 3, 12 + Math.sin(a) * 3, 12 + Math.cos(a) * 9, 12 + Math.sin(a) * 9); c.stroke() } break
+    case 'fire': c.beginPath(); c.arc(12, 12, 8, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(12, 12, 3, 0, Math.PI * 2); c.fill(); break
+    case 'alt': P(4, 20, 4, 12, 12, 4, 20, 12, 20, 20); c.stroke(); P(12, 9, 12, 20); c.stroke(); break
+    case 'view': c.strokeRect(3, 6, 18, 12); c.beginPath(); c.arc(12, 12, 3, 0, Math.PI * 2); c.stroke(); break
+  }
+  c.restore()
 }

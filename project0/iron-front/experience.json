@@ -13,6 +13,10 @@
     {
       "work": "All models, code and sound effects",
       "by": "made for this game (sounds synthesised with tools/sfxgen.py)"
+    },
+    {
+      "work": "Chakra Petch typeface (interface)",
+      "by": "The Chakra Petch Project Authors (Cadson Demak), SIL Open Font License 1.1"
     }
   ]
 }

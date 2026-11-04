@@ -30,7 +30,7 @@ import { Soldier, PRONE } from '../actors/soldier.js'
 import { Player } from '../actors/player.js'
 import { AI } from '../actors/ai.js'
 import { FACTIONS, ROLES, hostile } from '../actors/factions.js'
-import { kit } from './inventory.js'
+import { kit, ITEMS } from './inventory.js'
 import { Vehicles } from '../vehicles/vehicles.js'
 import { VehicleControl } from '../vehicles/vcontrol.js'
 import { SFX } from './sfx.js'
@@ -186,7 +186,7 @@ export class Game {
     this.veg.setQuality(q); this.grass.setQuality(q); this.city.setQuality(q); this.sky.setQuality(q)
     this.save.store()
   }
-  touchPlay() { return this.state === 'play' && !!this.player && !this.menus.visible && !this.map.visible && !this.invui.visible }
+  touchPlay() { return this.state === 'play' && !!this.player && !this.menus.visible && !this.map.visible && !this.invui.visible && !this.mode?.uiOpen }
   bindPointer() {
     const p0 = this.p0
     p0.on('pointerdown', e => {
@@ -204,6 +204,7 @@ export class Game {
     p0.on('keydown', () => this.sfx.unlock())
     if (DEBUG) p0.on('keydown', e => {
       if (e.code === 'F9' && this.state === 'menu') { this.start('freeroam', { ...this.menus.setup }); return }
+      if (e.code === 'Home' && this.state === 'menu') { this.start('life', {}); return }
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
       if (e.code === 'NumpadSubtract' && this.state === 'menu') { this.start('online', { fresh: true }); return }
@@ -223,7 +224,7 @@ export class Game {
         p0.log('dbg moved near objective')
       }
       if (e.code === 'Home' && this.modeId === 'campaign') { this.mode.dbgSkip = true; p0.log('dbg skip objective', this.mode.idx) }
-      if (this.state !== 'play' || !this.mode?.admin) return
+      if (this.state !== 'play' || !(this.mode?.admin || this.mode?.npcs)) return
       const s = this.player.s
       if (e.code === 'F8') { const x = s.pos.x + Math.sin(s.yaw) * 90, z = s.pos.z + Math.cos(s.yaw) * 90; const q = this.mode.spawnSquad('nlf', x, z, 4, { type: 'attack', pos: s.pos.clone() }); this.mode.patrols.push(q); p0.log('dbg enemy squad at', x.toFixed(0), z.toFixed(0)) }
       if (e.code === 'F7' || e.code === 'F6' || e.code === 'F5' || e.code === 'F3') { const type = { F7: 'jeep', F6: 'scoutheli', F5: 'mbt', F3: 'fighter' }[e.code]; const v = this.mode.admin('vehicle', type); if (v && !s.vehicle && this.vehicles.enter(s, v)) { this.vcontrol.entered(v); p0.log('dbg entered', type) } }
@@ -244,6 +245,11 @@ export class Game {
       if (e.code === 'Numpad4') { const L = ['bus', 'sports', 'police', 'tractor', 'scooter', 'van', 'taxi', 'luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1); if (v && !s.vehicle && this.vehicles.enter(s, v)) this.vcontrol.entered(v) }
       if (e.code === 'Numpad3') { s.blood = 40; s.bleed = 0.2; s.stamina = 0.08; p0.log('dbg wounded', s.blood) }
       if (e.code === 'Numpad9') for (const [m, b] of this.ai.brains) if (!m.dead && m !== s) p0.log('dbg ai', m.team, m.name, m.role, Math.round(m.pos.x), Math.round(m.pos.z), Math.round(m.blood), b.state, 'target', b.target?.name || '-', 'spot', (b.spot.get(s) || 0).toFixed(2), 'slot', m.slot, 'd', Math.round(m.pos.distanceTo(s.pos)), 'yaw', m.yaw.toFixed(1), 'react', b.reactT.toFixed(1), 'cover', !!b.cover, 'peek', b.peeking, 'seen', (this.ai.time - b.lastSeen).toFixed(1), 'gtime', (this.time - b.lastSeen).toFixed(1), 'rk', b.dbgR || '-', 'spd', m.speed.toFixed(1), 'st', m.stance, 'mv', b.move ? Math.round(b.move.distanceTo(m.pos)) : -1, 'path', b.path ? b.path.length : -1, 'stuck', b.stuckT.toFixed(1), 'fwd', m.input.fwd.toFixed(2), 'spr', m.input.sprint, 'pause', (b.pause || 0).toFixed(1))
+      if (e.code === 'ScrollLock' && this.mode?.dbgVisit) this.mode.dbgVisit()
+      if (e.code === 'F2' && this.mode?.dbgVisit) this.mode.dbgVisit('dealer')
+      if (e.code === 'NumLock' && this.mode?.dbgJob) this.mode.dbgJob(this.dbgJobKind || 'bus')
+      if (e.code === 'CapsLock' && this.mode?.dbgJob) { this.dbgJobKind = 'taxi'; this.mode.dbgJob('taxi') }
+      if (e.code === 'Numpad9' && this.mode?.npcs) { const M = this.mode, by = {}; for (const n of M.npcs) by[n.kind] = (by[n.kind] || 0) + 1; p0.log('dbg life', 'ui', M.uiOpen, this.touchCtl.panel.visible, this.ui.blocking, JSON.stringify(by), 'traffic', M.traffic.length, 'money', M.money, 'food', M.hunger.toFixed(2), M.thirst.toFixed(2), 'home', Math.round(M.home.x), Math.round(M.home.z), 'me', Math.round(s.pos.x), Math.round(s.pos.z), 'job', M.job?.kind || '-', M.job?.i, 'shops', [...new Set(M.npcs.filter(n => n.shop).map(n => n.shop))].join('|')) }
       if (e.code === 'Numpad9' && s.vehicle) { const v = s.vehicle; p0.log('dbg veh', v.def.name, 'pos', v.pos.x.toFixed(1), v.pos.y.toFixed(2), v.pos.z.toFixed(2), 'land', heightAt(v.pos.x, v.pos.z).toFixed(2), 'floor', this.collision.floorAt(v.pos.x, v.pos.y + 1.5, v.pos.z, 1.5, 6).toFixed(2), 'water', waterLevelAt(v.pos.x, v.pos.z).toFixed(2), 'spd', v.speed.toFixed(1), 'eng', v.engine, 'hp', Math.round(v.hp)) }
       if (e.code === 'Numpad9') p0.log('dbg state stam', s.stamina.toFixed(2), 'spr', s.sprint, s.winded, 'spd', s.speed.toFixed(1), 'blood', Math.round(s.blood), 'bleed', s.bleed.toFixed(2), 'y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2), 'xz', s.pos.x.toFixed(1), s.pos.z.toFixed(1), 'yaw', s.yaw.toFixed(2), 'ammo', s.w?.rec.mag, 'fingers', this.touchCtl.fingers.map(f => f.role + (f.hold ? ':' + f.hold : '')).join('|'), 'stick', this.input.stick ? this.input.stick.x.toFixed(2) + ',' + this.input.stick.y.toFixed(2) : '-')
       if (e.code === 'Numpad7') { const L = [...this.W.ladders].sort((a, b) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(b.x - s.pos.x, b.z - s.pos.z))[0]; if (L) { const bx = L.x - Math.sin(L.yaw) * 0.8, bz = L.z - Math.cos(L.yaw) * 0.8; s.pos.set(bx, L.y0, bz); s.yaw = L.yaw; p0.log('dbg ladder', this.W.ladders.length, JSON.stringify({ x: L.x.toFixed(1), z: L.z.toFixed(1), y0: L.y0.toFixed(1), y1: L.y1.toFixed(1), yaw: L.yaw.toFixed(2) })) } else p0.log('dbg no ladders', this.W.ladders.length) }
@@ -335,6 +341,16 @@ export class Game {
     this.hud.show(false); this.map.close(); this.invui.close()
     this.p0.input.unlockPointer()
     this.menus.open('main')
+  }
+  // Eat or drink something: stamina back (and in Life, hunger and thirst)
+  consume(s, id) {
+    const def = ITEMS[id]
+    if (!def || !s.inv.count(id)) return false
+    s.inv.use(id)
+    s.stamina = Math.min(1, s.stamina + (def.stamina ? 0.6 : 0.25)); if (def.food) s.fedT = Math.max(s.fedT || 0, 60 + def.food * 2)
+    this.mode?.onConsume?.(s, def)
+    if (s.isPlayer) { this.hud.note(`${def.kind === 'food' ? 'You eat' : 'You drink'}: ${def.name}`); this.sfx.ui('pickup') }
+    return true
   }
   // A new soldier on the island. o: { faction, role, x, z, yaw, name, team, inv }
   addSoldier(o) {
@@ -672,9 +688,9 @@ export class Game {
     if (inp.hit('pause') && !this.map.visible && !this.invui.visible) { this.state = 'paused'; this.menus.open('pause'); this.p0.input.unlockPointer(); return }
     if (inp.hit('map')) { if (this.map.visible) this.closeMap(); else { this.invui.close(); this.openMap() } }
     // the inventory: with the storage of the vehicle you are in or standing at alongside
-    if (inp.hit('inventory') && !s.dead) { if (this.invui.visible) this.invui.close(); else { this.map.close(); const v = s.vehicle || this.vehicles.nearest(s.pos, 2.5); this.invui.open(v && v.alive && !v.occupants().some(o => o !== s && hostile(o.team, s.team)) ? this.vehicleStore(v) : null) } }
+    if (inp.hit('inventory') && !s.dead && !this.mode?.uiOpen) { if (this.invui.visible) this.invui.close(); else { this.map.close(); const v = s.vehicle || this.vehicles.nearest(s.pos, 2.5); this.invui.open(v && v.alive && !v.occupants().some(o => o !== s && hostile(o.team, s.team)) ? this.vehicleStore(v) : null) } }
     if (inp.hit('squad') && this.playerSquad && !s.dead) this.menus.toggleSquad()
-    this.ui.blocking = this.map.visible || this.invui.visible || this.menus.visible
+    this.ui.blocking = this.map.visible || this.invui.visible || this.menus.visible || !!this.mode?.uiOpen
     // a menu open at the wheel: let go of the throttle
     if (this.ui.blocking && s.vehicle && s.vehicle.driver === s) s.vehicle.throttle = 0
     if (!this.ui.blocking || s.dead) {
@@ -718,6 +734,7 @@ export class Game {
     const s = this.player.s, hud = this.hud, inp = this.input
     hud.prompt = ''
     if (s.dead) return
+    if (this.mode?.interact?.(s, hud, inp)) return
     const v = this.vehicles.nearest(s.pos, 3)
     if (v) {
       const free = v.seats.find(q => !q.occupant)

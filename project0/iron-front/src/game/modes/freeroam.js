@@ -23,7 +23,7 @@ const HELI = { vdf: ['transportheli', 'attackheli', 'armedheli', 'scoutheli'], n
 const PLANE = ['fighter', 'groundattack', 'civilplane', 'transportplane']
 const BOAT = ['motorboat', 'rhib', 'patrolboat', 'motorboat']
 // what is parked in the streets: buses, taxis and a police car in the cities, tractors in the villages
-const CIVIL = { city: ['bus', 'sedan', 'taxi', 'police', 'van', 'hatch', 'sports', 'scooter'], town: ['sedan', 'van', 'hatch', 'pickup', 'police', 'scooter'], village: ['pickup', 'tractor', 'hatch'] }
+export const CIVIL = { city: ['bus', 'sedan', 'taxi', 'police', 'van', 'hatch', 'sports', 'scooter'], town: ['sedan', 'van', 'hatch', 'pickup', 'police', 'scooter'], village: ['pickup', 'tractor', 'hatch'] }
 
 export class FreeRoam extends Mode {
   get name() { return 'Free Roam' }

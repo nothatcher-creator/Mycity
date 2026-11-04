@@ -21,7 +21,7 @@ function camoAt(x, y, z, seed) {
   return n < 0.26 ? 0 : n < 0.44 ? 1 : n > 0.8 ? 2 : 3
 }
 function partGeo(boxes, camo = true, seed = 1) {
-  const gs = []
+  const gs = [], plain = []
   for (const [w, h, d, x, y, z, shade = 1] of boxes) {
     const seg = camo && shade > 0 ? 3 : 1
     const g = new THREE.BoxGeometry(w, h, d, seg, seg, seg).toNonIndexed()
@@ -39,8 +39,16 @@ function partGeo(boxes, camo = true, seed = 1) {
     g.setAttribute('color', new THREE.BufferAttribute(c, 3))
     g.deleteAttribute('uv')
     gs.push(g)
+    // the same box in plain cloth (civilians): only the shading, a little variation face to face
+    if (camo) {
+      const g2 = g.clone(), c2 = new Float32Array(n * 3)
+      for (let i = 0; i < n; i += 6) { const v = 0.95 + 0.1 * hash2(i, seed, 19); for (let j = 0; j < 6; j++) for (let q = 0; q < 3; q++) c2[(i + j) * 3 + q] = sh * v }
+      g2.setAttribute('color', new THREE.BufferAttribute(c2, 3)); plain.push(g2)
+    }
   }
-  return mergeGeometries(gs)
+  const out = mergeGeometries(gs)
+  if (plain.length) out.userData.plain = mergeGeometries(plain)
+  return out
 }
 const PARTS = {
   // pelvis with a belt, a buckle and a pouch on the hip
@@ -80,6 +88,13 @@ export class Rig {
       m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)
       world.add(m)
       this.mesh[k] = m
+      if (g.userData.plain) {
+        const pm = new THREE.InstancedMesh(g.userData.plain, this.mat, n)
+        pm.count = 0; pm.castShadow = true; pm.frustumCulled = false
+        pm.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3)
+        world.add(pm)
+        this.mesh['p_' + k] = pm
+      }
     }
     // held weapons: one instanced mesh per kind
     this.weaponGeo = {}
@@ -101,7 +116,7 @@ export class Rig {
     }
   }
   put(part, mat, color) {
-    const m = this.mesh[part]
+    const m = (this.plain && this.mesh['p_' + part]) || this.mesh[part]
     if (m.count >= m.instanceMatrix.count) return
     m.setMatrixAt(m.count, mat)
     if (color && m.instanceColor) m.setColorAt(m.count, color)
@@ -112,8 +127,9 @@ export class Rig {
   draw(s, camPos) {
     const F = FACTIONS[s.faction] || FACTIONS.vdf
     const T = this.tmp
+    this.plain = !!s.plain
     const col = (src) => {
-      const c = src === 'skin' ? SKINS[s.skin % SKINS.length] : src === 'uniform' ? (s.uniform || F.uniform) : src === 'gear' ? (s.gearColor || F.gear) : (s.helmetColor || F.helmet)
+      const c = src === 'skin' ? SKINS[s.skin % SKINS.length] : src === 'pants' ? (s.pants || s.uniform || F.uniform) : src === 'uniform' ? (s.uniform || F.uniform) : src === 'gear' ? (s.gearColor || F.gear) : (s.helmetColor || F.helmet)
       return _c.setRGB(lin(c[0]), lin(c[1]), lin(c[2]))
     }
     const far = camPos && (s.pos.x - camPos.x) ** 2 + (s.pos.z - camPos.z) ** 2 > 360 * 360
@@ -136,16 +152,16 @@ export class Rig {
     const pel = _pel.copy(body).multiply(_m.makeTranslation(0, pelvisY + (dead > 0 ? -0.75 * Math.min(1, dead * 2.2) : 0), 0))
     // lean: roll the upper body
     const leanR = -(s.lean || 0) * 0.32
-    this.put('pelvis', pel, col('uniform'))
+    this.put('pelvis', pel, col('pants'))
     // legs
     for (const side of [1, -1]) {
       const swing = Math.sin(ph + (side > 0 ? 0 : Math.PI)) * 0.55 * amp
       const thighA = -swing - 1.25 * crouch * (1 - prone) - (prone ? 0.05 : 0) + (dead ? 0.1 : 0)
       const kneeA = Math.max(0, Math.sin(ph + (side > 0 ? 0 : Math.PI) + 1.2)) * 0.8 * amp + 2.0 * crouch * (1 - prone) + (prone ? 0.15 : 0)
       const hip = _hip.copy(pel).multiply(_m.makeTranslation(side * 0.09, -0.07, 0)).multiply(_m2.makeRotationX(thighA)).multiply(_m3.makeRotationZ(side * (0.04 + 0.08 * prone)))
-      this.put('thigh', hip, col('uniform'))
+      this.put('thigh', hip, col('pants'))
       const knee = _knee.copy(hip).multiply(_m.makeTranslation(0, -0.44, 0)).multiply(_m2.makeRotationX(kneeA))
-      this.put('shin', knee, col('uniform'))
+      this.put('shin', knee, col('pants'))
     }
     // spine: lean forward when crouched or sprinting, roll with the lean
     const spineP = 0.12 * crouch + (s.sprint ? 0.2 : 0) - 0.1 * prone
@@ -161,7 +177,9 @@ export class Rig {
     if (hg === 'helmet') this.put('helmet', neck, col('helmet'))
     else if (hg !== 'none') this.put('cap', neck, col('helmet'))
     // the weapon: held in an aim frame at the shoulders, pitched with the aim; lowered when not aiming
-    const kind = s.weaponKind || 'rifle'
+    // empty-handed (a civilian): no weapon, the arms hang and swing with the walk
+    const kind = s.unarmed ? 'none' : s.weaponKind || 'rifle'
+    this.swing = kind === 'none' ? Math.sin(ph) * 0.45 * amp : 0
     const aimW = s.aimW ?? 1
     const lower = (1 - aimW) * 0.65 + (s.sprint ? 0.5 : 0) + (s.reloadT > 0 ? 0.35 : 0)
     const aimFrame = _aim.copy(spine).multiply(_m.makeTranslation(0, 0.42, 0)).multiply(_m2.makeRotationX(-aimP - spineP + lower + (prone ? -prone * 1.45 : 0)))
@@ -170,7 +188,7 @@ export class Rig {
     if (kind === 'launcher') { wx = -0.16; wy = 0.12; wz = 0.12 }
     if (dead) wy -= 0.4
     const gun = _gun.copy(aimFrame).multiply(_m.makeTranslation(wx, wy, wz))
-    if (!dead || dead < 0.5) this.put('w_' + kind, gun, null)
+    if ((!dead || dead < 0.5) && kind !== 'none') this.put('w_' + kind, gun, null)
     // arms by IK: right hand to the grip, left hand to the support point (or to the magazine while reloading)
     const grip = _v1.set(0, 0, 0).applyMatrix4(gun)
     let support
@@ -181,7 +199,7 @@ export class Rig {
     for (const side of [-1, 1]) {
       const shoulder = _v3.set(side * 0.22, 0.44, 0).applyMatrix4(spine)
       const target = side < 0 ? grip : support
-      this.arm(shoulder, target, side, spine, dead && dead > 0.3 ? null : true)
+      this.arm(shoulder, target, side, spine, kind === 'none' || (dead && dead > 0.3) ? null : true)
     }
   }
   // A death: the knees give and the body slumps (0.3 s), then it topples the way the hit pushed it, faster
@@ -203,7 +221,7 @@ export class Rig {
     // knees give: the pelvis sinks while standing, and lies on the ground once down
     const pelvisY = 0.95 - 0.3 * buckle * (1 - fall) - 0.62 * fall
     const pel = _pel.copy(body).multiply(_m.makeTranslation(0, pelvisY, 0)).multiply(_m2.makeRotationZ((h2 - 0.5) * 0.3 * fall))
-    this.put('pelvis', pel, col('uniform'))
+    this.put('pelvis', pel, col('pants'))
     for (const side of [1, -1]) {
       // legs: buckled at the knee as he drops, then spread, the one bent more on one side
       const bentLeg = (side > 0) === (h > 0.5)
@@ -211,8 +229,8 @@ export class Rig {
       const thighA = -0.55 * buckle * (1 - fall) + (back ? 0.15 : -0.2) * fall + (bentLeg ? -0.5 * fall : 0)
       const kneeA = 1.3 * buckle * (1 - fall) + (bentLeg ? 1.1 : 0.15) * fall
       const hip = _hip.copy(pel).multiply(_m.makeTranslation(side * 0.09, -0.07, 0)).multiply(_m2.makeRotationX(thighA)).multiply(_m3.makeRotationZ(spread))
-      this.put('thigh', hip, col('uniform'))
-      this.put('shin', _knee.copy(hip).multiply(_m.makeTranslation(0, -0.44, 0)).multiply(_m2.makeRotationX(kneeA)), col('uniform'))
+      this.put('thigh', hip, col('pants'))
+      this.put('shin', _knee.copy(hip).multiply(_m.makeTranslation(0, -0.44, 0)).multiply(_m2.makeRotationX(kneeA)), col('pants'))
     }
     // the trunk slumps forward as the knees go, then lies flat (a little twist)
     const slump = 0.45 * buckle * (1 - fall)
@@ -238,7 +256,8 @@ export class Rig {
       this.put('fore', _arm2.copy(sh).multiply(_m.makeTranslation(0, -0.3, 0)).multiply(_m2.makeRotationX(-0.25 - (under ? 1.2 : 0.4) * fall)), _c)
     }
     // the rifle: still in the hands for a moment, then on the ground beside him, on its side
-    const kind = s.weaponKind || 'rifle'
+    const kind = s.unarmed ? 'none' : s.weaponKind || 'rifle'
+    if (kind === 'none') return
     if (t < 0.25) this.put('w_' + kind, _gun.copy(spine).multiply(_m.makeTranslation(-0.13, 0.3 - t * 1.2, 0.3)).multiply(_m2.makeRotationX(0.6 + t * 2)), null)
     else this.put('w_' + kind, _gun.copy(root).multiply(_m.makeRotationY(h * 2.4 - 1.2)).multiply(_m2.makeTranslation((h2 - 0.5) * 1.2 + 0.35, 0.04, back ? 0.6 : 0.9)).multiply(_m3.makeRotationZ(Math.PI / 2)), null)
   }
@@ -249,7 +268,7 @@ export class Rig {
     let len = d.length()
     if (!reach || len < 0.01) {
       // hang down
-      const m = _arm.copy(spine).multiply(_m.makeTranslation(side * 0.22, 0.44, 0)).multiply(_m2.makeRotationZ(side * 0.1))
+      const m = _arm.copy(spine).multiply(_m.makeTranslation(side * 0.22, 0.44, 0)).multiply(_m2.makeRotationZ(side * 0.1)).multiply(_m3.makeRotationX((this.swing || 0) * side))
       this.put('upper', m, _c); this.put('fore', _arm2.copy(m).multiply(_m.makeTranslation(0, -0.3, 0)), _c)
       return
     }

@@ -87,7 +87,7 @@ export class Touch {
   }
   update() {
     const g = this.g
-    const on = g.input.touch && g.state === 'play' && !g.menus.visible && !g.map.visible && !g.invui.visible && !!g.player
+    const on = g.input.touch && g.state === 'play' && !g.menus.visible && !g.map.visible && !g.invui.visible && !g.mode?.uiOpen && !!g.player
     if (on !== this.panel.visible) { this.panel.show(on); if (on) this.place(); else this.clear() }
   }
   draw(c, p) {

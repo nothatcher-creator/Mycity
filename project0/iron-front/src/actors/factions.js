@@ -29,6 +29,12 @@ export const FACTIONS = {
     ranks: ['Volunteer', 'Fighter', 'Veteran', 'Cell Leader', 'Commander', 'Elder'],
   },
 }
+// Life mode's townspeople (and you): nobody's enemy, no weapons. Not offered as a side in the war modes.
+FACTIONS.civ = {
+  id: 'civ', name: 'Civilians', short: 'CIV', color: '#d8c79a', civil: true,
+  uniform: [0.55, 0.6, 0.7], gear: [0.3, 0.3, 0.3], helmet: [0.3, 0.3, 0.35], accent: [0.9, 0.8, 0.4], headgear: 'none',
+  weapons: {}, sidearm: null, vehicles: [], skill: 0, ranks: ['', '', '', '', '', ''],
+}
 export const ROLES = {
   rifleman: { name: 'Rifleman', grenades: 2 },
   autorifleman: { name: 'Autorifleman', grenades: 1 },

@@ -127,11 +127,12 @@ export class Menus {
       { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
       { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
       { id: 'online', label: 'ONLINE BATTLE', sub: `${(this.g.p0.room?.players || []).length} in this lot now · ${MODE_INFO[3].desc}`, fn: () => this.open('online', true) },
+      { id: 'life', label: 'LIFE', sub: this.g.save.data.life ? `Continue · $${this.g.save.data.life.money ?? 0} in your wallet` : MODE_INFO[4].desc, fn: () => this.g.start('life', { resume: !!this.g.save.data.life }) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
-    ].filter((v, i) => v || i === 5)
+    ].filter((v, i) => v || i === 6)
     const colW = Math.min(430 * s, W - x * 2)
     this.column(c, p, x, top + (this.g.input.touch ? 26 : 22) * s, colW, items, s, { numbered: !portrait })
     // the field report on the right, on screens wide enough for it
@@ -152,7 +153,7 @@ export class Menus {
     let y = 130 * s
     text(c, 'FREE ROAM', x, y, { size: 22 * s, weight: 800, color: C.gold2 }); y += 16 * s
     const st = this.setup
-    y = this.choices(c, p, x, y, w, 'Side', Object.values(FACTIONS).map(f => ({ label: f.short, v: f.id })), st.faction, v => { st.faction = v; if (!this.startsFor(v).includes(st.start)) st.start = this.startsFor(v)[0] }, s)
+    y = this.choices(c, p, x, y, w, 'Side', Object.values(FACTIONS).filter(f => !f.civil).map(f => ({ label: f.short, v: f.id })), st.faction, v => { st.faction = v; if (!this.startsFor(v).includes(st.start)) st.start = this.startsFor(v)[0] }, s)
     text(c, FACTIONS[st.faction].name, x + 150 * s, y + 2 * s, { size: 12 * s, color: C.dim }); y += 16 * s
     const starts = this.startsFor(st.faction)
     y = this.choices(c, p, x, y, w, 'Start at', starts.slice(0, 5).map(id => ({ label: PLACES.find(q => q.id === id).name.replace(' Airbase', ''), v: id })), st.start, v => { st.start = v }, s)
@@ -189,7 +190,7 @@ export class Menus {
     text(c, BATTLES[b.kind].desc, x + 150 * s, y + 2 * s, { size: 12 * s, color: C.dim }); y += 16 * s
     y = this.choices(c, p, x, y, w, 'Place', ARENAS.slice(0, 6).map(id => ({ label: PLACES.find(q => q.id === id).name.replace(' Airbase', '').replace('Camp ', ''), v: id })), b.place, v => { b.place = v }, s)
     y = this.choices(c, p, x, y, w, '', ARENAS.slice(6).map(id => ({ label: PLACES.find(q => q.id === id).name.replace(' Airbase', '').replace('Rask ', ''), v: id })), b.place, v => { b.place = v }, s)
-    y = this.choices(c, p, x, y, w, 'Your side', Object.values(FACTIONS).map(f => ({ label: f.short, v: f.id })), b.faction, v => { b.faction = v }, s)
+    y = this.choices(c, p, x, y, w, 'Your side', Object.values(FACTIONS).filter(f => !f.civil).map(f => ({ label: f.short, v: f.id })), b.faction, v => { b.faction = v }, s)
     y = this.choices(c, p, x, y, w, 'Side size', [6, 10, 16].map(n => ({ label: `${n}`, v: n })), b.teamSize, v => { b.teamSize = v }, s)
     const base = BATTLES[b.kind].score
     y = this.choices(c, p, x, y, w, b.kind === 'survival' ? 'Waves' : b.kind === 'conquest' ? 'Tickets' : b.kind === 'sector' ? 'Sectors' : 'Score limit', [0.5, 1, 2].map(m => ({ label: String(Math.max(1, Math.round(base * m))), v: Math.max(1, Math.round(base * m)) })), b.limit ?? base, v => { b.limit = v }, s)

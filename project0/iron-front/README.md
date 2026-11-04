@@ -22,6 +22,7 @@ Independent Resistance (RES).
 | **Campaign** | VARDEN, 12 missions in two chapters: patrols, defence, night raids, a tank assault, a jet strike, a convoy ambush, a boat assault, a helicopter insertion, Camp Sentinel, Port Anselm, the Mount Hallen finale. Briefings, checkpoints, saved progress and unlocks. |
 | **Free Roam** | The whole island at war. Garrisons appear as you approach a place; clear an enemy-held place to liberate it (saved). Patrols, AI-crewed vehicles, an enemy gunship or jet sweep every few minutes, parked vehicles at bases, airfields and harbours. Sandbox tools in the pause menu: spawn vehicles (aircraft start airborne), squads and weapons, set time and weather, teleport by the map, invulnerability. |
 | **Online Battle** | Team Deathmatch or Domination with the real players inside the lot (up to 16), no AI. Each client simulates everyone's shots and damages only its own player; scores, teams and the match live in the session's shared state; the host turns the flags. |
+| **Life** | Varden after the war, as a civilian. Your home is in Kaldor (sleep, save, a stash); townspeople walk the pavements, live in the houses and keep the shops: general store, café, chemist, clothes shop, hardware and outdoor, fuel station (fill up your car) and a car dealer. Buy and sell at each counter. Work as a bus driver (five stops, passengers board and leave), a parcel courier (take the parcels from the van to the doors) or a taxi driver (pick up the fare, paid by distance). Food and water run down: eat and drink or weaken. Fishing with a rod at the water's edge. Town traffic drives the streets and stops for people in the road. Money, things, clothes, stash and bought vehicles are saved. The townspeople are the game's own characters, not other players. |
 | **Battle** | Team Deathmatch, Domination, Conquest, King of the Hill, Capture the Flag, Sector Control and Survival, at 12 places, with settings for side, side size, score and time limits, time of day, weather and difficulty. |
 
 ### Controls (keyboard and mouse; every key can be rebound in Controls)
@@ -32,14 +33,14 @@ Independent Resistance (RES).
 | Jump or vault / crouch / prone / lean | Space, C, Z, Q and E |
 | Fire / aim down sights | left mouse / hold right mouse |
 | Reload / fire mode / zeroing | R, B, Page Up and Page Down |
-| Weapons / grenade / heal | 1–3 or the wheel, G, H |
+| Weapons / grenade / heal | 1–3 or the wheel, G throws, 4 chooses frag, smoke or flashbang, H |
 | Use, enter and leave vehicles | F |
 | First / third person, shoulder | V, K |
 | Map / inventory / squad orders / pause | M, Tab, T, P |
 | Binoculars / night vision / flashlight / bipod / hold breath | O, N, L, J, Shift (aiming with a scope) |
 | Field gear: use / next | Y, U (or Use in the inventory) |
 | Heal | H: a bandage if bleeding, a splint for a broken leg, then a first aid kit or medkit, then a painkiller |
-| Vehicles | W S throttle or pitch, A D steer or roll, Space and C up and down, Shift boost, X change seat, R flares, G landing gear, H horn |
+| Vehicles | W S throttle or pitch, A D steer or roll, Space and C up and down, Shift boost, X change seat, R flares, G landing gear, H horn, L headlights, E engine on/off, V first person (the driver's seat with a dashboard and wheel; a gunner looks along the gun), Tab the vehicle's storage |
 
 Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with flight assist on.
 
@@ -50,7 +51,7 @@ and drag to aim while shooting. Each finger keeps its own job, so lifting one ne
 (`src/core/touch.js`: events carry no finger id, but each one's dx/dy runs from that finger's last
 position, which tells them apart). A setting makes the stick turn you instead of strafing; aim assist
 pulls the view onto a visible enemy within about 5° while aiming or firing (a setting turns it off).
-Buttons for fire (hold), aim, reload, stance, jump, use, grenade, gear, view, map, kit, heal and the menu.
+Buttons for fire (hold), aim, reload, stance, jump, use, grenade (the small button beside it picks the kind), gear, view, map, kit, heal, night vision (NV) and the menu; in a vehicle also ENG, LIGHTS and KIT.
 (Before, the city's stick and the game were in different frames, and the browser sends every finger of a
 gesture to the frame the first touched, so the game never saw a second finger.)
 
@@ -107,10 +108,10 @@ quads over the 3D view.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
   thickness, ricochets and near-miss suppression (`ballistics.js`); 58 hand-held weapons and 13 mounted
   ones with attachments (`weapons-data.js`); models built in code (`weapon-models.js`).
-- **Vehicles** (`src/vehicles/`): 32 types: cars, bikes, trucks, an armed utility vehicle, technicals
+- **Vehicles** (`src/vehicles/`): 39 types: cars, a sports car, a taxi, a police cruiser, a delivery van, a city bus, a tractor, a scooter, bikes, trucks, an armed utility vehicle, technicals
   (machine gun or grenade launcher), a field ambulance (heals at the tailgate), APC, IFV, tank, armoured
   car, a quad-23 mm anti-aircraft vehicle, helicopters (including an armed transport with rocket pods),
-  planes and boats, with seats, mounted weapons, armour and damage.
+  planes and boats, with seats, mounted weapons, armour and damage. Each has storage (Tab beside or inside it), headlights and an engine you can switch off; windows are see-through so first person works from the seat.
 - **Field gear** (`src/game/gear.js`): AT mines (go off under ground vehicles), demolition charges
   (10-second fuse, on the ground or stuck to a vehicle), sandbag walls (cover that stops rifle fire, the
   AI uses it too), the field radio (a five-round mortar strike where you look, 60–900 m, every 150 s),
@@ -185,3 +186,4 @@ Not done or not verified:
 - AI flies attack helicopters and jets, but does not take off or land. AI drivers route round buildings on a coarse grid, not along roads.
 - Mouse aiming could not be checked by hand in the headless browser.
 - Performance on real phones and laptops has not been measured.
+- Life: shops, the home screen, sleep, the stash, the car dealer's list, the bus route (stops, boarding, pay) and the delivery job starting were checked in the dev kit with test keys; a whole working day, the taxi job end to end, fishing, buying a car and the save after reloading have not been played through by hand. Town traffic follows a street up and down and can still clip corners.

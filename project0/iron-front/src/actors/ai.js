@@ -687,6 +687,21 @@ export class AI {
     v.steer = Math.max(-1, Math.min(1, diff * 2))
     v.throttle = d < 15 ? 0 : Math.abs(diff) > 1.3 ? 0.35 : d < 40 || (b.vpath && b.vpath.length > 1) ? 0.6 : 1
     if (d < 15) v.brake = 1
+    // town traffic (Life): keep to a town speed and stop for anyone in the road ahead
+    if (v.speedLimit) {
+      if (v.speed > v.speedLimit) v.throttle = 0
+      const fx = Math.sin(v.yaw), fz = Math.cos(v.yaw), look = 6 + Math.max(0, v.speed) * 1.4
+      for (const o of G.soldiersNear(v.pos.x, v.pos.z, look + 3)) {
+        if (o.dead || o.vehicle) continue
+        const dx = o.pos.x - v.pos.x, dz = o.pos.z - v.pos.z, ahead = dx * fx + dz * fz, side = Math.abs(dx * fz - dz * fx)
+        if (ahead > 0 && ahead < look && side < v.def.size[0] / 2 + 1.4) { v.throttle = 0; v.brake = 1; break }
+      }
+      for (const o of G.vehicles.list) {
+        if (o === v || !o.alive) continue
+        const dx = o.pos.x - v.pos.x, dz = o.pos.z - v.pos.z, ahead = dx * fx + dz * fz, side = Math.abs(dx * fz - dz * fx)
+        if (ahead > 0 && ahead < look + 3 && side < 2.2 && o.speed < v.speed) { v.throttle = 0; v.brake = 1; break }
+      }
+    }
   }
   inVehicle(s, b, dt) {
     // passengers ride; one following a leader who has got out gets out too

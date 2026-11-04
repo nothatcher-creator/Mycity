@@ -29,7 +29,13 @@ export class Save {
     this.timer = setTimeout(() => {
       this.timer = null
       let json = this.data
-      try { if (JSON.stringify(json).length > 15500) { json = { ...json, found: json.found.slice(-200), freeroam: undefined } } } catch {}
+      // the city keeps about 16 KB: trim the least useful things first
+      try {
+        const big = () => JSON.stringify(json).length > 15500
+        if (big()) json = { ...json, found: (json.found || []).slice(-200) }
+        if (big() && json.life) json = { ...json, life: { ...json.life, stash: (json.life.stash || []).slice(0, 12) } }
+        if (big()) json = { ...json, freeroam: undefined }
+      } catch {}
       try { const r = this.p0.save?.(json); if (r?.then) r.then(a => { if (a && !a.ok) this.guest = true }).catch(() => {}) } catch {}
     }, 1200)
   }

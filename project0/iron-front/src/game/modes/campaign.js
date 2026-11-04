@@ -10,7 +10,7 @@ import { Mode, nextName } from './base.js'
 import { POINTS } from '../../world/places.js'
 import { heightAt, waterLevel } from '../../world/heightfield.js'
 import { FACTIONS, ROLES } from '../../actors/factions.js'
-import { kit } from '../inventory.js'
+import { kit, ITEMS } from '../inventory.js'
 import { C, text, wrap } from '../../ui/ui.js'
 import { ROADS } from '../../world/roads-data.js'
 
@@ -36,7 +36,7 @@ const ONE = [
   {
     id: 'm2', name: 'The Ost Bridge', place: 'Kaldor', hour: 15, weather: 'overcast',
     brief: 'The NLF is pushing for the bridges over the River Ost into Kaldor. Command needs the east bridge held until the engineers can rig it. Dig in on the near bank with your section and a machine gun team, and hold.',
-    start: { x: 720, z: 930, yaw: -0.6 }, squad: 4, role: 'autorifleman',
+    start: { x: 720, z: 930, yaw: -0.6 }, squad: 4, role: 'autorifleman', items: ['sandbags', 'sandbags'],
     objectives: [
       { type: 'reach', text: 'Take up positions at the east bridge', x: 760, z: 880, r: 25, radio: 'Engineers need fifteen minutes. Hold that bridge, Iron 2.' },
       { type: 'survive', text: 'Hold the bridge against the assault', x: 760, z: 880, r: 60, waves: 3, faction: 'nlf', from: { x: 1100, z: 700 }, radio: 'Infantry crossing the fields, here they come!' },
@@ -94,7 +94,7 @@ const TWO = [
   {
     id: 'm7', name: 'Supply Line', place: 'the Sentinel road', hour: 8, weather: 'overcast',
     brief: 'Camp Sentinel, the NLF\'s last stronghold in the north, lives on the trucks that come up the Sentinel road. One convoy is on the road this morning: two trucks, a fuel tanker and an escort. Set an ambush on the high ground and stop it. An AT specialist is with your section.',
-    start: { x: -700, z: -1700, yaw: 0.6 }, squad: 4, role: 'at',
+    start: { x: -700, z: -1700, yaw: 0.6 }, squad: 4, role: 'at', items: ['mine', 'mine'],
     objectives: [
       { type: 'reach', text: 'Take the ambush position above the road', at: () => { const p = road('r6', 9, 10)[0]; return [p.x - 70, p.z + 30] }, r: 25, radio: 'Convoy left Kaldor junction ten minutes ago. Get into position.' },
       { type: 'destroy', text: 'Destroy the convoy (AT launcher: 2, or the rifles on the trucks)', convoy: { road: ['r6', 2, 20], types: ['technical', 'truck', 'fueltruck', 'truck'] }, radio: 'Vehicles on the road! Let the escort pass the bend, then hit them.' },
@@ -126,7 +126,7 @@ const TWO = [
   {
     id: 'm10', name: 'Sentinel Gate', place: 'Camp Sentinel', hour: 11, weather: 'overcast',
     brief: 'The assault on Camp Sentinel begins. Two APCs go in with your platoon. Break through the gate, knock out the anti-aircraft vehicles so the air force can come in, and clear the barracks.',
-    start: { x: 520, z: -3620, yaw: Math.PI }, squad: 4, role: 'at', allies: [{ vehicle: 'apc', x: 490, z: -3640 }, { vehicle: 'apc', x: 560, z: -3650 }],
+    start: { x: 520, z: -3620, yaw: Math.PI }, squad: 4, role: 'at', allies: [{ vehicle: 'apc', x: 490, z: -3640 }, { vehicle: 'apc', x: 560, z: -3650 }], items: ['c4', 'c4', 'radio'],
     objectives: [
       { type: 'clear', text: 'Break through the checkpoint south of the camp', spawn: [{ faction: 'nlf', x: 500, z: -3880, n: 5, order: 'defend', r: 30 }, { faction: 'nlf', vehicle: 'technical', x: 540, z: -3900, order: 'defend', r: 20 }], radio: 'All units, advance on the checkpoint.' },
       { type: 'destroy', text: 'Destroy the anti-aircraft vehicles in the camp', vehicles: [{ type: 'ifv', x: 450, z: -4150 }, { type: 'ifv', x: 560, z: -4250 }], spawn: [{ faction: 'nlf', x: 500, z: -4180, n: 5, order: 'defend', r: 40 }], radio: 'The AA tracks are inside the wire. Take them out.' },
@@ -137,7 +137,7 @@ const TWO = [
   {
     id: 'm11', name: 'Anselm Docks', place: 'Port Anselm', hour: 20, weather: 'storm',
     brief: 'Rhuar has thrown everything he has left at Port Anselm: landing craft from the bay and gunboats offshore. Hold the docks with the city garrison. When the gunboats come close, sink them.',
-    start: { x: -3420, z: 3380, yaw: 2.6 }, squad: 4, role: 'at',
+    start: { x: -3420, z: 3380, yaw: 2.6 }, squad: 4, role: 'at', items: ['sandbags'],
     objectives: [
       { type: 'reach', text: 'Get to the docks', x: -3560, z: 3520, r: 40, radio: 'They are coming in from the bay. To the docks, Iron 2!' },
       { type: 'survive', text: 'Hold the docks against the landings', x: -3560, z: 3520, r: 70, waves: 3, faction: 'nlf', from: { x: -3700, z: 3780 }, radio: 'Landing parties on the beach!' },
@@ -148,7 +148,7 @@ const TWO = [
   {
     id: 'm12', name: 'The Iron Front', place: 'Mount Hallen', hour: 6, weather: 'fog',
     brief: 'General Rhuar has made his last stand at the radio station on the summit of Mount Hallen. Climb the mountain road with your section, take the summit, and end this war.',
-    start: { x: 2620, z: -2380, yaw: Math.PI * 1.1 }, squad: 4, role: 'rifleman',
+    start: { x: 2620, z: -2380, yaw: Math.PI * 1.1 }, squad: 4, role: 'rifleman', items: ['radio'],
     objectives: [
       { type: 'clear', text: 'Fight up the mountain road', spawn: [{ faction: 'nlf', x: 2540, z: -2560, n: 5, order: 'defend', r: 35 }], radio: 'Fog on the mountain. Watch the switchbacks.' },
       { type: 'kill', text: 'Take the summit and kill General Rhuar', target: { faction: 'nlf', x: 2440, z: -2760, name: 'General Rhuar', guards: 7 }, radio: 'Rhuar is at the station. Go!' },
@@ -181,6 +181,9 @@ export class Campaign extends Mode {
     const p = this.findGround(x, z, 20) || [x, z]
     const s = g.spawnPlayer({ faction: 'vdf', role: m.role, x: p[0], z: p[1], yaw: yaw || 0, allowDown: false, name: 'Sgt. Iron 2' })
     if (m.nvg) s.inv.add({ kind: 'tool', id: 'nvg' })
+    // mission gear: sandbags for a defence, mines for an ambush, charges and a radio for an assault
+    for (const id of m.items || []) s.inv.add({ kind: ITEMS[id].kind, id })
+    if (m.items) setTimeout(() => g.hud?.note(`Mission gear: ${[...new Set(m.items)].map(id => ITEMS[id].name).join(', ')}. ${g.input.touch ? 'GEAR button' : '[Y] use, [U] next'}`, C.gold2), 4000)
     if (m.suppressed) for (const k of ['primary', 'sidearm']) { const w = s.inv.weapons[k]; if (w) w.att.muzzle = 'supp' }
     s.refreshWeapon(); s.selectWeapon('primary', true); g.player.rebuildViewmodel()
     if (m.squad) this.playerSquadAround(s, m.squad)

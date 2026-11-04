@@ -102,6 +102,7 @@ export class InventoryUI {
     if (this.sel?.item) {
       const it = this.sel.item, def = ITEMS[it.id]
       if (def?.kind === 'med') acts.push(['Use', () => { s.treat(it.id); this.sel = null }])
+      if (def?.gear) { acts.push(['Use now', () => { this.close?.(); g.gear.use(s, it.id); this.sel = null }]); acts.push(['Select for [Y]', () => { s.gearSel = it.id; g.hud.note(`Gear: ${def.name}`) }]) }
       if (it.id === 'nvg') acts.push(['Put on / off', () => { g.player.nvg = !g.player.nvg }])
       for (const [cid, label] of CONT) if (cid !== this.sel.from && inv.free(cid) >= itemSize(it)) acts.push([`Move to ${label.toLowerCase()}`, () => { inv.remove(it); inv.containers[cid].push(it); this.sel = { item: it, from: cid } }])
       acts.push(['Drop', () => { inv.remove(it); this.drop([it]); this.sel = null }])

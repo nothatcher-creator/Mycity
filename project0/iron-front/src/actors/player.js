@@ -12,6 +12,7 @@ import { raycastTerrain } from '../world/collision.js'
 import { heightAt } from '../world/heightfield.js'
 import { FACTIONS, hostile } from './factions.js'
 import { STAND, CROUCH, PRONE } from './soldier.js'
+import { ITEMS } from '../game/inventory.js'
 
 export class Player {
   constructor(game, soldier) {
@@ -141,7 +142,14 @@ export class Player {
     if (input.hit('light')) { this.light = !this.light }
     if (input.hit('bipod')) { s.bipod = !s.bipod && s.w?.s.bipod && (s.stance === PRONE || this.restingOnSomething()); g.hud?.note(s.bipod ? 'Bipod deployed' : 'Bipod folded') }
     if (s.bipod && (s.speed > 0.3 || (s.stance !== PRONE && !this.restingOnSomething()))) s.bipod = false
-    if (input.hit('heal')) { const id = s.bleed > 0.05 && s.inv.count('bandage') ? 'bandage' : s.inv.count('firstaid') ? 'firstaid' : s.inv.count('medkit') ? 'medkit' : null; if (id && s.treat(id)) g.hud?.note('Used ' + id) }
+    // heal: stop the bleeding first, then a splint for a broken leg, then health, then a painkiller
+    if (input.hit('heal')) {
+      const has = id => s.inv.count(id) > 0, hurt = s.blood < 92
+      const id = s.bleed > 0.05 && has('bandage') ? 'bandage' : s.legHurt && has('splint') ? 'splint' : hurt && has('firstaid') ? 'firstaid' : hurt && has('medkit') ? 'medkit' : (s.legHurt || s.armHurt) && has('morphine') ? 'morphine' : s.bleed > 0.05 && has('firstaid') ? 'firstaid' : null
+      if (id && s.treat(id)) g.hud?.note('Used ' + ITEMS[id].name.toLowerCase()); else if (!id) g.hud?.note(hurt || s.bleed > 0.05 ? 'Nothing to treat that with' : 'Not hurt')
+    }
+    if (input.hit('gear')) { if (!g.gear.use(s) && !g.gear.selected(s)) g.hud?.note('No gear: mines, charges, sandbags, a radio or rations') }
+    if (input.hit('gearNext')) g.gear.next(s)
     if (input.hit('grenade')) { const t = s.inv.count('frag') ? 'frag' : s.inv.count('smoke') ? 'smoke' : s.inv.count('flash') ? 'flash' : null; if (t) g.throwGrenade(s, t, this.aimDirection()) }
     // aiming down sights: hold the right button (or the touch button)
     const wantAds = (input.mouse.right || this.touchAds) && s.w && s.switchT <= 0 && !s.sprint && !s.ladder && !s.swimming

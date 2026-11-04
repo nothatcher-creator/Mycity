@@ -155,7 +155,8 @@ export class AI {
       // the chest, or failing that the head (someone behind low cover still shows his head)
       if (!this.canSee(eye.x, eye.y, eye.z, e.pos.x, ty, e.pos.z, e.vehicle) && !(e.stanceT < 1.5 && this.canSee(eye.x, eye.y, eye.z, e.pos.x, e.pos.y + e.eyeHeight + 0.1, e.pos.z, e.vehicle))) { this.decay(b, e, dt); continue }
       // how quickly he is spotted
-      const stanceVis = e.stanceT > 1.5 ? 0.35 : e.stanceT > 0.5 ? 0.65 : 1
+      // a ghillie suit hides someone crouching or lying down
+      const stanceVis = (e.stanceT > 1.5 ? 0.35 : e.stanceT > 0.5 ? 0.65 : 1) * (e.stanceT > 0.5 && e.inv.worn.shirt === 'ghillie' ? 0.55 : 1)
       const motion = e.speed > 0.5 ? 1.6 : 1
       const firing = e.time - (e.lastShotT ?? -99) < 1.5 && !e.w?.s.suppressed ? 3 : 1
       // distance counts for more the further it gets (a still, standing man in the open: under a second at
@@ -452,7 +453,8 @@ export class AI {
     const dist = Math.hypot(t.pos.x - eye.x, t.pos.z - eye.z)
     // lead a moving target, and hold over for the drop at range
     const tof = dist / 800
-    const ax = t.pos.x + t.vel.x * tof, az = t.pos.z + t.vel.z * tof
+    const tv = t.vehicle ? t.vehicle.vel : t.vel
+    const ax = t.pos.x + tv.x * tof, az = t.pos.z + tv.z * tof
     const drop = 0.5 * 9.81 * tof * tof
     const dir = _v2.set(ax - eye.x, aimY + drop - eye.y, az - eye.z).normalize()
     const yaw = Math.atan2(dir.x, dir.z) + b.aimErr.x, pitch = Math.asin(Math.max(-1, Math.min(1, dir.y))) + b.aimErr.y
@@ -539,7 +541,9 @@ export class AI {
     if (seen) {
       const piv = v.model.gunPivot && !seat.side ? _v.set(v.model.gunPivot[0], v.model.gunPivot[1], v.model.gunPivot[2]).applyQuaternion(v.quat).add(v.pos) : _v.set(seat.at[0], seat.at[1] + 0.5, seat.at[2]).applyQuaternion(v.quat).add(v.pos)
       const a = AMMO_V[seat.w.def.ammo] || 800, dist = Math.hypot(t.pos.x - piv.x, t.pos.z - piv.z), tof = dist / a
-      const tx = t.pos.x + t.vel.x * tof, tz = t.pos.z + t.vel.z * tof, ty = t.pos.y + (t.vehicle ? 1.2 : 1.0) + 0.5 * 9.81 * tof * tof
+      // lead the target (a vehicle's speed for its crew: an aircraft is all lead)
+      const tv = t.vehicle ? t.vehicle.vel : t.vel
+      const tx = t.pos.x + tv.x * tof, tz = t.pos.z + tv.z * tof, ty = t.pos.y + tv.y * tof + (t.vehicle ? 1.2 : 1.0) + 0.5 * 9.81 * tof * tof
       const yaw = Math.atan2(tx - piv.x, tz - piv.z), pitch = Math.atan2(ty - piv.y, dist)
       wantYaw = yaw - v.yaw - (seat.side ? seat.side * 1.2 : 0)
       while (wantYaw - seat.aimYaw > Math.PI) wantYaw -= Math.PI * 2

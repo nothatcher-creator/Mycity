@@ -8,7 +8,7 @@ export const DEFAULT_BINDS = {
   view: 'KeyV', inventory: 'Tab', map: 'KeyM', fireMode: 'KeyB', grenade: 'KeyG', melee: 'KeyX',
   slot1: 'Digit1', slot2: 'Digit2', slot3: 'Digit3', slot4: 'Digit4', slot5: 'Digit5',
   zeroUp: 'PageUp', zeroDown: 'PageDown', binoculars: 'KeyO', nvg: 'KeyN', light: 'KeyL', heal: 'KeyH',
-  squad: 'KeyT', pause: 'KeyP', shoulder: 'KeyK', bipod: 'KeyJ', holdBreath: 'ShiftLeft', freeLook: 'Backquote',
+  squad: 'KeyT', gear: 'KeyY', gearNext: 'KeyU', pause: 'KeyP', shoulder: 'KeyK', bipod: 'KeyJ', holdBreath: 'ShiftLeft', freeLook: 'Backquote',
   // vehicles
   vUp: 'Space', vDown: 'KeyC', vBoost: 'ShiftLeft', vSeat: 'KeyX', vLight: 'KeyL', vHorn: 'KeyH', vFlares: 'KeyR', vGear: 'KeyG',
 }
@@ -18,7 +18,7 @@ export const ACTION_NAMES = {
   interact: 'Interact / enter vehicle', view: 'First / third person', inventory: 'Inventory', map: 'Map', fireMode: 'Fire mode',
   grenade: 'Throw grenade', melee: 'Melee', slot1: 'Primary weapon', slot2: 'Launcher', slot3: 'Sidearm', slot4: 'Grenades', slot5: 'Medkit / tool',
   zeroUp: 'Zeroing up', zeroDown: 'Zeroing down', binoculars: 'Binoculars', nvg: 'Night vision', light: 'Flashlight', heal: 'Bandage / heal',
-  squad: 'Squad commands', pause: 'Pause menu', shoulder: 'Switch shoulder', bipod: 'Deploy bipod', freeLook: 'Free look',
+  squad: 'Squad commands', gear: 'Use gear (mine, charge, sandbags, radio)', gearNext: 'Next gear', pause: 'Pause menu', shoulder: 'Switch shoulder', bipod: 'Deploy bipod', freeLook: 'Free look',
   vUp: 'Vehicle: up / collective', vDown: 'Vehicle: down / brake', vBoost: 'Vehicle: boost', vSeat: 'Vehicle: change seat', vLight: 'Vehicle: lights',
   vHorn: 'Vehicle: horn', vFlares: 'Vehicle: flares', vGear: 'Vehicle: landing gear',
 }

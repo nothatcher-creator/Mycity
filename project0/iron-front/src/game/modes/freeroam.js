@@ -12,14 +12,14 @@ import { FACTIONS, hostile } from '../../actors/factions.js'
 import { WEATHER } from '../../world/sky.js'
 import { QUALITY } from '../../core/engine.js'
 import { VEHICLES } from '../../vehicles/vehicle-data.js'
-import { Inventory } from '../inventory.js'
+import { Inventory, ITEMS } from '../inventory.js'
 import { C, text } from '../../ui/ui.js'
 
 export const CONTROL = { kaldor: 'vdf', tovar: 'vdf', kessel: 'vdf', sorn: 'vdf', anselm: 'cef', power: 'cef', halvik: 'res', koriv: 'res',
   dresk: 'nlf', sentinel: 'nlf', grail: 'nlf', hallen: 'nlf', quarry: 'nlf', marsk: 'nlf', lumber: 'nlf', ilsen: 'nlf', belno: 'nlf' }
 const GARRISON = { city: 3, airport: 3, military: 3, town: 2, village: 1, industry: 1, landmark: 1 }
-const MIL_VEH = { vdf: ['jeep', 'truck', 'apc', 'mbt', 'ammotruck'], nlf: ['technical', 'truck', 'ifv', 'mbt', 'technical'], cef: ['mrap', 'truck', 'ifv', 'mbt', 'ammotruck'], res: ['technical', 'pickup', 'quad', 'dirtbike'] }
-const HELI = { vdf: ['transportheli', 'attackheli', 'scoutheli'], nlf: ['transportheli', 'attackheli'], cef: ['transportheli', 'attackheli', 'scoutheli'], res: ['scoutheli'] }
+const MIL_VEH = { vdf: ['jeep', 'truck', 'apc', 'luvm', 'mbt', 'ambulance', 'ammotruck', 'spaa'], nlf: ['technical', 'truck', 'ifv', 'techgl', 'mbt', 'technical', 'spaa'], cef: ['mrap', 'truck', 'ifv', 'luvm', 'mbt', 'ambulance', 'ammotruck'], res: ['technical', 'pickup', 'techgl', 'quad', 'dirtbike'] }
+const HELI = { vdf: ['transportheli', 'attackheli', 'armedheli', 'scoutheli'], nlf: ['transportheli', 'attackheli'], cef: ['armedheli', 'attackheli', 'scoutheli', 'transportheli'], res: ['scoutheli'] }
 const PLANE = ['fighter', 'groundattack', 'civilplane', 'transportplane']
 const BOAT = ['motorboat', 'rhib', 'patrolboat', 'motorboat']
 const CIVIL = ['sedan', 'hatch', 'pickup', 'motorbike', 'sedan', 'quad']
@@ -96,7 +96,8 @@ export class FreeRoam extends Mode {
         // an enemy-held town or base often has an armed vehicle patrolling its streets
         if (this.enemyOf(side) && ['city', 'town', 'military', 'airport'].includes(p.kind) && Math.random() < 0.6) {
           const c = this.findGround(p.x, p.z, p.r * 0.5, 30, Math.random, 3) || [p.x, p.z]
-          const q = this.crewed(side === 'nlf' && Math.random() < 0.3 ? 'ifv' : 'technical', side, c[0], c[1], Math.random() * 6, { type: 'patrol', route: this.patrolRoute(p.x, p.z, Math.min(p.r * 0.7, 300), 5) })
+          const r = Math.random(), type = side === 'nlf' ? (r < 0.3 ? 'ifv' : r < 0.55 ? 'techgl' : 'technical') : side === 'res' ? (r < 0.35 ? 'techgl' : 'technical') : r < 0.4 ? 'luvm' : side === 'cef' ? 'mrap' : 'apc'
+          const q = this.crewed(type, side, c[0], c[1], Math.random() * 6, { type: 'patrol', route: this.patrolRoute(p.x, p.z, Math.min(p.r * 0.7, 300), 5) })
           if (q) { q.place = p.id; P.squads.push(q); near += 2 }
         }
       } else if (P.active && d > p.r + 1500) this.standDown(P)
@@ -204,6 +205,9 @@ export class FreeRoam extends Mode {
   }
   stashLoot() {
     const it = [{ kind: 'med', id: 'medkit', count: 1 }, { kind: 'grenade', id: 'frag' }, { kind: 'grenade', id: 'frag' }, { kind: 'tool', id: 'nvg' }, { kind: 'tool', id: 'repairkit' }]
+    // and one or two pieces of field gear
+    const extra = [{ kind: 'tool', id: 'c4' }, { kind: 'tool', id: 'mine' }, { kind: 'tool', id: 'radio' }, { kind: 'tool', id: 'sandbags' }, { kind: 'clothing', id: 'ghillie' }, { kind: 'food', id: 'ration' }, { kind: 'med', id: 'splint' }, { kind: 'med', id: 'morphine' }]
+    for (let i = 0; i < 2; i++) it.push(extra[Math.floor(Math.random() * extra.length)])
     const w = this.g.player.s.w
     if (w) for (let i = 0; i < 3; i++) it.push({ kind: 'mag', ammo: w.def.ammo, rounds: w.s.mag, cap: w.s.mag, belt: !!w.def.belt })
     return it
@@ -271,6 +275,10 @@ export class FreeRoam extends Mode {
     else if (action === 'ammo') { g.resupply(s, 'all') }
     else if (action === 'teleport') { const y = heightAt(arg.x, arg.z); s.pos.set(arg.x, y, arg.z); s.vel.set(0, 0, 0); if (s.vehicle) g.vehicles.exit(s, true); s.pos.set(arg.x, y, arg.z); g.preload(arg.x, arg.z); for (const m of g.playerSquad?.alive || []) if (m !== s && !m.vehicle) { const p = this.findGround(arg.x, arg.z, 8) || [arg.x, arg.z]; m.pos.set(p[0], heightAt(p[0], p[1]), p[1]) }; g.hud.note('Teleported') }
     else if (action === 'clear') { for (const q of [...g.ai.squads]) if (!q.player) this.removeSquad(q); for (const P of this.places) { P.active = false; P.squads = [] } g.hud.note('All AI removed (garrisons return as you travel)') }
+    else if (action === 'item') {
+      if (arg === 'ghillie') { const r = s.inv.takeOff('shirt'); s.inv.wear('ghillie'); for (const it of r.spilled) s.inv.add(it); g.hud.note('Ghillie suit on: crouch or lie down to vanish') }
+      else { const it = ITEMS[arg]; if (s.inv.add({ kind: it.kind, id: arg })) g.hud.note(`${it.name} added`); else g.hud.note('No room for that') }
+    }
     else if (action === 'weapon') { const def = arg; s.inv.weapons[def.slot] = { id: def.id, att: def.att || {}, mag: def.mag, chamber: 1 }; for (let i = 0; i < 4; i++) s.inv.add({ kind: 'mag', ammo: def.ammo, rounds: def.mag, cap: def.mag, belt: !!def.belt }, 'backpack'); s.selectWeapon(def.slot); g.player.rebuildViewmodel(); g.hud.note(`${def.name} equipped`) }
   }
   // ---- HUD ----

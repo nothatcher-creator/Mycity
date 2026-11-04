@@ -8,6 +8,7 @@ export const CLOTHING = {
   tshirt: { name: 'T-shirt', slot: 'shirt', cap: 2, weight: 0.2 },
   combatshirt: { name: 'Combat shirt', slot: 'shirt', cap: 3, weight: 0.4 },
   fieldjacket: { name: 'Field jacket', slot: 'shirt', cap: 6, weight: 1.0 },
+  ghillie: { name: 'Ghillie suit', slot: 'shirt', cap: 4, weight: 2.5, conceal: 0.55 },
   // trousers
   jeans: { name: 'Jeans', slot: 'pants', cap: 3, weight: 0.6 },
   combatpants: { name: 'Combat trousers', slot: 'pants', cap: 5, weight: 0.7 },
@@ -42,16 +43,17 @@ export const ITEMS = {
   frag: { name: 'Frag grenade', size: 1, weight: 0.4, kind: 'grenade' },
   smoke: { name: 'Smoke grenade', size: 1, weight: 0.4, kind: 'grenade' },
   flash: { name: 'Flashbang', size: 1, weight: 0.3, kind: 'grenade' },
-  ration: { name: 'Ration', size: 1, weight: 0.5, kind: 'food', food: 40 },
+  ration: { name: 'Ration', size: 1, weight: 0.5, kind: 'food', food: 40, gear: true },
   canteen: { name: 'Canteen', size: 1, weight: 1, kind: 'water', water: 50 },
   binoculars: { name: 'Binoculars', size: 1, weight: 0.8, kind: 'tool', zoom: 7 },
   rangefinder: { name: 'Rangefinder', size: 1, weight: 0.6, kind: 'tool', zoom: 6, range: true },
   nvg: { name: 'Night-vision goggles', size: 1, weight: 0.6, kind: 'tool', nvg: true },
   repairkit: { name: 'Repair kit', size: 3, weight: 3, kind: 'tool', repair: 40 },
   jerrycan: { name: 'Jerrycan', size: 4, weight: 6, kind: 'tool', fuel: 0.4 },
-  radio: { name: 'Field radio', size: 1, weight: 0.8, kind: 'tool', radio: true },
-  mine: { name: 'AT mine', size: 3, weight: 6, kind: 'tool', mine: true },
-  sandbags: { name: 'Sandbag kit', size: 4, weight: 5, kind: 'tool', fort: true },
+  radio: { name: 'Field radio', size: 1, weight: 0.8, kind: 'tool', radio: true, gear: true },
+  mine: { name: 'AT mine', size: 3, weight: 6, kind: 'tool', mine: true, gear: true },
+  sandbags: { name: 'Sandbag kit', size: 3, weight: 3, kind: 'tool', fort: true, gear: true },
+  c4: { name: 'Demolition charge', size: 2, weight: 1.5, kind: 'tool', gear: true },
 }
 // The size of things that are not plain items.
 export function itemSize(it) {
@@ -158,7 +160,7 @@ export function newMag(def, s = null) {
 export function kit(role, faction, F, roles) {
   const inv = new Inventory()
   const irregular = F.irregular
-  inv.wear(irregular ? 'tshirt' : 'combatshirt')
+  inv.wear(irregular ? 'tshirt' : role === 'sniper' ? 'ghillie' : 'combatshirt')
   inv.wear(irregular ? 'jeans' : role === 'sniper' ? 'cargopants' : 'combatpants')
   inv.wear(irregular ? 'chestrig' : role === 'mg' || role === 'autorifleman' ? 'tacvest' : role === 'sniper' ? 'chestrig' : 'platecarrier')
   inv.wear(role === 'at' || role === 'medic' || role === 'mg' || role === 'engineer' ? 'assaultpack' : irregular ? 'daypack' : 'daypack')
@@ -187,6 +189,12 @@ export function kit(role, faction, F, roles) {
   if (R.medkits) inv.add({ kind: 'med', id: 'medkit', count: R.medkits })
   if (R.repair) inv.add({ kind: 'tool', id: 'repairkit' })
   if (role === 'officer' || role === 'sniper') inv.add({ kind: 'tool', id: role === 'sniper' ? 'rangefinder' : 'binoculars' })
+  // field gear by role: the section leader's radio, the engineer's mines and charges, sandbags for the gun team
+  if (role === 'officer' && !irregular) inv.add({ kind: 'tool', id: 'radio' })
+  if (role === 'engineer') { inv.add({ kind: 'tool', id: 'c4', count: 2 }); inv.add({ kind: 'tool', id: 'mine' }) }
+  if (role === 'mg') inv.add({ kind: 'tool', id: 'sandbags' })
+  if (role === 'medic') { inv.add({ kind: 'med', id: 'splint', count: 2 }); inv.add({ kind: 'med', id: 'morphine', count: 2 }) }
+  inv.add({ kind: 'food', id: 'ration' })
   inv.add({ kind: 'tool', id: 'binoculars' })
   return inv
 }

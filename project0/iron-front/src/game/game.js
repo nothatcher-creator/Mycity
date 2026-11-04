@@ -33,6 +33,7 @@ import { kit } from './inventory.js'
 import { Vehicles } from '../vehicles/vehicles.js'
 import { VehicleControl } from '../vehicles/vcontrol.js'
 import { SFX } from './sfx.js'
+import { Gear } from './gear.js'
 import { Save } from './save.js'
 import { MODES } from './modes/index.js'
 
@@ -87,6 +88,7 @@ export class Game {
     this.fx = new Effects(this.engine.world, q)
     this.ballistics = new Ballistics(this)
     this.rig = new Rig(this.engine.world)
+    this.gear = new Gear(this)
     this.ai = new AI(this)
     this.vehicles = new Vehicles(this)
     this.vcontrol = new VehicleControl(this)
@@ -226,6 +228,8 @@ export class Game {
       if (e.code === 'Numpad8') { const x = s.pos.x + Math.sin(s.yaw) * 2.5, z = s.pos.z + Math.cos(s.yaw) * 2.5, y = heightAt(x, z); this.collision.add(makeBox(x, y + 0.5, z, 1.5, 0.5, 0.2, s.yaw, 'sandbag', 'wall')); const m = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.4), new THREE.MeshLambertMaterial({ color: 0xa68f5f })); m.position.set(x, y + 0.5, z); m.rotation.y = s.yaw; this.engine.world.add(m); p0.log('dbg wall placed') }
       // an enemy anti-tank team 160 m ahead (tests AI rockets), and a wound for yourself (tests medics)
       if (e.code === 'Numpad2') { const a0 = s.vehicle ? s.vehicle.yaw : s.yaw; let x = 0, z = 0; for (let k = 0; k < 24; k++) { const a = a0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.26, r = 150 - (k % 3) * 25; x = s.pos.x + Math.sin(a) * r; z = s.pos.z + Math.cos(a) * r; const hy = heightAt(x, z) + 1.6, dx = s.pos.x - x, dy = s.pos.y + 1.5 - hy, dz = s.pos.z - z, d = Math.hypot(dx, dy, dz); if (raycastTerrain(x, hy, z, dx / d, dy / d, dz / d, d - 2, 2) < 0) break } const q = this.mode?.spawnSquad?.('nlf', x, z, 3, { type: 'hold', pos: new THREE.Vector3(x, 0, z) }, { roles: ['at'] }); p0.log('dbg at team', !!q, Math.round(x), Math.round(z)) }
+      if (e.code === 'Numpad6') { for (const id of ['radio', 'c4', 'mine', 'sandbags', 'ration']) s.inv.add({ kind: id === 'ration' ? 'food' : 'tool', id }); this.player.pitch = -0.012; p0.log('dbg gear', this.gear.owned(s).join(','), 'sel', this.gear.selected(s)) }
+      if (e.code === 'Numpad4') { const L = ['luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1) }
       if (e.code === 'Numpad3') { s.blood = 40; s.bleed = 0.2; p0.log('dbg wounded', s.blood) }
       if (e.code === 'Numpad9') for (const [m, b] of this.ai.brains) if (!m.dead && m !== s) p0.log('dbg ai', m.team, m.name, m.role, Math.round(m.pos.x), Math.round(m.pos.z), Math.round(m.blood), b.state, 'target', b.target?.name || '-', 'spot', (b.spot.get(s) || 0).toFixed(2), 'slot', m.slot, 'd', Math.round(m.pos.distanceTo(s.pos)), 'yaw', m.yaw.toFixed(1), 'react', b.reactT.toFixed(1), 'cover', !!b.cover, 'peek', b.peeking, 'seen', (this.ai.time - b.lastSeen).toFixed(1), 'gtime', (this.time - b.lastSeen).toFixed(1), 'rk', b.dbgR || '-', 'spd', m.speed.toFixed(1), 'st', m.stance, 'mv', b.move ? Math.round(b.move.distanceTo(m.pos)) : -1, 'path', b.path ? b.path.length : -1, 'stuck', b.stuckT.toFixed(1), 'fwd', m.input.fwd.toFixed(2), 'spr', m.input.sprint, 'pause', (b.pause || 0).toFixed(1))
       if (e.code === 'Numpad9') p0.log('dbg state blood', Math.round(s.blood), 'bleed', s.bleed.toFixed(2), 'y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2))
@@ -298,6 +302,7 @@ export class Game {
   }
   clearWorld() {
     for (const v of [...this.vehicles.list]) this.vehicles.remove(v)
+    this.gear?.clear()
     this.soldiers = []; this.ai = new AI(this); this.grenades = []; this.loot = []
     if (this.player) {
       this.player.light = false; this.player.updateLight()
@@ -667,6 +672,7 @@ export class Game {
     this.vehicles.update(dt)
     this.ballistics.update(dt)
     this.updateGrenades(dt)
+    this.gear.update(dt)
     this.mode?.update(dt)
     this.discover()
     // the scope and the rangefinder read the range to what is under the crosshair
@@ -718,6 +724,11 @@ export class Game {
   // Ammunition and medical supplies from a truck or a crate.
   resupply(s, kind) {
     if (kind === 'medical' || kind === 'all') { s.blood = 100; s.bleed = 0; for (const k in s.parts) s.parts[k] = 0 }
+    if (kind === 'fuel') {
+      const near = this.vehicles.list.filter(v => v.alive && !v.def.supply && v.pos.distanceTo(s.pos) < 15)
+      for (const v of near) v.fuel = v.maxFuel
+      this.hud.note(near.length ? `Refuelled ${near.map(v => v.def.name).join(', ')}` : 'Bring a vehicle within 15 m to refuel it'); this.sfx.ui('pickup'); return
+    }
     if (kind === 'ammo' || kind === 'all') {
       const r = this.mode?.refill?.(s) ?? defaultRefill(s)
       this.hud.note(r ? 'Rearmed' : 'Nothing to rearm')

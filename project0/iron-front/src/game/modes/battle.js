@@ -82,7 +82,7 @@ export class Battle extends Mode {
     // vehicles at each base
     for (const side of ['A', 'B']) {
       const [bx, bz] = this.base[side], f = side === 'A' ? this.sideA : this.sideB
-      const types = this.kind === 'survival' ? [] : f === 'nlf' || f === 'res' ? ['technical', 'ifv'] : ['jeep', 'apc']
+      const types = this.kind === 'survival' ? [] : f === 'nlf' || f === 'res' ? ['technical', 'techgl', 'ifv'] : ['luvm', 'apc', 'ambulance']
       types.forEach((t, i) => this.park(t, bx + Math.cos(this.axis + Math.PI / 2) * (12 + i * 10), bz + Math.sin(this.axis + Math.PI / 2) * (12 + i * 10), this.axis + (side === 'A' ? Math.PI : 0), { faction: f, search: 30 }))
     }
     // a crewed fighting vehicle for each side (driver and gunner): a technical, an APC or an armoured car

@@ -342,6 +342,7 @@ export class Menus {
     const cat = this.wcat || 'rifle'
     grid('WEAPONS: CATEGORY', Object.entries(CATEGORIES).map(([k, v]) => ({ label: v, on: k === cat, fn: () => { this.wcat = k; this.panel.dirty = true } })))
     grid('WEAPONS: TAKE ONE', WEAPONS.filter(d => d.cat === cat).map(d => ({ label: d.name, fn: act('weapon', d) })))
+    grid('GEAR: TAKE ONE ([Y] uses it, [U] picks the next)', [['mine', 'AT mine'], ['c4', 'Demolition charge'], ['sandbags', 'Sandbag kit'], ['radio', 'Field radio (mortars)'], ['ghillie', 'Ghillie suit (wear)'], ['ration', 'Ration'], ['splint', 'Splint'], ['morphine', 'Painkiller'], ['medkit', 'Medkit']].map(([id, l]) => ({ label: l, fn: act('item', id, false) })))
     p.button(c, 'back', x, y + 4 * s, 200 * s, 44 * s, 'BACK', () => this.back(), { align: 'center' })
     this.maxScroll = Math.max(0, y + this.scroll + 60 * s - H)
     if (this.scroll > this.maxScroll) this.scroll = this.maxScroll

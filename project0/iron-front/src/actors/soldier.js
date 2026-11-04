@@ -230,6 +230,7 @@ export class Soldier {
     this.W = W
     this.time += dt
     if (this.painkiller > 0) this.painkiller -= dt
+    if (this.fedT > 0) this.fedT -= dt
     this.suppression = Math.max(0, this.suppression - dt * 0.35)
     // timers
     const w = this.w
@@ -268,7 +269,7 @@ export class Soldier {
     this.sprint = sprint && this.speed > 3
     // stamina
     if (sprint && this.speed > 2) this.stamina = Math.max(0, this.stamina - dt * (0.09 + weight * 0.0025))
-    else this.stamina = Math.min(1, this.stamina + dt * (this.stance === STAND ? 0.08 : 0.12) * (inp.fwd || inp.side ? 0.6 : 1))
+    else this.stamina = Math.min(1, this.stamina + dt * (this.stance === STAND ? 0.08 : 0.12) * (inp.fwd || inp.side ? 0.6 : 1) * (this.fedT > 0 ? 1.5 : 1))
     // ladders: climb when facing one and pushing forward
     if (this.ladder) { this.climb(dt, W); return }
     if (W.ladders) for (const L of W.ladders) {

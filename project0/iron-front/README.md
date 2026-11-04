@@ -37,6 +37,8 @@ Independent Resistance (RES).
 | First / third person, shoulder | V, K |
 | Map / inventory / squad orders / pause | M, Tab, T, P |
 | Binoculars / night vision / flashlight / bipod / hold breath | O, N, L, J, Shift (aiming with a scope) |
+| Field gear: use / next | Y, U (or Use in the inventory) |
+| Heal | H: a bandage if bleeding, a splint for a broken leg, then a first aid kit or medkit, then a painkiller |
 | Vehicles | W S throttle or pitch, A D steer or roll, Space and C up and down, Shift boost, X change seat, R flares, G landing gear, H horn |
 
 Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with flight assist on.
@@ -66,10 +68,19 @@ quads over the 3D view.
   crouching or prone target slow it further; deep in the trees contact can be broken.
 - **Destruction**: tank shells, rockets, missiles and bombs knock wall sections out of buildings (`citystream.js`), and glass breaks.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
-  thickness, ricochets and near-miss suppression (`ballistics.js`); 48 hand-held weapons and 12 mounted
+  thickness, ricochets and near-miss suppression (`ballistics.js`); 58 hand-held weapons and 13 mounted
   ones with attachments (`weapons-data.js`); models built in code (`weapon-models.js`).
-- **Vehicles** (`src/vehicles/`): 27 types: cars, bikes, trucks, APC, IFV, tank, armoured car,
-  helicopters, planes and boats, with seats, mounted weapons, armour and damage.
+- **Vehicles** (`src/vehicles/`): 32 types: cars, bikes, trucks, an armed utility vehicle, technicals
+  (machine gun or grenade launcher), a field ambulance (heals at the tailgate), APC, IFV, tank, armoured
+  car, a quad-23 mm anti-aircraft vehicle, helicopters (including an armed transport with rocket pods),
+  planes and boats, with seats, mounted weapons, armour and damage.
+- **Field gear** (`src/game/gear.js`): AT mines (go off under ground vehicles), demolition charges
+  (10-second fuse, on the ground or stuck to a vehicle), sandbag walls (cover that stops rifle fire, the
+  AI uses it too), the field radio (a five-round mortar strike where you look, 60–900 m, every 150 s),
+  rations (stamina), a ghillie suit (crouched or prone, the AI takes about twice as long to spot you).
+  Section leaders carry radios, engineers mines and charges, machine gunners sandbags; missions hand
+  out what they need (sandbags at the bridge and the docks, mines for the ambush, charges and a radio
+  for Camp Sentinel).
 - **Inventory** (`src/game/inventory.js`): what you wear sets what you can carry (pockets, vest,
   backpack); weight slows you; looting bodies and stashes.
 - **Modes** (`src/game/modes/`): `freeroam.js`, `battle.js`, `campaign.js` on a shared `base.js`.
@@ -110,7 +121,8 @@ off in the published game): F9 Free Roam, F10 the next Battle mode, F12 the next
 F11 back to the menu, Home completes the current objective, End moves you near it, F3–F7 put you in a
 fighter, helicopter, tank or jeep, F4 teleports to open country, Insert spawns an enemy crewed
 technical, Numpad2 an enemy anti-tank team with a sight line to you, Numpad3 wounds you (medic test),
-Numpad9 logs your state and every AI's, Delete puts you in a boat, F1 swings a jet's aim, F2 prints the vehicle's state.
+Numpad9 logs your state and every AI's,
+Numpad6 gives you all the field gear (and aims at the ground 80 m out), Numpad4 spawns the next new vehicle, Delete puts you in a boat, F1 swings a jet's aim, F2 prints the vehicle's state.
 
 - `tools/pack.sh` builds `build/experience.zip` (and refuses lines over 1,000 characters).
 - Validate and publish with the Project 0 agent API (`/api/agent/lots/3084/experience/validate`, then

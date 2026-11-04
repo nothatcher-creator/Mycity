@@ -22,7 +22,8 @@ const MIL_VEH = { vdf: ['jeep', 'truck', 'apc', 'luvm', 'mbt', 'ambulance', 'amm
 const HELI = { vdf: ['transportheli', 'attackheli', 'armedheli', 'scoutheli'], nlf: ['transportheli', 'attackheli'], cef: ['armedheli', 'attackheli', 'scoutheli', 'transportheli'], res: ['scoutheli'] }
 const PLANE = ['fighter', 'groundattack', 'civilplane', 'transportplane']
 const BOAT = ['motorboat', 'rhib', 'patrolboat', 'motorboat']
-const CIVIL = ['sedan', 'hatch', 'pickup', 'motorbike', 'sedan', 'quad']
+// what is parked in the streets: buses, taxis and a police car in the cities, tractors in the villages
+const CIVIL = { city: ['bus', 'sedan', 'taxi', 'police', 'van', 'hatch', 'sports', 'scooter'], town: ['sedan', 'van', 'hatch', 'pickup', 'police', 'scooter'], village: ['pickup', 'tractor', 'hatch'] }
 
 export class FreeRoam extends Mode {
   get name() { return 'Free Roam' }
@@ -171,7 +172,7 @@ export class FreeRoam extends Mode {
       if (!onRoad(x, z)) continue
       // beside the road, along it
       const yaw = Math.random() * Math.PI * 2
-      if (this.park(CIVIL[placed % CIVIL.length], x, z, yaw, { search: 6 })) placed++
+      const L = CIVIL[p.kind]; if (this.park(L[placed % L.length], x, z, yaw, { search: 6 })) placed++
     }
   }
   standDown(P) {

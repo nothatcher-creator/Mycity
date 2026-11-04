@@ -126,6 +126,9 @@ export class Panel {
     c.clearRect(0, 0, this.w, this.h)
     this.buttons = []
     this.draw(c, this)
+    // a canvas left completely empty was not sent again, so the old picture stayed on screen (a prompt
+    // still showing after you got in): one all-but-invisible pixel makes every redraw count
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = 'rgba(0,0,0,0.004)'; c.fillRect(0, 0, 1, 1)
     this.tex.needsUpdate = true
     this.dirty = false
   }

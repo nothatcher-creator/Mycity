@@ -241,7 +241,7 @@ export class Game {
       if (e.code === 'BracketRight') { this.sky.hour = (this.sky.hour + 2) % 24; this.sky.cycle = false; p0.log('dbg hour', this.sky.hour.toFixed(1)) }
       if (e.code === 'BracketLeft') { const K = Object.keys(WEATHER), k = K[(K.indexOf(this.sky.weatherKey) + 1) % K.length]; this.sky.setWeather(k); this.sky.w = { ...WEATHER[k] }; p0.log('dbg weather', k) }
       if (e.code === 'Numpad6') { for (const id of ['radio', 'c4', 'mine', 'sandbags', 'ration']) s.inv.add({ kind: id === 'ration' ? 'food' : 'tool', id }); this.player.pitch = -0.012; p0.log('dbg gear', this.gear.owned(s).join(','), 'sel', this.gear.selected(s)) }
-      if (e.code === 'Numpad4') { const L = ['luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1); if (v && !s.vehicle && this.vehicles.enter(s, v)) this.vcontrol.entered(v) }
+      if (e.code === 'Numpad4') { const L = ['bus', 'sports', 'police', 'tractor', 'scooter', 'van', 'taxi', 'luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1); if (v && !s.vehicle && this.vehicles.enter(s, v)) this.vcontrol.entered(v) }
       if (e.code === 'Numpad3') { s.blood = 40; s.bleed = 0.2; s.stamina = 0.08; p0.log('dbg wounded', s.blood) }
       if (e.code === 'Numpad9') for (const [m, b] of this.ai.brains) if (!m.dead && m !== s) p0.log('dbg ai', m.team, m.name, m.role, Math.round(m.pos.x), Math.round(m.pos.z), Math.round(m.blood), b.state, 'target', b.target?.name || '-', 'spot', (b.spot.get(s) || 0).toFixed(2), 'slot', m.slot, 'd', Math.round(m.pos.distanceTo(s.pos)), 'yaw', m.yaw.toFixed(1), 'react', b.reactT.toFixed(1), 'cover', !!b.cover, 'peek', b.peeking, 'seen', (this.ai.time - b.lastSeen).toFixed(1), 'gtime', (this.time - b.lastSeen).toFixed(1), 'rk', b.dbgR || '-', 'spd', m.speed.toFixed(1), 'st', m.stance, 'mv', b.move ? Math.round(b.move.distanceTo(m.pos)) : -1, 'path', b.path ? b.path.length : -1, 'stuck', b.stuckT.toFixed(1), 'fwd', m.input.fwd.toFixed(2), 'spr', m.input.sprint, 'pause', (b.pause || 0).toFixed(1))
       if (e.code === 'Numpad9' && s.vehicle) { const v = s.vehicle; p0.log('dbg veh', v.def.name, 'pos', v.pos.x.toFixed(1), v.pos.y.toFixed(2), v.pos.z.toFixed(2), 'land', heightAt(v.pos.x, v.pos.z).toFixed(2), 'floor', this.collision.floorAt(v.pos.x, v.pos.y + 1.5, v.pos.z, 1.5, 6).toFixed(2), 'water', waterLevelAt(v.pos.x, v.pos.z).toFixed(2), 'spd', v.speed.toFixed(1), 'eng', v.engine, 'hp', Math.round(v.hp)) }
@@ -749,7 +749,7 @@ export class Game {
   vehicleStore(v) {
     if (!v.store) {
       const d = v.def, cap = d.cargo || { bike: 4, car: 24, tracked: 40, heli: 50, plane: 40, boat: 20 }[v.kind] || 24
-      const big = /truck|ambulance|bus|van/.test(v.type) ? 3 : 1
+      const big = !d.cargo && /truck|ambulance/.test(v.type) ? 3 : 1
       const items = []
       if (v.faction) items.push({ kind: 'med', id: 'firstaid', count: 2 }, { kind: 'grenade', id: 'frag' }, { kind: 'tool', id: 'repairkit' })
       else items.push({ kind: 'food', id: 'ration' }, { kind: 'water', id: 'canteen' })

@@ -142,7 +142,7 @@ export class VehicleControl {
     }
     if (this.firstPerson) {
       // the driver's or pilot's seat
-      const p = new THREE.Vector3(seat.at[0], seat.at[1] + 0.55, seat.at[2] + 0.1).applyQuaternion(v.quat).add(v.pos)
+      const p = new THREE.Vector3(seat.at[0], seat.at[1] + (d.eye ?? 0.55), seat.at[2] + 0.1).applyQuaternion(v.quat).add(v.pos)
       this.camPos.copy(p)
       const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(this.orbit.pitch * 0.5 - 0.05, this.orbit.yaw + Math.PI, 0, 'YXZ'))
       this.camQuat.copy(v.quat).multiply(q)

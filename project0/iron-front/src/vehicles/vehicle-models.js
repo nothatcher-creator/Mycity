@@ -12,7 +12,7 @@ const C = {
   glass: [0.2, 0.27, 0.33], light: [1, 0.95, 0.8], red: [0.75, 0.12, 0.1], white: [0.88, 0.88, 0.86], metal: [0.5, 0.5, 0.52],
   canvas: [0.4, 0.42, 0.28], wood: [0.5, 0.38, 0.25], navy: [0.35, 0.4, 0.46], orange: [0.85, 0.45, 0.12], black: [0.06, 0.06, 0.07],
 }
-export const PAINTS = { olive: C.olive, tan: C.tan, grey: C.grey, navy: C.navy, red: [0.7, 0.16, 0.12], blue: [0.18, 0.32, 0.58], white: C.white, green: [0.22, 0.42, 0.28], yellow: [0.85, 0.7, 0.15], black: [0.14, 0.14, 0.15], camo: [0.38, 0.4, 0.26] }
+export const PAINTS = { olive: C.olive, tan: C.tan, grey: C.grey, navy: C.navy, red: [0.7, 0.16, 0.12], blue: [0.18, 0.32, 0.58], white: C.white, green: [0.22, 0.42, 0.28], yellow: [0.85, 0.7, 0.15], black: [0.14, 0.14, 0.15], camo: [0.38, 0.4, 0.26], farm: [0.2, 0.5, 0.18] }
 const GLASS = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide })
 const MILITARY = [PAINTS.olive, PAINTS.tan, PAINTS.grey, PAINTS.green]
 
@@ -99,6 +99,8 @@ export function buildVehicle(def, paint, mat) {
       for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) wheel(x * (W / 2 - 0.12), 0.33, z * (len / 2 - 0.75), 0.33, 0.22, z > 0)
       hull(0, 0.85, 0, W / 2, 0.55, len / 2)
       out.lights.push([0.5, 0.82, len / 2], [-0.5, 0.82, len / 2]); out.exhaust.push([0.5, 0.35, -len / 2])
+      if (m.police) { body.box(1.0, 0.1, 0.25, C.dark, 0, 1.56, -0.2); body.box(0.42, 0.1, 0.22, [0.2, 0.35, 0.95], 0.26, 1.64, -0.2); body.box(0.42, 0.1, 0.22, C.red, -0.26, 1.64, -0.2); for (const s of [-1, 1]) body.box(0.03, 0.22, len * 0.6, [0.12, 0.18, 0.45], s * (W / 2 + 0.01), 0.82, 0); body.box(W * 0.9, 0.2, 0.12, C.black, 0, 0.6, len / 2 + 0.08); out.beacon = [[0.26, 1.64, -0.2, 0x3355ff], [-0.26, 1.64, -0.2, 0xff2a1a]] }
+      if (m.taxi) { body.box(0.55, 0.2, 0.18, C.white, 0, 1.6, -0.2); for (const s of [-1, 1]) body.box(0.03, 0.12, len * 0.5, C.black, s * (W / 2 + 0.01), 0.85, 0) }
       break
     }
     case 'pickup': {
@@ -115,7 +117,71 @@ export function buildVehicle(def, paint, mat) {
       out.lights.push([0.6, 1.0, L / 2], [-0.6, 1.0, L / 2]); out.exhaust.push([0.6, 0.4, -L / 2])
       break
     }
+    case 'sports': {
+      body.box(W, 0.42, L, P, 0, 0.5, 0)
+      body.wedge(W - 0.05, 0.22, 1.5, P, 0, 0.82, L / 2 - 0.8, 0.9, 0)
+      body.wedge(W - 0.25, 0.4, L * 0.42, C.glass, 0, 0.91, -0.35, 0.55, 0.4)
+      body.box(W - 0.45, 0.04, L * 0.14, P, 0, 1.12, -0.4)
+      body.box(W - 0.1, 0.05, 0.3, C.black, 0, 1.02, -L / 2 + 0.18); for (const s of [-1, 1]) body.box(0.05, 0.25, 0.08, C.black, s * 0.6, 0.86, -L / 2 + 0.2)
+      for (const s of [-1, 1]) { body.box(0.04, 0.16, 0.7, C.black, s * (W / 2 + 0.01), 0.55, -0.6); body.box(0.32, 0.07, 0.05, C.light, s * (W / 2 - 0.3), 0.66, L / 2 + 0.02); body.box(0.4, 0.07, 0.05, C.red, s * (W / 2 - 0.3), 0.66, -L / 2 - 0.02) }
+      body.box(W * 0.7, 0.12, 0.06, C.black, 0, 0.38, L / 2 + 0.02)
+      for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) wheel(x * (W / 2 - 0.13), 0.33, z * (L / 2 - 0.85), 0.33, 0.27, z > 0)
+      hull(0, 0.65, 0, W / 2, 0.45, L / 2)
+      out.lights.push([0.6, 0.66, L / 2], [-0.6, 0.66, L / 2]); out.exhaust.push([0.3, 0.3, -L / 2], [-0.3, 0.3, -L / 2])
+      break
+    }
+    case 'van': {
+      body.box(W, 1.0, L, P, 0, 1.05, 0)
+      body.box(W, 1.0, L - 1.5, P, 0, 2.05, -0.75)
+      body.wedge(W - 0.05, 0.9, 1.5, C.glass, 0, 2.0, L / 2 - 0.75, 0.45, 0)
+      for (const s of [-1, 1]) { body.box(0.03, 0.45, 2.6, C.white, s * (W / 2 + 0.01), 2.1, -1.0); body.box(0.03, 0.12, 2.6, C.orange, s * (W / 2 + 0.01), 1.78, -1.0) }
+      body.box(W * 0.85, 0.3, 0.06, C.dark, 0, 0.75, L / 2 + 0.02); body.box(W - 0.3, 1.6, 0.04, C.dark, 0, 1.75, -L / 2 - 0.01)
+      for (const s of [-1, 1]) { body.box(0.25, 0.14, 0.05, C.light, s * (W / 2 - 0.25), 1.15, L / 2 + 0.02); body.box(0.15, 0.3, 0.05, C.red, s * (W / 2 - 0.1), 1.2, -L / 2 - 0.02) }
+      for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) wheel(x * (W / 2 - 0.15), 0.38, z * (L / 2 - 0.95), 0.38, 0.26, z > 0)
+      hull(0, 1.55, 0, W / 2, 1.0, L / 2)
+      out.lights.push([0.75, 1.15, L / 2], [-0.75, 1.15, L / 2]); out.exhaust.push([0.6, 0.35, -L / 2])
+      break
+    }
+    case 'bus': {
+      body.box(W, 1.25, L, P, 0, 1.28, 0)
+      body.box(W - 0.02, 0.85, L - 0.02, C.glass, 0, 2.33, 0)
+      for (let z = -L / 2 + 0.2; z <= L / 2 - 1.2; z += 1.55) body.box(W + 0.02, 0.86, 0.14, P, 0, 2.33, z)
+      body.box(0.12, 0.86, 0.12, P, 0, 2.33, L / 2 - 0.06)
+      body.box(W, 0.3, L, C.white, 0, 2.9, 0)
+      body.box(W + 0.02, 0.16, L - 0.6, C.white, 0, 1.55, 0)
+      body.box(1.5, 0.22, 0.04, C.orange, 0, 2.62, L / 2 + 0.02)
+      body.box(0.05, 1.6, 1.1, C.dark, -(W / 2 + 0.02), 1.6, L / 2 - 1.3); body.box(0.05, 1.6, 1.1, C.dark, -(W / 2 + 0.02), 1.6, -0.6)
+      body.box(W * 0.95, 0.3, 0.1, C.dark, 0, 0.75, L / 2 + 0.02); body.box(W * 0.95, 0.3, 0.1, C.dark, 0, 0.75, -L / 2 - 0.02)
+      for (const s of [-1, 1]) { body.box(0.3, 0.16, 0.05, C.light, s * (W / 2 - 0.3), 1.05, L / 2 + 0.05); body.box(0.2, 0.35, 0.05, C.red, s * (W / 2 - 0.2), 1.3, -L / 2 - 0.05) }
+      for (const z of [L / 2 - 1.9, -L / 2 + 2.3]) for (const x of [1, -1]) wheel(x * (W / 2 - 0.25), 0.5, z, 0.5, 0.35, z > 0)
+      hull(0, 1.75, 0, W / 2, 1.15, L / 2)
+      out.lights.push([0.9, 1.05, L / 2], [-0.9, 1.05, L / 2]); out.exhaust.push([0.9, 0.4, -L / 2])
+      break
+    }
+    case 'tractor': {
+      body.box(0.9, 0.75, 2.0, P, 0, 1.15, 0.75)
+      body.box(1.1, 0.25, 3.0, C.dark, 0, 0.75, 0.2)
+      body.box(1.35, 1.15, 1.25, C.glass, 0, 2.05, -0.7)
+      body.box(1.45, 0.1, 1.4, P, 0, 2.68, -0.7)
+      for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) body.box(0.07, 1.15, 0.07, C.dark, x * 0.66, 2.05, -0.7 + z * 0.6)
+      body.cyl(0.05, 0.9, C.dark, 0.32, 2.1, 1.3, 'y')
+      for (const s of [-1, 1]) body.box(0.5, 0.08, 1.4, P, s * 0.85, 1.55, -0.7)
+      body.box(0.6, 0.2, 0.05, C.light, 0, 1.3, 1.76)
+      wheel(0.85, 0.75, -0.7, 0.75, 0.45); wheel(-0.85, 0.75, -0.7, 0.75, 0.45)
+      wheel(0.72, 0.42, 1.25, 0.42, 0.25, true); wheel(-0.72, 0.42, 1.25, 0.42, 0.25, true)
+      hull(0, 1.35, 0, 1.05, 1.3, 1.9)
+      out.lights.push([0.25, 1.3, 1.78], [-0.25, 1.3, 1.78]); out.exhaust.push([0.32, 2.55, 1.3])
+      break
+    }
     case 'bike': {
+      if (m.scooter) {
+        body.box(0.32, 0.12, 0.8, P, 0, 0.42, -0.05); body.box(0.38, 0.4, 0.62, P, 0, 0.7, -0.45); body.box(0.3, 0.1, 0.55, C.dark, 0, 0.95, -0.4)
+        body.box(0.42, 0.7, 0.12, P, 0, 0.75, 0.42, -0.25); body.box(0.6, 0.04, 0.04, C.dark, 0, 1.12, 0.48); body.box(0.15, 0.1, 0.05, C.light, 0, 1.0, 0.56)
+        wheel(0, 0.22, 0.6, 0.22, 0.1, true); wheel(0, 0.22, -0.55, 0.22, 0.12)
+        hull(0, 0.65, 0, 0.25, 0.4, 0.85)
+        out.lights.push([0, 1.0, 0.6]); out.exhaust.push([0.15, 0.3, -0.75])
+        break
+      }
       body.box(0.3, 0.35, 1.2, P, 0, 0.75, 0.05); body.box(0.25, 0.12, 0.6, C.dark, 0, 0.98, -0.25)
       body.box(0.12, 0.5, 0.12, C.metal, 0, 1.05, 0.7, -0.4); body.box(0.7, 0.04, 0.04, C.dark, 0, 1.3, 0.62)
       if (m.dirt) body.box(0.2, 0.06, 0.4, P, 0, 1.0, 0.9)

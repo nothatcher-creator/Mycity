@@ -29,7 +29,7 @@ export class Vehicle {
     const d = this.def
     this.kind = d.kind
     this.faction = o.faction || null
-    const paint = o.paint ? PAINTS[o.paint] : this.faction ? (this.faction === 'cef' ? PAINTS.tan : this.faction === 'nlf' ? PAINTS.grey : this.faction === 'res' ? PAINTS.green : PAINTS.olive) : [PAINTS.red, PAINTS.blue, PAINTS.white, PAINTS.yellow, PAINTS.black, PAINTS.green][this.id % 6]
+    const paint = o.paint ? PAINTS[o.paint] : d.paint ? PAINTS[d.paint] : this.faction ? (this.faction === 'cef' ? PAINTS.tan : this.faction === 'nlf' ? PAINTS.grey : this.faction === 'res' ? PAINTS.green : PAINTS.olive) : [PAINTS.red, PAINTS.blue, PAINTS.white, PAINTS.yellow, PAINTS.black, PAINTS.green][this.id % 6]
     this.model = buildVehicle(d, paint, game.vehicles.mat)
     this.root = this.model.root
     game.engine.world.add(this.root)
@@ -507,6 +507,12 @@ export class Vehicles {
         v.root.add(v.glow)
       }
       if (v.glow) v.glow.visible = !!v.lights
+      // a police car's light bar flashes blue and red while its lights are on
+      if (v.model.beacon) {
+        if (!v.beacon) { v.beacon = v.model.beacon.map(([x, y, z, c]) => { const m = new THREE.Mesh(this.beaconGeo ||= new THREE.SphereGeometry(0.15, 8, 6), new THREE.MeshBasicMaterial({ color: c })); m.position.set(x, y + 0.04, z); v.root.add(m); return m }) }
+        const ph = Math.floor((g.time || 0) * 5) % 2
+        v.beacon.forEach((m, i) => { m.visible = !!v.lights && ph === i })
+      }
       if (v.lights && cam) { const d = v === me ? 0 : Math.hypot(v.pos.x - cam.x, v.pos.z - cam.z); if (d < bd) { bd = d; best = v } }
     }
     const s = this.spot

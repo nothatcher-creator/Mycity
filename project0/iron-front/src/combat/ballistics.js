@@ -210,7 +210,9 @@ export class Ballistics {
     }
     // through it, or not: energy against resistance times the thickness crossed
     const thick = isVeh ? obj.armorThickness() : Math.max(0.005, Math.min(wallHit.tOut - wallHit.t, M.thin ?? 1.5))
-    const need = (isVeh ? ARMOR_RESIST * Math.max(0.0005, obj.armor * 0.004) : M.resist * thick) / Math.max(0.2, p.pen) / Math.max(0.3, cos)
+    // vehicle armour resists steeply with its rating: 12.7 mm goes through light armour (an APC) but not an
+    // IFV or a tank; rifle rounds go through the lightest only
+    const need = (isVeh ? ARMOR_RESIST * Math.max(0.0005, 0.006 * Math.pow(obj.armor, 2.4)) : M.resist * thick) / Math.max(0.2, p.pen) / Math.max(0.3, cos)
     if (isVeh) obj.bulletHit?.(p, energy, hx, hy, hz, need)
     if (energy > need && !(isVeh && obj.armor > 2)) {
       this.stats.penetrations++

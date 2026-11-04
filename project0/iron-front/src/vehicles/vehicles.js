@@ -420,7 +420,10 @@ export class Vehicle {
   armorThickness() { return Math.max(0.002, this.armor * 0.01) }
   bulletHit(p, energy, x, y, z, need) {
     const pen = need !== undefined && energy > need
-    const dmg = this.armor <= 0.5 ? energy / 60 : pen ? energy / 30 : energy / 800
+    // damage grows with the square root of the energy: a 5.56 round 28, 7.62 NATO 40, 12.7 mm 87 (a .50 used
+    // to do 270 to a car and, through armour, 540 to a tank: five rounds killed a main battle tank)
+    const base = 28 * Math.sqrt(energy / 1700)
+    const dmg = this.armor <= 0.5 || pen ? base : base * 0.04
     this.damage(dmg, p.owner, 'bullet')
     // exposed crew can be hit directly
     for (const s of this.seats) if (s.occupant && s.exposed) {
@@ -437,9 +440,14 @@ export class Vehicle {
   // Damage from a blast or a shell (heat: anti-armour power, against the armour).
   blast(dmg, heat, src, direct) {
     const arm = this.armor
-    let d = direct ? (heat > arm * 100 ? dmg * 3 + heat * 1.2 : dmg * 0.6) : dmg * Math.max(0.05, 1 - arm * 0.12)
-    if (direct && heat > arm * 100 && this.kind === 'tracked' && Math.random() < 0.3) this.mobility = Math.max(0.2, this.mobility - 0.4)
+    // a shaped charge or a shell gets through when its anti-armour power beats the armour: rockets defeat
+    // everything up to an IFV in one hit (it burns out) and a main battle tank in three; tank shells and
+    // ATGMs need two on a tank. Rounds that do not get through do little to heavy armour.
+    const through = heat > arm * 65
+    let d = direct ? (through ? (dmg * 3 + heat * 1.2) * (arm > 5 ? 0.62 : 1) : dmg * Math.max(0.05, 0.6 - Math.max(0, arm - 4.5) * 0.15)) : dmg * Math.max(0.05, 1 - arm * 0.12)
+    if (direct && through && this.kind === 'tracked' && Math.random() < 0.3) this.mobility = Math.max(0.2, this.mobility - 0.4)
     this.damage(d, src, 'blast')
+    if (direct && this.game.debug) this.game.p0.log('dbg vehicle hit', this.def.name, through ? 'through' : 'stopped', Math.round(d), 'hp', Math.round(this.hp), '/', this.maxHp)
     // crew take some of it
     for (const s of this.seats) if (s.occupant) s.occupant.hurt('torso', d * (arm > 3 ? 0.06 : 0.25) * Math.random(), 0, src, null, 'blast')
   }

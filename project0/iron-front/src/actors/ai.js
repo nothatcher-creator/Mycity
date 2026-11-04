@@ -8,9 +8,9 @@ import * as THREE from 'three'
 import { hostile, FACTIONS } from './factions.js'
 import { STAND, CROUCH, PRONE } from './soldier.js'
 import { raycastTerrain } from '../world/collision.js'
-import { heightAt, waterLevel } from '../world/heightfield.js'
+import { heightAt, waterLevel, forestAt } from '../world/heightfield.js'
 import { Nav } from './nav.js'
-import { AMMO } from '../combat/weapons-data.js'
+import { AMMO, weapon } from '../combat/weapons-data.js'
 
 export const FORMATIONS = {
   wedge: (i) => [((i % 2) ? 1 : -1) * Math.ceil(i / 2) * 4, -Math.ceil(i / 2) * 4],
@@ -64,6 +64,9 @@ export class Brain {
 }
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _h = { t: 0 }
+// The aim error in radians shrinks with range towards a floor: wide in a close fight, steadier far out
+// (rather than growing with range, which made the AI harmless beyond 150 m and deadly up close).
+const aimShape = d => 0.42 + 21 / (d + 8)
 const AMMO_V = Object.fromEntries(Object.entries(AMMO).map(([k, a]) => [k, a.v || 800]))
 
 export class AI {
@@ -103,7 +106,10 @@ export class AI {
     }
   }
   update(dt, playerPos) {
-    this.time += dt
+    // the game's clock, the one every timestamp here is compared with (an own clock that started with the
+    // mode lagged the game's by the time spent in menus, so `seen` checks against G.time failed and the AI
+    // never got its reaction time down to fire)
+    this.time = this.game.time
     this.pathBudget = 3
     const G = this.game
     for (const [s, b] of this.brains) {
@@ -151,9 +157,15 @@ export class AI {
       // how quickly he is spotted
       const stanceVis = e.stanceT > 1.5 ? 0.35 : e.stanceT > 0.5 ? 0.65 : 1
       const motion = e.speed > 0.5 ? 1.6 : 1
-      const firing = G.time - (e.lastShotT ?? -99) < 1.5 && !e.w?.s.suppressed ? 3 : 1
-      const rate = (1.2 + this.game.difficulty) * (0.5 + b.skill) * stanceVis * motion * firing / (1 + d / 70) * (e.vehicle ? 3 : 1) * (1 - G.sky.night * 0.5)
-      const p = Math.min(1.5, (b.spot.get(e) || 0) + rate * dt * 2.5)
+      const firing = e.time - (e.lastShotT ?? -99) < 1.5 && !e.w?.s.suppressed ? 3 : 1
+      // distance counts for more the further it gets (a still, standing man in the open: under a second at
+      // 100 m, two or three at 300 m, seven at 600 m; lying down about three times longer)
+      const fall = 1 + d / 50 + (d / 150) * (d / 150)
+      const fol = e.vehicle ? 1 : this.foliage(s, e, d)
+      if (fol <= 0) { this.decay(b, e, dt); continue }
+      const rate = (1.2 + this.game.difficulty) * (0.5 + b.skill) * stanceVis * motion * firing / fall * (e.vehicle ? 3 : 1) * (1 - G.sky.night * 0.5) * fol
+      // deep in the trees contact slips away even once spotted, unless he keeps firing
+      const p = Math.min(1.5, (b.spot.get(e) || 0) + rate * dt * 2.5 - (fol < 0.35 && firing === 1 ? dt * 0.3 : 0))
       b.spot.set(e, p)
       if (p >= 1) {
         b.squad.share(e, e.pos, this.time)
@@ -162,7 +174,7 @@ export class AI {
       }
     }
     if (best) {
-      if (b.target !== best) b.reactT = 0.25 + (1 - b.skill) * 0.8 + Math.random() * 0.3
+      if (b.target !== best) { b.reactT = 0.25 + (1 - b.skill) * 0.8 + Math.random() * 0.3; b.engageT = this.time }
       b.target = best; b.targetPos.copy(best.pos); b.lastSeen = this.time
       if (b.state !== 'combat') b.state = 'combat'
     } else if (b.target && this.time - b.lastSeen > 8) {
@@ -173,6 +185,23 @@ export class AI {
     }
     // enemies known to the squad but not seen by this soldier make him alert
     if (!best && b.state !== 'combat') for (const [e, k] of b.squad.knowledge) if (!e.dead && this.time - k.t < 10) { b.alertDir = k.pos.clone(); if (b.state === 'idle' || b.state === 'patrol') b.state = 'alert' }
+  }
+  // How well foliage hides `e` from `s` (1: not at all): trees and undergrowth along the sight line, and
+  // more so for someone crouching or lying in the woods. Cached for a second per pair.
+  foliage(s, e, d) {
+    const k = s.brain ? (s.brain.fol || (s.brain.fol = new Map())) : new Map(), c = k.get(e)
+    if (c && this.time - c.t < 1) return c.v
+    let depth = 0
+    if (d > 25) {
+      const n = Math.min(10, Math.ceil(d / 25)), step = d / n
+      for (let i = 1; i < n; i++) { const f = i / n, x = s.pos.x + (e.pos.x - s.pos.x) * f, z = s.pos.z + (e.pos.z - s.pos.z) * f; const fa = forestAt(x, z); if (fa > 0.35) depth += (fa - 0.35) * 1.6 * step }
+    }
+    const inWood = forestAt(e.pos.x, e.pos.z) > 0.5
+    let v = Math.exp(-depth / 30) * (inWood && e.stanceT > 0.5 ? 0.45 : inWood ? 0.75 : 1)
+    if (depth > 160) v = 0
+    if (k.size > 60) k.clear()
+    k.set(e, { v, t: this.time })
+    return v
   }
   decay(b, e, dt) { const p = (b.spot.get(e) || 0) - dt * 0.4; if (p <= 0) b.spot.delete(e); else b.spot.set(e, Math.min(p, 1.2)) }
   canSee(ax, ay, az, bx, by, bz, ignoreVeh) {
@@ -193,6 +222,7 @@ export class AI {
     // grenades nearby: run
     for (const n of G.grenades) if (n.type === 'frag' && n.pos.distanceTo(s.pos) < 9 && !n.exploded) { const away = _v.subVectors(s.pos, n.pos).setY(0).normalize().multiplyScalar(12).add(s.pos); b.move = away; b.flee = 2; s.setStance(STAND); return }
     if (b.flee > 0) { b.flee -= 0.5; return }
+    if (s.role === 'medic' && this.medic(s, b)) return
     // morale: lose half the squad and the rest fall back
     const lossFrac = q.losses / Math.max(1, q.members.length)
     if (b.state === 'combat' && (lossFrac > 0.6 || s.blood < 35) && q.home && Math.random() < 0.2 && !q.player) { b.state = 'retreat' }
@@ -395,9 +425,14 @@ export class AI {
       s.aimW = Math.min(1, (s.aimW || 0) + dt * 3)
     } else { s.aimPitch *= 0.95; s.aimW = Math.max(0.2, (s.aimW || 0) - dt) }
   }
+  // The first bursts at a new target walk in: they start wide and tighten over three seconds, so there
+  // is a moment to react to the first rounds cracking past.
+  warm(b) { return 1 + 1.5 * Math.max(0, 1 - (this.time - (b.engageT ?? -99)) / 3) }
   lowEnough(s, t) { return t.pos.y < s.pos.y + 6 }
   shoot(s, b, t, dt) {
-    const G = this.game, w = s.w
+    const G = this.game
+    if (this.rocket(s, b, t)) return
+    const w = s.w
     if (!w) return
     if (s.ammoInWeapon === 0) { s.reload(); return }
     // bursts: a few rounds, a pause; snipers take their time
@@ -409,7 +444,7 @@ export class AI {
       b.burstPause = cat === 'sniper' ? 2.5 + Math.random() * 2 : 0.4 + Math.random() * 0.8
       // a fresh aim error for this burst: worse at range, suppressed, moving, unskilled
       const d = s.pos.distanceTo(t.pos)
-      const err = (0.004 + (1 - b.skill) * 0.016 + s.suppression * 0.03 + (s.speed > 0.5 ? 0.012 : 0) + (t.speed > 2 ? 0.006 : 0)) * (1 + d / 400) * (1.4 - G.difficulty * 0.4)
+      const err = (0.004 + (1 - b.skill) * 0.016 + s.suppression * 0.03 + (s.speed > 0.5 ? 0.012 : 0) + (t.speed > 2 ? 0.006 : 0)) * (1.4 - G.difficulty * 0.4) * aimShape(d) * this.warm(b)
       b.aimErr.set((Math.random() - 0.5) * 2 * err, (Math.random() - 0.5) * 2 * err)
     }
     const eye = s.eye(_v)
@@ -424,6 +459,63 @@ export class AI {
     dir.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch))
     const shots = s.trigger(true, true, eye.clone().addScaledVector(dir, 0.5), dir, 0)
     if (shots && shots.length) { for (const sh of shots) G.shoot(s, sh); b.burst--; b.aimErr.multiplyScalar(1.15) }
+  }
+  // An AT soldier with a target in a ground vehicle or a boat, 25-350 m off: launcher out, reload, and a
+  // rocket at the hull with some lead, no more than one every eight seconds. Anything else: back to the
+  // rifle. Returns true while the launcher is in use.
+  rocket(s, b, t) {
+    const L = s.inv.weapons.launcher, v = t.vehicle
+    const def = L && weapon(L.id)
+    const d = Math.hypot(t.pos.x - s.pos.x, t.pos.z - s.pos.z)
+    const has = def && (L.mag + (L.chamber || 0) > 0 || s.inv.all().some(it => it.kind === 'mag' && it.ammo === def.ammo && it.rounds > 0))
+    const want = has && def.ammo !== '40mm' && v && v.alive && v.kind !== 'heli' && v.kind !== 'plane' && d > 25 && d < 350
+    if (this.game.debug) b.dbgR = [!!L, !!has, !!v, v?.kind, Math.round(d), s.slot, s.switchT.toFixed(1), s.ammoInWeapon].join(',')
+    if (!want) {
+      if (s.slot === 'launcher' && s.switchT <= 0 && !s.reloading) s.selectWeapon(s.inv.weapons.primary ? 'primary' : 'sidearm')
+      return false
+    }
+    if (s.slot !== 'launcher') { if (s.switchT <= 0 && !s.reloading) s.selectWeapon('launcher'); return true }
+    if (s.ammoInWeapon === 0) { s.reload(); return true }
+    if (this.time < (b.rocketT || 0) || this.time - (b.engageT ?? 0) < 1.5) return true
+    const G = this.game
+    // not with a friend standing by the target
+    if (G.soldiersNear(v.pos.x, v.pos.z, 9).some(m => m !== s && !m.dead && !m.vehicle && m.team === s.team)) return true
+    const eye = s.eye(_v)
+    const tof = d / 220, err = (0.003 + (1 - b.skill) * 0.008) * (1.4 - G.difficulty * 0.4) * this.warm(b)
+    const dir = _v2.set(v.pos.x + v.vel.x * tof - eye.x, v.pos.y + 1 - eye.y, v.pos.z + v.vel.z * tof - eye.z).normalize()
+    const yaw = Math.atan2(dir.x, dir.z) + (Math.random() - 0.5) * 2 * err, pitch = Math.asin(Math.max(-1, Math.min(1, dir.y))) + (Math.random() - 0.5) * 2 * err
+    dir.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch))
+    const shots = s.trigger(true, true, eye.clone().addScaledVector(dir, 0.6), dir, 0)
+    if (shots && shots.length) { for (const sh of shots) G.shoot(s, sh); b.rocketT = this.time + 8 + Math.random() * 4; if (G.debug) G.p0.log('dbg rocket', s.name, v.def.name, Math.round(d), 'm') }
+    return true
+  }
+  // A medic out of the fight goes to whoever in his squad is hurt (under 60) or down within 80 m and, after
+  // three seconds at his side, treats him (a medkit, or a first aid kit) or gets him back up.
+  medic(s, b) {
+    const G = this.game, q = b.squad
+    if (b.state === 'combat' && this.time - b.lastSeen < 4) { b.patient = null; return false }
+    if (!s.inv.count('medkit') && !s.inv.count('firstaid')) return false
+    let pt = b.patient
+    if (!pt || pt.dead || pt.vehicle || (!pt.down && pt.blood > 85)) {
+      pt = null; let best = 80
+      for (const m of q.members) if (m !== s && !m.dead && !m.vehicle && (m.down || m.blood < 60)) { const d = m.pos.distanceTo(s.pos); if (d < best) { best = d; pt = m } }
+      b.patient = pt; b.healT = 0
+    }
+    if (!pt) return false
+    if (s.pos.distanceTo(pt.pos) > 1.8) { b.move = pt.pos.clone(); b.healT = 0; return true }
+    b.move = null; s.setStance(CROUCH)
+    s.yaw = Math.atan2(pt.pos.x - s.pos.x, pt.pos.z - s.pos.z)
+    b.healT = (b.healT || 0) + 0.5
+    if (b.healT >= 3) {
+      const id = s.inv.count('medkit') ? 'medkit' : 'firstaid'
+      s.treat(id, pt)
+      if (pt.down) { pt.down = false; pt.blood = Math.max(pt.blood, 45) }
+      pt.bleed = 0
+      if (pt.isPlayer) G.hud?.note(`${s.name} treated your wounds`)
+      if (G.debug) G.p0.log('dbg medic', s.name, 'treated', pt.name, id, Math.round(pt.blood))
+      b.patient = null; b.healT = 0
+    }
+    return true
   }
   // Far from the player: walk the orders, no senses (they wake up when the player comes near).
   farStep(s, b, dt) {
@@ -464,10 +556,10 @@ export class AI {
     if (b.reactT > 0) { b.reactT -= dt; return }
     const off = Math.abs(wantYaw - seat.aimYaw) + Math.abs(wantPitch - seat.aimPitch)
     if (off > 0.05) return
-    // bursts with pauses; an aim error that grows with range and shrinks with skill
+    // bursts with pauses; an aim error that shrinks with skill, wide for the first bursts at a new target
     b.burstPause = (b.burstPause || 0) - dt
     if (b.burst <= 0) { if (b.burstPause > 0) return; b.burst = seat.w.def.rpm > 300 ? 6 + Math.floor(Math.random() * 10) : 1; b.burstPause = seat.w.def.rpm > 300 ? 1 + Math.random() : 3 + Math.random() * 3 }
-    const err = (0.006 + (1 - b.skill) * 0.012) * (1.4 - G.difficulty * 0.4)
+    const err = (0.006 + (1 - b.skill) * 0.012) * (1.4 - G.difficulty * 0.4) * this.warm(b)
     const yaw = v.yaw + seat.aimYaw + (seat.side ? seat.side * 1.2 : 0) + (Math.random() - 0.5) * err * 2, pitch = seat.aimPitch + v.pitch * 0.5 + (Math.random() - 0.5) * err * 2
     if (G.vehicles.fireSeat(v, seat, _v2.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)), false)) b.burst--
   }

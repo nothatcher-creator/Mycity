@@ -139,7 +139,7 @@ export class FreeRoam extends Mode {
       }
     }
     // now and then an enemy gunship sweeps the area for a few minutes, then flies home
-    this.airT = (this.airT ?? (DEBUG_AIR ? 3 : 240)) - 1
+    this.airT = (this.airT ?? (DEBUG_AIR ? 3 : 420)) - 1
     if (this.air) {
       const v = this.air.vehicle, L = this.air.leader
       if (!v?.alive || !L) this.air = null
@@ -149,7 +149,7 @@ export class FreeRoam extends Mode {
         if (this.air.t > 210 && Math.hypot(v.pos.x - px, v.pos.z - pz) > 2500) { this.removeSquad(this.air); this.air = null }
       }
     } else if (this.airT <= 0) {
-      this.airT = 420 + Math.random() * 300
+      this.airT = 600 + Math.random() * 300
       const enemy = Object.keys(FACTIONS).find(f => this.enemyOf(f)) || 'nlf', a = Math.random() * Math.PI * 2
       const hx = px + Math.cos(a) * 1600, hz = pz + Math.sin(a) * 1600
       // a gunship, or now and then a ground-attack jet making strafing runs

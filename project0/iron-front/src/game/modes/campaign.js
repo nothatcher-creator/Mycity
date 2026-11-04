@@ -9,7 +9,8 @@ import * as THREE from 'three'
 import { Mode, nextName } from './base.js'
 import { POINTS } from '../../world/places.js'
 import { heightAt, waterLevel } from '../../world/heightfield.js'
-import { FACTIONS } from '../../actors/factions.js'
+import { FACTIONS, ROLES } from '../../actors/factions.js'
+import { kit } from '../inventory.js'
 import { C, text, wrap } from '../../ui/ui.js'
 import { ROADS } from '../../world/roads-data.js'
 
@@ -81,7 +82,7 @@ const ONE = [
     brief: 'Fort Grail, on the shoulder of Mount Hallen, covers the last NLF positions with its guns. Before the ground assault goes in, the air force will hit its vehicles. You fly an Anvil ground-attack jet. Destroy the vehicles at the fort, then come back round for the summit station.',
     start: { x: 1900, z: 200, yaw: Math.PI * 0.85 }, squad: 0, role: 'rifleman', aircraft: 'groundattack',
     objectives: [
-      { type: 'destroy', text: 'Destroy the vehicles at Fort Grail (LMB cannon, RMB rockets)', vehicles: [{ type: 'truck', x: 2880, z: -1680 }, { type: 'ifv', x: 2930, z: -1720 }, { type: 'technical', x: 2860, z: -1730 }, { type: 'ammotruck', x: 2950, z: -1660 }], radio: 'Anvil 1, targets are in the fort. Cleared hot.' },
+      { type: 'destroy', text: 'Destroy the vehicles at Fort Grail (LMB cannon, RMB bombs)', vehicles: [{ type: 'truck', x: 2880, z: -1680 }, { type: 'ifv', x: 2930, z: -1720 }, { type: 'technical', x: 2860, z: -1730 }, { type: 'ammotruck', x: 2950, z: -1660 }], radio: 'Anvil 1, targets are in the fort. Cleared hot.' },
       { type: 'destroy', text: 'Destroy the trucks at the Hallen summit station', vehicles: [{ type: 'truck', x: 2450, z: -2740 }, { type: 'fueltruck', x: 2420, z: -2770 }], radio: 'Good hits! Now the summit, the trucks by the station.' },
     ],
     outro: 'Fort Grail\'s guns fell silent at sunset. The road north lies open.',
@@ -312,8 +313,27 @@ export class Campaign extends Mode {
       g.sfx.ui('pickup')
       g.hud.note(`Objective complete: ${o.text}`, C.green)
       this.checkpoint = { idx: this.idx + 1, x: s.pos.x, z: s.pos.z, yaw: s.yaw }
+      if (this.idx + 1 < this.m.objectives.length && o.type !== 'reach') this.redistribute()
       this.begin(this.idx + 1)
     }
+  }
+  // Between fights the section shares out what it carries: everyone (you and your squad) is topped up to
+  // at least half the magazines, rockets and grenades of a standard kit, and to two bandages.
+  redistribute() {
+    const g = this.g, men = [g.player.s, ...(g.playerSquad?.members || [])].filter((m, i, a) => m && !m.dead && a.indexOf(m) === i)
+    let n = 0
+    for (const m of men) {
+      const std = kit(m.role, m.faction, FACTIONS[m.faction], ROLES)
+      const groups = new Map()
+      for (const it of std.all()) if (it.kind === 'mag' || it.kind === 'grenade') { const k = it.kind + (it.ammo || it.id); groups.set(k, [...(groups.get(k) || []), it]) }
+      for (const [k, list] of groups) {
+        const have = m.inv.all().filter(x => x.kind + (x.ammo || x.id) === k && (x.kind !== 'mag' || x.rounds > 0)).length
+        for (let i = have; i < Math.ceil(list.length / 2); i++) if (m.inv.add(JSON.parse(JSON.stringify(list[0])))) n++
+      }
+      if (m.inv.count('bandage') < 2) { m.inv.add({ kind: 'med', id: 'bandage', count: 2 - m.inv.count('bandage') }); n++ }
+    }
+    if (n) g.hud.note('The section shares out ammunition', C.dim)
+    if (g.debug) g.p0.log('dbg redistribute', men.length, 'men', n, 'items')
   }
   complete() {
     if (this.done) return

@@ -179,7 +179,11 @@ export class Soldier {
     if (src?.remote && src.team === this.team) return 0
     const armorPart = part === 'head' ? 'head' : part === 'torso' ? 'torso' : part.startsWith('arm') ? 'arms' : 'legs'
     const armor = this.inv.armor(armorPart)
-    const red = kind === 'bullet' ? Math.max(0.12, Math.min(1, 1 - armor * 0.17 + pen * 0.1)) : Math.max(0.5, 1 - armor * 0.06)
+    // body armour slows rifle rounds rather than stopping them (a plate carrier turns three 5.56 hits into
+    // four) and does most against pistol and SMG rounds; a helmet can save you from a rifle headshot
+    const red = kind !== 'bullet' ? Math.max(0.5, 1 - armor * 0.06)
+      : part === 'head' ? Math.max(0.15, Math.min(1, 1 - armor * 0.2 + pen * 0.1))
+      : Math.max(0.15, Math.min(1, 1 - armor * 0.12 + pen * 0.28))
     const d = dmg * (kind === 'bullet' ? PART_MUL[part] : 1) * red
     this.blood -= d
     this.parts[part] = Math.min(100, (this.parts[part] || 0) + d)
@@ -251,7 +255,9 @@ export class Soldier {
     this.lean += (this.leanTarget - this.lean) * Math.min(1, dt * 9)
     // speed
     const weight = this.inv.weight()
-    const load = Math.max(0.62, Math.min(1.05, 1.18 - weight / 55))
+    // a standard 21 kg kit costs almost nothing; heavy loads slow you (36 kg of launcher and rockets: about
+    // 0.78), down to 0.62 for the heaviest
+    const load = Math.max(0.62, Math.min(1.05, 1.12 - Math.max(0, weight - 12) / 70))
     const hurt = this.legHurt ? 0.55 : 1
     let sprint = inp.sprint && this.stance !== PRONE && this.stamina > 0.05 && inp.fwd > 0 && !this.ads && !this.legHurt
     let maxV = this.stance === PRONE ? 0.9 : this.stance === CROUCH ? 2.1 : 3.6

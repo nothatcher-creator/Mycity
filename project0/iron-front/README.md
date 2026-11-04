@@ -59,9 +59,14 @@ quads over the 3D view.
   grenades, suppression, squad orders and formations (`ai.js`), grid A* pathfinding round buildings
   (`nav.js`), and AI vehicle crews: gunners, drivers, attack-helicopter pilots that hold altitude,
   circle their target and fire rockets, and jet pilots that dive on targets with the cannon, pull out and come round again.
+- **AI support roles**: anti-tank soldiers switch to their launcher against ground vehicles and boats
+  (25–350 m, one rocket every 8–12 s, never with a friend beside the target); medics out of the fight
+  treat squad-mates who are hurt or down, and you.
+- **Concealment**: spotting falls off steeply with range, and woods along the sight line or around a
+  crouching or prone target slow it further; deep in the trees contact can be broken.
 - **Destruction**: tank shells, rockets, missiles and bombs knock wall sections out of buildings (`citystream.js`), and glass breaks.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
-  thickness, ricochets and near-miss suppression (`ballistics.js`); 48 hand-held weapons and 11 mounted
+  thickness, ricochets and near-miss suppression (`ballistics.js`); 48 hand-held weapons and 12 mounted
   ones with attachments (`weapons-data.js`); models built in code (`weapon-models.js`).
 - **Vehicles** (`src/vehicles/`): 27 types: cars, bikes, trucks, APC, IFV, tank, armoured car,
   helicopters, planes and boats, with seats, mounted weapons, armour and damage.
@@ -73,6 +78,19 @@ quads over the 3D view.
 - **Sound** (`src/game/sfx.js`): 35 effects, all synthesised for this game by `tools/sfxgen.py`.
 - **Light version**: the game measures the first frames and drops to low quality on slow machines
   (fewer pixels, shorter view, fewer AI near you).
+
+### Balance
+
+Worked out with a simulation of the game's own formulas (`hurt`, the AI's aim model, the hitboxes) and
+checked in the dev kit. Against a standard plate carrier: 5.56 and 7.62 rifles kill in 4 torso hits,
+battle rifles in 3, pistols and SMGs in 6–7; a helmet stops a 5.56 headshot from killing outright (not a
+7.62). One AI rifleman at normal difficulty kills a standing player in the open in about 4 s at 15 m,
+6 s at 40 m, 13 s at 100 m and 30 s at 200 m (its first bursts at a new target start wide, then
+tighten over 3 s); lying prone roughly doubles that at range. Vehicles: a rocket stops anything up to an
+APC, two an IFV, three a main battle tank; two tank shells or ATGMs kill a tank; a .50 cal goes through
+light armour (APC, MRAP) but not an IFV or tank. Load: a standard 21 kg kit is about full speed, a
+36 kg anti-tank kit about 0.78. In the campaign the section shares out ammunition after each fight (at
+least half a standard kit's magazines, rockets and grenades, two bandages).
 
 ### The lot's exterior (`lot/`)
 
@@ -91,7 +109,8 @@ When served from `127.0.0.1` or `localhost` the game logs debug lines and accept
 off in the published game): F9 Free Roam, F10 the next Battle mode, F12 the next campaign mission,
 F11 back to the menu, Home completes the current objective, End moves you near it, F3–F7 put you in a
 fighter, helicopter, tank or jeep, F4 teleports to open country, Insert spawns an enemy crewed
-technical, Delete puts you in a boat, F1 swings a jet's aim, F2 prints the vehicle's state.
+technical, Numpad2 an enemy anti-tank team with a sight line to you, Numpad3 wounds you (medic test),
+Numpad9 logs your state and every AI's, Delete puts you in a boat, F1 swings a jet's aim, F2 prints the vehicle's state.
 
 - `tools/pack.sh` builds `build/experience.zip` (and refuses lines over 1,000 characters).
 - Validate and publish with the Project 0 agent API (`/api/agent/lots/3084/experience/validate`, then

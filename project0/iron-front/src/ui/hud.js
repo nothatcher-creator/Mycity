@@ -105,7 +105,7 @@ export class HUD {
     if (wk !== this.last.weapon) { this.last.weapon = wk; this.weapon.dirty = true }
     this.weapon.show(!s.vehicle && o.weapon)
     this.vehP.show(!!s.vehicle)
-    if (s.vehicle) { const v = s.vehicle, sw = s.seat?.w; const vk = [Math.round(v.speed * 3.6), Math.round(v.alt), Math.round(v.hp), Math.round(v.fuel), sw ? sw.mag : '', sw?.reloadT > 0, s.seat?.w2?.mag, s.seat?.w2?.lockT > 1.2, v.gearDown, v.flares].join(); if (vk !== this.last.veh) { this.last.veh = vk; this.vehP.dirty = true } }
+    if (s.vehicle) { const v = s.vehicle, sw = s.seat?.w; const vk = [Math.round(v.speed * 3.6), Math.round(v.alt), Math.round(v.hp), Math.round(v.fuel), sw ? sw.mag : '', sw?.reloadT > 0, s.seat?.w2?.mag, s.seat?.w2?.lockT > 1.2, v.gearDown, v.flares, v.engine, v.lights].join(); if (vk !== this.last.veh) { this.last.veh = vk; this.vehP.dirty = true } }
     // minimap: four times a second
     this.miniT = (this.miniT || 0) - dt
     if (this.miniT <= 0 && o.minimap) { this.miniT = 0.25; this.mini.dirty = true }
@@ -128,7 +128,7 @@ export class HUD {
     if (scoped && g.player.binoculars) this.scope.dirty = true
     else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
     if (this.compact) this.modeP.show(!s.vehicle && this.visible)
-    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
+    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
     this.touch.show(g.input.touch)
   }
   crossSpread() {
@@ -383,6 +383,10 @@ export class HUD {
       if (w2) text(c, `${w2.def.name}: ${w2.mag}${w2.lockT > 1.2 ? '  LOCKED' : w2.lock ? '  LOCKING' : ''}`, W - 14 * sc, 86 * sc, { size: 10 * sc, align: 'right', color: w2.lockT > 1.2 ? C.red : C.dim, weight: 600 })
     }
     if (v.flares) text(c, `FLARES ${v.flares}${this.g.input.touch ? '' : ' [R]'}`, 196 * sc, 87 * sc, { size: 10 * sc, color: C.dim, weight: 600 })
+    // engine and lights
+    let cx = 196 * sc
+    if (!v.engine) cx += chip(c, this.g.input.touch ? 'ENGINE OFF' : 'ENGINE OFF [E]', cx, 62 * sc, 16 * sc, { size: 9 * sc, fill: 'rgba(255,90,69,0.18)', stroke: C.red, color: C.red }) + 6 * sc
+    if (v.lights) chip(c, 'LIGHTS', cx, 62 * sc, 16 * sc, { size: 9 * sc })
   }
   drawScope(c, p) {
     const g = this.g, W = p.w, H = p.h
@@ -464,7 +468,7 @@ export class HUD {
     const R = W - r * 1.6, B = H - r * 1.6
     const P = g.player, s = P.s
     const top = this.mini.y + this.mini.h + r * 0.9
-    const util = (i, id, label, ic, fn) => btn(id, W - r * 0.95, top + r * i * 1.55, label, ic, fn, r * 0.66)
+    const util = (i, id, label, ic, fn, o) => btn(id, W - r * 0.95, top + r * i * 1.55, label, ic, fn, r * 0.66, o)
     btn('menu', r * 0.9, this.compact ? top + r * 1.6 : this.weapon.y + this.weapon.h + r * 1.2, '', 'menu', () => g.input.pressed.add('pause'), r * 0.62)
     if (s.vehicle) {
       // in a vehicle: hold to fire, second weapon, up and down (helicopters, landing); get out, change seat, view
@@ -477,6 +481,9 @@ export class HUD {
       util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
       util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
       if (air) util(2, 'flares', 'FLARE', 'flare', () => g.input.pressed.add('vFlares'))
+      const dr = P.s.seat?.role === 'driver' || P.s.seat?.role === 'pilot'
+      if (dr) { util(air ? 3 : 2, 'veng', v.engine ? 'ENG ON' : 'ENG OFF', 'bolt', () => g.input.pressed.add('vEngine'), { on: v.engine }); util(air ? 4 : 3, 'vlight', 'LIGHTS', 'eye', () => g.input.pressed.add('vLight'), { on: v.lights }) }
+      util(dr ? (air ? 5 : 4) : 2, 'vkit', 'KIT', 'bag', () => g.input.pressed.add('inventory'))
       text(c, air ? 'Left thumb: fly  ·  right thumb: aim' : 'Left thumb: drive  ·  right thumb: look and aim', W / 2, H * 0.46, { size: 12, align: 'center', color: 'rgba(236,232,216,0.6)', weight: 600 })
       return
     }
@@ -486,12 +493,14 @@ export class HUD {
     btn('stance', R - r * 2.5, B - r * 2.2, ['STAND', 'CROUCH', 'PRONE'][s.stance], ['stand', 'crouch', 'prone'][s.stance], () => g.input.pressed.add(s.stance === 0 ? 'crouch' : 'prone'))
     btn('jump', R - r * 4.6, B + r * 0.2, 'JUMP', 'jump', () => g.input.pressed.add('jump'), r * 0.8)
     btn('use', R - r * 4.2, B - r * 2.2, 'USE', 'hand', () => g.input.pressed.add('interact'), r * 0.8)
-    btn('nade', R - r * 0.2, B - r * 5.2, 'NADE', 'grenade', () => g.input.pressed.add('grenade'), r * 0.8)
+    btn('nade', R - r * 0.2, B - r * 5.2, { frag: 'FRAG', smoke: 'SMOKE', flash: 'FLASH' }[P.nade] || 'NADE', 'grenade', () => g.input.pressed.add('grenade'), r * 0.8)
+    btn('nadenext', R + r * 0.75, B - r * 6.1, '', 'reload', () => g.input.pressed.add('slot4'), r * 0.42)
     if (g.gear?.selected(s)) { btn('gear', R - r * 2.3, B - r * 4.4, 'GEAR', 'gear', () => g.input.pressed.add('gear'), r * 0.8); btn('gearnext', R - r * 3.6, B - r * 5.3, '', 'reload', () => g.input.pressed.add('gearNext'), r * 0.5) }
     util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
     util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
     util(2, 'inv', 'KIT', 'bag', () => g.input.pressed.add('inventory'))
     util(3, 'heal', 'HEAL', 'cross', () => g.input.pressed.add('heal'))
+    util(4, 'nvg', 'NV', 'eye', () => g.input.pressed.add('nvg'), { on: P.nvg })
     // the hint, for the first half minute
     if ((g.mode?.t ?? 99) < 30) text(c, g.settings.stickTurns ? 'Left thumb: move and turn  ·  right thumb: look' : 'Left thumb: move  ·  right thumb: look and shoot', W / 2, H * 0.46, { size: 12, align: 'center', color: 'rgba(236,232,216,0.7)', weight: 600 })
   }

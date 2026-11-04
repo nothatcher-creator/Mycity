@@ -5,7 +5,7 @@
 import * as THREE from 'three'
 import { Engine, QUALITY } from '../core/engine.js'
 import { Input } from '../core/input.js'
-import { initHeightfieldAsync, heightAt, normalAt } from '../world/heightfield.js'
+import { initHeightfieldAsync, heightAt, normalAt, waterLevel as waterLevelAt } from '../world/heightfield.js'
 import { Terrain } from '../world/terrain.js'
 import { Sky, WEATHER } from '../world/sky.js'
 import { Water } from '../world/water.js'
@@ -241,13 +241,14 @@ export class Game {
       if (e.code === 'BracketRight') { this.sky.hour = (this.sky.hour + 2) % 24; this.sky.cycle = false; p0.log('dbg hour', this.sky.hour.toFixed(1)) }
       if (e.code === 'BracketLeft') { const K = Object.keys(WEATHER), k = K[(K.indexOf(this.sky.weatherKey) + 1) % K.length]; this.sky.setWeather(k); this.sky.w = { ...WEATHER[k] }; p0.log('dbg weather', k) }
       if (e.code === 'Numpad6') { for (const id of ['radio', 'c4', 'mine', 'sandbags', 'ration']) s.inv.add({ kind: id === 'ration' ? 'food' : 'tool', id }); this.player.pitch = -0.012; p0.log('dbg gear', this.gear.owned(s).join(','), 'sel', this.gear.selected(s)) }
-      if (e.code === 'Numpad4') { const L = ['luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1) }
+      if (e.code === 'Numpad4') { const L = ['luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1); if (v && !s.vehicle && this.vehicles.enter(s, v)) this.vcontrol.entered(v) }
       if (e.code === 'Numpad3') { s.blood = 40; s.bleed = 0.2; p0.log('dbg wounded', s.blood) }
       if (e.code === 'Numpad9') for (const [m, b] of this.ai.brains) if (!m.dead && m !== s) p0.log('dbg ai', m.team, m.name, m.role, Math.round(m.pos.x), Math.round(m.pos.z), Math.round(m.blood), b.state, 'target', b.target?.name || '-', 'spot', (b.spot.get(s) || 0).toFixed(2), 'slot', m.slot, 'd', Math.round(m.pos.distanceTo(s.pos)), 'yaw', m.yaw.toFixed(1), 'react', b.reactT.toFixed(1), 'cover', !!b.cover, 'peek', b.peeking, 'seen', (this.ai.time - b.lastSeen).toFixed(1), 'gtime', (this.time - b.lastSeen).toFixed(1), 'rk', b.dbgR || '-', 'spd', m.speed.toFixed(1), 'st', m.stance, 'mv', b.move ? Math.round(b.move.distanceTo(m.pos)) : -1, 'path', b.path ? b.path.length : -1, 'stuck', b.stuckT.toFixed(1), 'fwd', m.input.fwd.toFixed(2), 'spr', m.input.sprint, 'pause', (b.pause || 0).toFixed(1))
+      if (e.code === 'Numpad9' && s.vehicle) { const v = s.vehicle; p0.log('dbg veh', v.def.name, 'pos', v.pos.x.toFixed(1), v.pos.y.toFixed(2), v.pos.z.toFixed(2), 'land', heightAt(v.pos.x, v.pos.z).toFixed(2), 'floor', this.collision.floorAt(v.pos.x, v.pos.y + 1.5, v.pos.z, 1.5, 6).toFixed(2), 'water', waterLevelAt(v.pos.x, v.pos.z).toFixed(2), 'spd', v.speed.toFixed(1), 'eng', v.engine, 'hp', Math.round(v.hp)) }
       if (e.code === 'Numpad9') p0.log('dbg state blood', Math.round(s.blood), 'bleed', s.bleed.toFixed(2), 'y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2), 'xz', s.pos.x.toFixed(1), s.pos.z.toFixed(1), 'yaw', s.yaw.toFixed(2), 'ammo', s.w?.rec.mag, 'fingers', this.touchCtl.fingers.map(f => f.role + (f.hold ? ':' + f.hold : '')).join('|'), 'stick', this.input.stick ? this.input.stick.x.toFixed(2) + ',' + this.input.stick.y.toFixed(2) : '-')
       if (e.code === 'Numpad7') { const L = [...this.W.ladders].sort((a, b) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(b.x - s.pos.x, b.z - s.pos.z))[0]; if (L) { const bx = L.x - Math.sin(L.yaw) * 0.8, bz = L.z - Math.cos(L.yaw) * 0.8; s.pos.set(bx, L.y0, bz); s.yaw = L.yaw; p0.log('dbg ladder', this.W.ladders.length, JSON.stringify({ x: L.x.toFixed(1), z: L.z.toFixed(1), y0: L.y0.toFixed(1), y1: L.y1.toFixed(1), yaw: L.yaw.toFixed(2) })) } else p0.log('dbg no ladders', this.W.ladders.length) }
       if (e.code === 'NumpadDecimal') { this.sky.setWeather('storm'); p0.log('dbg storm') }
-      if (e.code === 'F4') { this.dbgTp = !this.dbgTp; this.mode.admin('teleport', this.dbgTp ? { x: 60, z: 1650 } : { x: -3000, z: -360 }); if (!this.dbgTp) { s.yaw = Math.PI / 2; this.player.pitch = 0.05 } p0.log('dbg teleported') }
+      if (e.code === 'F4') { const T = [{ x: 60, z: 1650, yaw: 0 }, { x: -3000, z: -360, yaw: Math.PI / 2 }, { x: 1010, z: -196, yaw: 1.06 }]; this.dbgTp = ((this.dbgTp ?? -1) + 1) % T.length; const P = T[this.dbgTp]; this.mode.admin('teleport', P); s.yaw = P.yaw; this.player.pitch = 0.02; p0.log('dbg teleported', this.dbgTp) }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
     if (DEBUG) for (const ev of ['pointerdown', 'pointermove', 'pointerup']) p0.on(ev, e => { if (e.touch && (this.dbgPtr = (this.dbgPtr || 0) + 1) < 60) p0.log('dbg ptr', ev, JSON.stringify(e)) })
@@ -613,13 +614,18 @@ export class Game {
     for (const s of this.soldiers) {
       if (s.isPlayer && fpPlayer && !s.vehicle) continue
       if (s.vehicle && !s.seat?.exposed) continue
+      if (s.isPlayer && s.vehicle && this.vcontrol.firstPerson) continue
       if (s.dead && s.deadT > 180) continue
       if ((s.pos.x - cp.x) ** 2 + (s.pos.z - cp.z) ** 2 > 1000 * 1000) continue
       this.rig.draw(s, cp)
     }
     this.rig.end()
     this.ui.update(); T.push(performance.now())
-    this.engine.render(this.state === 'play' && fpPlayer && !this.player.s.vehicle)
+    // the weapon in your hands on foot; the dashboard when driving in first person
+    const inVeh = this.player?.s.vehicle, dash = !!(inVeh && this.vcontrol.dash?.visible && this.vcontrol.firstPerson)
+    if (this.vcontrol.dash && !inVeh) this.vcontrol.dash.visible = false
+    if (inVeh && this.player) { this.player.vm.visible = false; for (const a of this.player.arms) a.visible = false }
+    this.engine.render(this.state === 'play' && ((fpPlayer && !inVeh) || dash))
     this.flashT = Math.max(0, this.flashT - dt * 0.6)
     this.perf(dt)
     T.push(performance.now())
@@ -665,9 +671,12 @@ export class Game {
     const p = this.player, s = p.s, inp = this.input
     if (inp.hit('pause') && !this.map.visible && !this.invui.visible) { this.state = 'paused'; this.menus.open('pause'); this.p0.input.unlockPointer(); return }
     if (inp.hit('map')) { if (this.map.visible) this.closeMap(); else { this.invui.close(); this.openMap() } }
-    if (inp.hit('inventory') && !s.vehicle && !s.dead) { if (this.invui.visible) this.invui.close(); else { this.map.close(); this.invui.open() } }
+    // the inventory: with the storage of the vehicle you are in or standing at alongside
+    if (inp.hit('inventory') && !s.dead) { if (this.invui.visible) this.invui.close(); else { this.map.close(); const v = s.vehicle || this.vehicles.nearest(s.pos, 2.5); this.invui.open(v && v.alive && !v.occupants().some(o => o !== s && hostile(o.team, s.team)) ? this.vehicleStore(v) : null) } }
     if (inp.hit('squad') && this.playerSquad && !s.dead) this.menus.toggleSquad()
     this.ui.blocking = this.map.visible || this.invui.visible || this.menus.visible
+    // a menu open at the wheel: let go of the throttle
+    if (this.ui.blocking && s.vehicle && s.vehicle.driver === s) s.vehicle.throttle = 0
     if (!this.ui.blocking || s.dead) {
       if (s.vehicle && !s.dead) {
         this.hud.prompt = ''
@@ -734,6 +743,21 @@ export class Game {
     }
     const ladder = this.W.ladders.find(L => Math.hypot(L.x - s.pos.x, L.z - s.pos.z) < 1.5 && s.pos.y < L.y1 - 0.5 && s.pos.y > L.y0 - 1)
     if (ladder && !s.ladder) hud.prompt = '[W] Climb the ladder'
+  }
+  // A vehicle's storage: a pile of items that rides with it, up to the space it has. Military vehicles start
+  // with a few supplies, civilian ones with odds and ends.
+  vehicleStore(v) {
+    if (!v.store) {
+      const d = v.def, cap = d.cargo || { bike: 4, car: 24, tracked: 40, heli: 50, plane: 40, boat: 20 }[v.kind] || 24
+      const big = /truck|ambulance|bus|van/.test(v.type) ? 3 : 1
+      const items = []
+      if (v.faction) items.push({ kind: 'med', id: 'firstaid', count: 2 }, { kind: 'grenade', id: 'frag' }, { kind: 'tool', id: 'repairkit' })
+      else items.push({ kind: 'food', id: 'ration' }, { kind: 'water', id: 'canteen' })
+      if (v.kind === 'car' || v.kind === 'tracked') items.push({ kind: 'tool', id: 'jerrycan' })
+      v.store = { items, name: `${d.name}: storage`, cap: cap * big, vehicle: v, x: v.pos.x, y: v.pos.y, z: v.pos.z }
+    }
+    v.store.x = v.pos.x; v.store.y = v.pos.y; v.store.z = v.pos.z
+    return v.store
   }
   // Ammunition and medical supplies from a truck or a crate.
   resupply(s, kind) {

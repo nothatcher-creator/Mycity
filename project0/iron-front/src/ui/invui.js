@@ -25,7 +25,12 @@ export class InventoryUI {
   }
   close() { if (!this.visible) return; this.panel.show(false); this.loot = null; if (this.g.state === 'play' && !this.g.input.touch && !this.g.menus.visible && !this.g.map.visible) this.g.p0.input.lockPointer() }
   pointerDown() {} pointerMove() {} pointerUp() {}
-  update() { if (this.loot && this.g.player && Math.hypot(this.loot.x - this.g.player.s.pos.x, this.loot.z - this.g.player.s.pos.z) > 3) this.loot = null }
+  update() {
+    const s = this.g.player?.s, L = this.loot
+    if (!L || !s) return
+    if (L.vehicle) { L.x = L.vehicle.pos.x; L.z = L.vehicle.pos.z; if (s.vehicle !== L.vehicle && Math.hypot(L.x - s.pos.x, L.z - s.pos.z) > 3 + Math.max(...L.vehicle.def.size) / 2) this.loot = null }
+    else if (Math.hypot(L.x - s.pos.x, L.z - s.pos.z) > 3) this.loot = null
+  }
   dirty() { this.panel.dirty = true }
   draw(c, p) {
     const g = this.g, s = g.player?.s, k = this.s, W = p.w, H = p.h
@@ -76,7 +81,7 @@ export class InventoryUI {
     const lx = x + colW + 20 * k
     if (this.loot) {
       let ly = 64 * k
-      text(c, this.loot.name.toUpperCase(), lx, ly + 12 * k, { size: 12 * k, weight: 800, color: C.gold }); ly += 20 * k
+      text(c, this.loot.name.toUpperCase() + (this.loot.cap ? `  ${+this.loot.items.reduce((n, it) => n + itemSize(it), 0).toFixed(1)}/${this.loot.cap}` : ''), lx, ly + 12 * k, { size: 12 * k, weight: 800, color: C.gold }); ly += 20 * k
       const bw = this.loot.body?.inv?.weapons || null
       if (bw) for (const slot of ['primary', 'launcher', 'sidearm']) {
         const w = bw[slot]; if (!w) continue
@@ -106,7 +111,7 @@ export class InventoryUI {
       if (def?.gear) { acts.push(['Use now', () => { this.close?.(); g.gear.use(s, it.id); this.sel = null }]); acts.push(['Select for [Y]', () => { s.gearSel = it.id; g.hud.note(`Gear: ${def.name}`) }]) }
       if (it.id === 'nvg') acts.push(['Put on / off', () => { g.player.nvg = !g.player.nvg }])
       for (const [cid, label] of CONT) if (cid !== this.sel.from && inv.free(cid) >= itemSize(it)) acts.push([`Move to ${label.toLowerCase()}`, () => { inv.remove(it); inv.containers[cid].push(it); this.sel = { item: it, from: cid } }])
-      acts.push(['Drop', () => { inv.remove(it); this.drop([it]); this.sel = null }])
+      acts.push([this.loot?.vehicle ? 'Store' : 'Drop', () => { inv.remove(it); this.drop([it]); this.sel = null }])
     } else if (this.sel?.clothing) {
       const slot = this.sel.clothing
       acts.push([`Take off ${CLOTHING[inv.worn[slot]].name}`, () => { const r = inv.takeOff(slot); this.drop([{ kind: 'clothing', id: r.id }, ...r.spilled]); this.sel = null; s.pack = !!inv.worn.backpack }])
@@ -180,6 +185,13 @@ export class InventoryUI {
     const g = this.g, s = g.player.s
     let pile = this.loot && !this.loot.body ? this.loot : g.loot.find(l => !l.body && Math.hypot(l.x - s.pos.x, l.z - s.pos.z) < 1.5)
     if (!pile) { pile = { x: s.pos.x, y: s.pos.y, z: s.pos.z, items: [], name: 'the ground', t: g.time }; g.loot.push(pile) }
+    // a vehicle's storage holds only so much: what does not fit goes back in your kit
+    if (pile.cap) {
+      let used = pile.items.reduce((n, it) => n + itemSize(it), 0)
+      for (const it of items) { if (used + itemSize(it) <= pile.cap + 1e-6) { pile.items.push(it); used += itemSize(it) } else { s.inv.add(it); g.hud.note('No room in the storage') } }
+      if (!this.loot) this.loot = pile
+      return
+    }
     pile.items.push(...items)
     if (!this.loot) this.loot = pile
   }

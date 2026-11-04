@@ -142,7 +142,7 @@ export class Player {
     if (input.hit('zeroUp')) { this.zero = Math.min(1500, this.zero + 100); this.zeroAng = null; g.hud?.note(`Zeroing ${this.zero} m`) }
     if (input.hit('zeroDown')) { this.zero = Math.max(100, this.zero - 100); this.zeroAng = null; g.hud?.note(`Zeroing ${this.zero} m`) }
     if (input.hit('binoculars')) { this.binoculars = !this.binoculars && (s.inv.count('binoculars') + s.inv.count('rangefinder')) > 0 }
-    if (input.hit('nvg')) { this.nvg = !this.nvg; g.hud?.note(this.nvg ? 'Night vision on' : 'Night vision off') }
+    if (input.hit('nvg')) { this.nvg = !this.nvg; g.hud?.note(this.nvg ? 'Night vision on' : 'Night vision off'); g.sfx?.ui('click') }
     if (input.hit('light')) { this.light = !this.light }
     if (input.hit('bipod')) { s.bipod = !s.bipod && s.w?.s.bipod && (s.stance === PRONE || this.restingOnSomething()); g.hud?.note(s.bipod ? 'Bipod deployed' : 'Bipod folded') }
     if (s.bipod && (s.speed > 0.3 || (s.stance !== PRONE && !this.restingOnSomething()))) s.bipod = false
@@ -154,7 +154,11 @@ export class Player {
     }
     if (input.hit('gear')) { if (!g.gear.use(s) && !g.gear.selected(s)) g.hud?.note('No gear: mines, charges, sandbags, a radio or rations') }
     if (input.hit('gearNext')) g.gear.next(s)
-    if (input.hit('grenade')) { const t = s.inv.count('frag') ? 'frag' : s.inv.count('smoke') ? 'smoke' : s.inv.count('flash') ? 'flash' : null; if (t) g.throwGrenade(s, t, this.aimDirection()) }
+    // grenades: 4 picks the kind (frag, smoke, flashbang) from what you carry, G throws it
+    const kinds = ['frag', 'smoke', 'flash'].filter(k => s.inv.count(k))
+    if (!kinds.includes(this.nade)) this.nade = kinds[0] || null
+    if (input.hit('slot4') && kinds.length) { this.nade = kinds[(kinds.indexOf(this.nade) + 1) % kinds.length]; g.hud?.note(`Grenade: ${ITEMS[this.nade].name} (${s.inv.count(this.nade)})`) }
+    if (input.hit('grenade') && this.nade) g.throwGrenade(s, this.nade, this.aimDirection())
     // aiming down sights: hold the right button (or the touch button)
     const wantAds = (input.mouse.right || this.touchAds) && s.w && s.switchT <= 0 && !s.sprint && !s.ladder && !s.swimming
     s.ads = !!wantAds

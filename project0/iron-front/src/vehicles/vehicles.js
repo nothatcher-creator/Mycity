@@ -215,7 +215,7 @@ export class Vehicle {
       const lz = -hl + r + (hl * 2 - r * 2) * i / n
       _p.set(this.pos.x + lz * s, this.pos.y + Math.min(1.2, d.size[1] * 0.5), this.pos.z + lz * c)
       const ox = _p.x, oz = _p.z
-      G.collision.pushSphere(_p, r, h)
+      G.collision.pushSphere(_p, r, h, isFloor)
       if (_p.x !== ox || _p.z !== oz) { pushX += _p.x - ox; pushZ += _p.z - oz; hits++ }
     }
     if (hits) {
@@ -474,6 +474,8 @@ export class Vehicle {
     return true
   }
 }
+// a bridge deck's end face is not a wall to a vehicle driving onto it
+const isFloor = c => c.kind === 'floor'
 function newMounted(id) { const def = weapon(id); return { def, mag: def.mag, cooldown: 0, reloadT: 0, lock: null, lockT: 0 } }
 
 // ---------- the manager ----------
@@ -483,6 +485,37 @@ export class Vehicles {
     this.list = []
     this.mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })
     this.wreckMat = new THREE.MeshLambertMaterial({ color: 0x1f1d1b, flatShading: true })
+    // headlights: one real spotlight, given to your vehicle (or the nearest lit one), always in the scene so
+    // switching it never recompiles the materials; every lit vehicle also shows glowing lamps
+    this.spot = new THREE.SpotLight(0xfff0d2, 0, 85, 0.55, 0.45, 1.3)
+    game.engine.world.add(this.spot, this.spot.target)
+    this.glowMat = new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })
+    this.glowGeo = new THREE.CircleGeometry(0.16, 10)
+  }
+  lamps(dt) {
+    const g = this.game, night = g.sky?.night || 0, cam = g.camPos
+    let best = null, bd = 150
+    const me = g.player?.s.vehicle
+    for (const v of this.list) {
+      if (!v.alive) { if (v.glow) v.glow.visible = false; continue }
+      // AI drivers light up at dusk
+      const drv = v.driver
+      if (drv && !drv.isPlayer && v.kind !== 'plane') v.lights = night > 0.45
+      if (v.lights && !v.glow && v.model.lights.length) {
+        v.glow = new THREE.Group()
+        for (const [x, y, z] of v.model.lights) { const m = new THREE.Mesh(this.glowGeo, this.glowMat); m.position.set(x, y, z + 0.06); v.glow.add(m) }
+        v.root.add(v.glow)
+      }
+      if (v.glow) v.glow.visible = !!v.lights
+      if (v.lights && cam) { const d = v === me ? 0 : Math.hypot(v.pos.x - cam.x, v.pos.z - cam.z); if (d < bd) { bd = d; best = v } }
+    }
+    const s = this.spot
+    if (!best || !best.model.lights.length) { s.intensity = 0; return }
+    const L = best.model.lights, c = new THREE.Vector3()
+    for (const l of L) c.x += l[0] / L.length, c.y += l[1] / L.length, c.z += l[2] / L.length
+    s.position.copy(c).applyQuaternion(best.quat).add(best.pos)
+    s.target.position.set(0, -1.4, 22).add(c).applyQuaternion(best.quat).add(best.pos)
+    s.intensity = 700
   }
   spawn(type, x, z, yaw, o) { const v = new Vehicle(this.game, type, x, z, yaw, o); this.list.push(v); return v }
   remove(v) { this.game.engine.world.remove(v.root); const i = this.list.indexOf(v); if (i >= 0) this.list.splice(i, 1); for (const s of v.seats) if (s.occupant) this.exit(s.occupant, true) }
@@ -527,6 +560,7 @@ export class Vehicles {
   }
   update(dt) {
     for (const v of this.list) v.update(dt)
+    this.lamps(dt)
     // wrecks are cleared after a while (and far from the player)
     for (let i = this.list.length - 1; i >= 0; i--) { const v = this.list[i]; if (!v.alive && v.wreckT > 120) this.remove(v) }
   }

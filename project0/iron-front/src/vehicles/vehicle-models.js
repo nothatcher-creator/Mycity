@@ -13,6 +13,7 @@ const C = {
   canvas: [0.4, 0.42, 0.28], wood: [0.5, 0.38, 0.25], navy: [0.35, 0.4, 0.46], orange: [0.85, 0.45, 0.12], black: [0.06, 0.06, 0.07],
 }
 export const PAINTS = { olive: C.olive, tan: C.tan, grey: C.grey, navy: C.navy, red: [0.7, 0.16, 0.12], blue: [0.18, 0.32, 0.58], white: C.white, green: [0.22, 0.42, 0.28], yellow: [0.85, 0.7, 0.15], black: [0.14, 0.14, 0.15], camo: [0.38, 0.4, 0.26] }
+const GLASS = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide })
 const MILITARY = [PAINTS.olive, PAINTS.tan, PAINTS.grey, PAINTS.green]
 
 // What the model being built is painted with, and whether it gets camouflage and road dirt.
@@ -30,6 +31,7 @@ class G {
     g.setAttribute('color', new THREE.BufferAttribute(c, 3))
     g.deleteAttribute('uv'); g.deleteAttribute('normal')
     g.userData.paint = col === CUR.paint
+    g.userData.glass = col === C.glass
     this.parts.push(g)
     return this
   }
@@ -66,7 +68,15 @@ class G {
       }
     }
   }
-  mesh(mat) { if (!this.parts.length) return null; this.weather(); const m = new THREE.Mesh(mergeGeometries(this.parts), mat); m.castShadow = true; return m }
+  // windows are a second, see-through mesh: from the driver's seat you look out through them
+  mesh(mat) {
+    if (!this.parts.length) return null
+    this.weather()
+    const solid = this.parts.filter(g => !g.userData.glass), glass = this.parts.filter(g => g.userData.glass)
+    const m = new THREE.Mesh(mergeGeometries(solid.length ? solid : glass), mat); m.castShadow = true
+    if (solid.length && glass.length) { const gm = new THREE.Mesh(mergeGeometries(glass), GLASS); gm.renderOrder = 2; gm.name = 'glass'; m.add(gm) }
+    return m
+  }
 }
 
 export function buildVehicle(def, paint, mat) {

@@ -3,7 +3,7 @@
 // crosses water. Meshes are cut into 512 m tiles that are shown near the camera.
 import * as THREE from 'three'
 import { linArray } from '../core/color.js'
-import { roadLines, heightAt } from './heightfield.js'
+import { roadLines, heightAt, waterLevel } from './heightfield.js'
 import { makeBox } from './collision.js'
 import { Kit } from './kit.js'
 import { PAL } from './buildings.js'
@@ -88,12 +88,23 @@ export class Roads {
     else if (l.kind === 'dirt') this.strip(l, -0.6, 0.6, lift + 0.01, [0.42, 0.52, 0.28], 0)
     // bridges where the line crosses water: a deck, railings, pillars down to the bed
     const p = l.pts, k = this.bridgeKit
+    // over water the deck rises in a gentle arch to about 3 m above the water at mid-span, meeting the road
+    // at both ends (the road data put decks almost on the water, some ends under it)
+    const yb = p.map(q => q[2])
+    for (let a = 0; a < p.length; a++) {
+      if (p[a][3] !== 1) continue
+      let b = a; while (b + 1 < p.length && p[b + 1][3] === 1) b++
+      const mid = p[(a + b) >> 1], wl = waterLevel(mid[0], mid[1])
+      if (wl > -50) for (let i = a; i <= b; i++) { const s = (i - a + 1) / (b - a + 2); yb[i] = p[i][2] + Math.max(0, wl + 3.2 - p[i][2]) * Math.sin(Math.PI * s) }
+      a = b
+    }
     for (let i = 0; i < p.length - 1; i++) {
       const P = p[i], Q = p[i + 1]
       if (P[3] !== 1 || Q[3] !== 1) continue
-      const mx = (P[0] + Q[0]) / 2, mz = (P[1] + Q[1]) / 2, my = (P[2] + Q[2]) / 2
+      const Py = yb[i], Qy = yb[i + 1]
+      const mx = (P[0] + Q[0]) / 2, mz = (P[1] + Q[1]) / 2, my = (Py + Qy) / 2
       const len = Math.hypot(Q[0] - P[0], Q[1] - P[1]) / 2 + 0.05, yaw = Math.atan2(Q[0] - P[0], Q[1] - P[1])
-      const pitch = -Math.atan2(Q[2] - P[2], len * 2)
+      const pitch = -Math.atan2(Qy - Py, len * 2)
       k.setFrame(mx, my, mz, yaw)
       k.box(0, -0.35, 0, w / 2 + 0.8, 0.35, len, PAL.concrete, { mat: 'concrete', kind: 'floor', pitch })
       k.box(0, 0.03, 0, w / 2, 0.03, len, c, { collide: false, pitch })

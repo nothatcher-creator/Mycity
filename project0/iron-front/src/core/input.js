@@ -10,17 +10,17 @@ export const DEFAULT_BINDS = {
   zeroUp: 'PageUp', zeroDown: 'PageDown', binoculars: 'KeyO', nvg: 'KeyN', light: 'KeyL', heal: 'KeyH',
   squad: 'KeyT', gear: 'KeyY', gearNext: 'KeyU', pause: 'KeyP', shoulder: 'KeyK', bipod: 'KeyJ', holdBreath: 'ShiftLeft', freeLook: 'Backquote',
   // vehicles
-  vUp: 'Space', vDown: 'KeyC', vBoost: 'ShiftLeft', vSeat: 'KeyX', vLight: 'KeyL', vHorn: 'KeyH', vFlares: 'KeyR', vGear: 'KeyG',
+  vUp: 'Space', vDown: 'KeyC', vBoost: 'ShiftLeft', vSeat: 'KeyX', vLight: 'KeyL', vEngine: 'KeyE', vHorn: 'KeyH', vFlares: 'KeyR', vGear: 'KeyG',
 }
 export const ACTION_NAMES = {
   forward: 'Move forward', back: 'Move back', left: 'Strafe left', right: 'Strafe right', sprint: 'Sprint', walk: 'Walk (slow)',
   jump: 'Jump / vault', crouch: 'Crouch', prone: 'Prone', leanL: 'Lean left', leanR: 'Lean right', reload: 'Reload',
   interact: 'Interact / enter vehicle', view: 'First / third person', inventory: 'Inventory', map: 'Map', fireMode: 'Fire mode',
-  grenade: 'Throw grenade', melee: 'Melee', slot1: 'Primary weapon', slot2: 'Launcher', slot3: 'Sidearm', slot4: 'Grenades', slot5: 'Medkit / tool',
+  grenade: 'Throw grenade', melee: 'Melee', slot1: 'Primary weapon', slot2: 'Launcher', slot3: 'Sidearm', slot4: 'Next grenade (frag, smoke, flash)', slot5: 'Medkit / tool',
   zeroUp: 'Zeroing up', zeroDown: 'Zeroing down', binoculars: 'Binoculars', nvg: 'Night vision', light: 'Flashlight', heal: 'Bandage / heal',
   squad: 'Squad commands', gear: 'Use gear (mine, charge, sandbags, radio)', gearNext: 'Next gear', pause: 'Pause menu', shoulder: 'Switch shoulder', bipod: 'Deploy bipod', freeLook: 'Free look',
   vUp: 'Vehicle: up / collective', vDown: 'Vehicle: down / brake', vBoost: 'Vehicle: boost', vSeat: 'Vehicle: change seat', vLight: 'Vehicle: lights',
-  vHorn: 'Vehicle: horn', vFlares: 'Vehicle: flares', vGear: 'Vehicle: landing gear',
+  vEngine: 'Vehicle: engine on / off', vHorn: 'Vehicle: horn', vFlares: 'Vehicle: flares', vGear: 'Vehicle: landing gear',
 }
 const RESERVED = new Set(['Enter', 'NumpadEnter', 'Escape'])
 export const keyLabel = code => !code ? '-' : code.replace(/^Key/, '').replace(/^Digit/, '').replace('Left', ' L').replace('Right', ' R').replace('Backquote', '`').replace('Page', 'Pg ')

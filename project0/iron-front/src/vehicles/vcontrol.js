@@ -21,7 +21,12 @@ export class VehicleControl {
     if (input.hit('interact')) { g.vehicles.exit(sol); g.player.view = g.player.lastView || 'fp'; return }
     if (input.hit('vSeat')) { const s = g.vehicles.changeSeat(sol); if (s) g.hud.note(`Seat: ${s.role}`) }
     if (input.hit('view')) this.firstPerson = !this.firstPerson
-    if (input.hit('vLight')) v.lights = !v.lights
+    if (input.hit('vLight')) { v.lights = !v.lights; g.hud.note(v.lights ? 'Lights on' : 'Lights off') }
+    // the engine: off and it stays off (the throttle no longer starts it) until switched on again
+    if (input.hit('vEngine') && (seat.role === 'driver' || seat.role === 'pilot')) {
+      if (v.engine) { v.engine = false; v.engineOff = true; g.hud.note('Engine off') }
+      else if (v.fuel > 0 && v.alive) { v.engine = true; v.engineOff = false; g.hud.note('Engine on') } else g.hud.note(v.fuel > 0 ? 'The engine is wrecked' : 'No fuel')
+    }
     if (input.hit('vHorn')) g.sfx?.horn(v)
     if (input.hit('vFlares') && v.popFlares()) g.hud.note('Flares!')
     const driving = seat.role === 'driver' || seat.role === 'pilot'
@@ -78,7 +83,7 @@ export class VehicleControl {
         v.handbrake = input.down('jump')
         v.brake = v.handbrake ? 1 : 0
         v.boost = input.down('vBoost')
-        if (!v.engine && t && v.fuel > 0 && v.alive) v.engine = true
+        if (!v.engine && !v.engineOff && t && v.fuel > 0 && v.alive) v.engine = true
         this.orbit.yaw += look.yaw; this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.5, 1.2)
         // the orbit drifts back behind the vehicle while driving
         if (!look.yaw && Math.abs(v.speed) > 3) this.orbit.yaw *= 1 - dt * 1.2
@@ -104,6 +109,7 @@ export class VehicleControl {
       this.orbit.yaw += look.yaw; this.orbit.pitch = THREE.MathUtils.clamp(this.orbit.pitch - look.pitch, -0.5, 1.2)
     }
     this.camera(dt, v, seat)
+    this.cockpit(v, seat, this.firstPerson)
   }
   gunDir(v, seat) {
     const yaw = v.yaw + seat.aimYaw + (seat.side ? seat.side * 1.2 : 0), pitch = seat.aimPitch + v.pitch * 0.5
@@ -123,10 +129,12 @@ export class VehicleControl {
     const g = this.game, d = v.def
     const size = Math.max(d.size[2], d.size[0] * 0.6)
     if (seat.role === 'gunner' && seat.w && (this.firstPerson || seat.optic)) {
-      // the gunner's view: from the gun, along the aim
+      // the gunner's view: a turret's optic looks from the gun along the aim; at an open mount you stand
+      // behind the gun and see it in front of you
       const dir = this.gunDir(v, seat)
       const piv = v.model.gunPivot && !seat.side ? new THREE.Vector3(...v.model.gunPivot).applyQuaternion(v.quat).add(v.pos) : new THREE.Vector3(seat.at[0], seat.at[1] + 0.5, seat.at[2]).applyQuaternion(v.quat).add(v.pos)
-      this.camPos.copy(piv).addScaledVector(dir, 0.5).add(new THREE.Vector3(0, 0.35, 0))
+      if (seat.optic) this.camPos.copy(piv).addScaledVector(dir, 0.5).add(new THREE.Vector3(0, 0.35, 0))
+      else this.camPos.copy(piv).addScaledVector(dir, -0.75).add(new THREE.Vector3(0, 0.3, 0))
       const yaw = Math.atan2(dir.x, dir.z), pitch = Math.asin(dir.y)
       this.camQuat.setFromEuler(new THREE.Euler(pitch, yaw + Math.PI, 0, 'YXZ'))
       this.fov = g.settings.fov / this.zoom
@@ -160,5 +168,29 @@ export class VehicleControl {
     this.camQuat.setFromEuler(new THREE.Euler(Math.asin(look.y), Math.atan2(look.x, look.z) + Math.PI, 0, 'YXZ'))
     this.fov = g.settings.fov + Math.min(12, Math.abs(v.speed) * 0.15)
   }
-  entered(v) { this.orbit.yaw = 0; this.orbit.pitch = 0.18; this.aim.yaw = v.yaw; this.aim.pitch = v.pitch; this.zoom = 1; this.camPos.set(0, 0, 0) }
+  // in first person on foot, first person in the vehicle too
+  entered(v) { this.orbit.yaw = 0; this.orbit.pitch = 0.18; this.aim.yaw = v.yaw; this.aim.pitch = v.pitch; this.zoom = 1; this.camPos.set(0, 0, 0); this.firstPerson = (this.game.player?.lastView || this.game.player?.view) === 'fp'; v.engineOff = false }
+  // A dashboard and a steering wheel (or an instrument panel) drawn with the first-person weapon's camera, so
+  // the driver's first-person view has something to hold.
+  cockpit(v, seat, show) {
+    const g = this.game
+    if (!this.dash) {
+      const mat = new THREE.MeshLambertMaterial({ color: 0x23251f, flatShading: true }), metal = new THREE.MeshLambertMaterial({ color: 0x3a3c38, flatShading: true })
+      this.dash = new THREE.Group()
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.42), mat); panel.position.set(0, -0.47, -0.9); panel.rotation.x = 0.2; this.dash.add(panel)
+      const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 14), metal); dial.rotation.x = Math.PI / 2 - 0.35; dial.position.set(0.0, -0.37, -0.74); this.dash.add(dial)
+      this.wheel = new THREE.Group(); this.wheel.position.set(0, -0.33, -0.62); this.wheel.rotation.x = -0.5
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 6, 18), mat); this.wheel.add(rim)
+      for (const a of [0, 2.1, 4.2]) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 0.02), metal); sp.rotation.z = a; sp.position.set(Math.cos(a) * 0.08, Math.sin(a) * 0.08, 0); this.wheel.add(sp) }
+      this.dash.add(this.wheel)
+      g.engine.vmScene.add(this.dash)
+    }
+    const air = v.kind === 'heli' || v.kind === 'plane', on = show && (seat.role === 'driver' || seat.role === 'pilot') && v.kind !== 'bike'
+    this.dash.visible = on
+    if (!on) return
+    this.wheel.visible = !air
+    this.wheel.rotation.z = v.steer * 1.6
+    this.dash.position.set(seat.at[0] > 0 ? 0.0 : 0.0, 0, 0)
+    this.dash.quaternion.identity()
+  }
 }

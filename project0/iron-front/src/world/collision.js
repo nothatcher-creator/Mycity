@@ -97,11 +97,13 @@ export class Collision {
 
   // Pushes a sphere out of every box it overlaps; returns how far it moved up (for steps) and sets
   // `out.ground` when it rests on something nearly flat.
-  pushSphere(p, r, out) {
+  // `skip(c)`: colliders to ignore (vehicles ignore floors: they ride on them, see groundAt)
+  pushSphere(p, r, out, skip = null) {
     let up = 0
     out.ground = false; out.wall = false
     this.query(p.x - r, p.z - r, p.x + r, p.z + r, c => {
       if (p.y + r < c.minY || p.y - r > c.maxY) return
+      if (skip && skip(c)) return
       if (c.kind === 'glass' && c.broken) return
       // the closest point of the box to the sphere's centre
       const dx = p.x - c.x, dy = p.y - c.y, dz = p.z - c.z

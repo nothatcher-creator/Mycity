@@ -153,14 +153,18 @@ export class Game {
     this.player = pl
     this.hud.show(true)
     try { this.ui.update() } catch (err) { this.p0.log('warmup hud', err.message) }
-    await e.renderer.compileAsync(e.scene, e.camera)
-    await e.renderer.compileAsync(e.vmScene, e.vmCamera)
+    const W0 = performance.now()
+    await this.compileInSteps(e.scene, e.camera)
+    await this.compileInSteps(e.vmScene, e.vmCamera)
+    const W1 = performance.now()
     // draw it and wait for the GPU to finish (reading a pixel back waits): the shaders link now, not in play
     const gl = e.renderer.getContext(), px = new Uint8Array(4)
     const sync = () => { try { gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px) } catch {} }
-    e.render(true); sync()
     // a second frame shows how fast this machine draws once the shaders are ready
+    await this.drawInSteps(e.scene, e.camera, sync)
+    const W2 = performance.now()
     const t = performance.now(); e.render(true); sync(); this.warmFrame = performance.now() - t
+    if (this.debug) this.p0.log('dbg warmup compile', Math.round(W1 - W0), 'longest step', Math.round(this.longStep || 0), 'programs', this.engine.renderer.info.programs?.length, 'first draw', Math.round(W2 - W1), 'second', Math.round(this.warmFrame))
     // and away
     this.player = null
     this.hud.show(false)
@@ -292,15 +296,75 @@ export class Game {
     if (this.worldReady) return
     const t0 = performance.now(), q = this.settings.quality
     this.engine.uiOnly = false
-    this.preload(this.camPos.x, this.camPos.z)
+    const T = [performance.now()], mark = () => T.push(performance.now())
+    this.preload(this.camPos.x, this.camPos.z); mark()
     this.engine.setView(this.camPos, this.camQuat, this.fov)
     this.sky.update(0, this.engine.camera.position)
-    await this.warmup()
-    await this.engine.renderer.compileAsync(this.engine.scene, this.engine.camera)
-    const tw = performance.now(); this.engine.render(false); const warm = performance.now() - tw
+    await this.warmup(); mark()
+    await this.compileInSteps(this.engine.scene, this.engine.camera); mark()
+    const tw = performance.now(); this.engine.render(false); const warm = performance.now() - tw; mark()
+    if (this.debug) this.p0.log('dbg prepare preload/warmup/compile/render', T.slice(1).map((t, i) => Math.round(t - T[i])).join(' '))
     this.p0.log('world ready in', Math.round(performance.now() - t0), 'ms; warm frame', Math.round(this.warmFrame), 'ms')
-    if ((warm > 250 || this.warmFrame > 120) && q !== 'low' && !this.settings.qualityChosen) this.setQuality('low')
+    if ((warm > 250 || this.warmFrame > 120) && q !== 'low' && !this.settings.qualityChosen) {
+      this.setQuality('low')
+      // the light version's materials, compiled now (in steps) rather than all at once in the first frame of play
+      this.preload(this.camPos.x, this.camPos.z)
+      await this.compileInSteps(this.engine.scene, this.engine.camera)
+      const gl = this.engine.renderer.getContext(), px = new Uint8Array(4)
+      await this.drawInSteps(this.engine.scene, this.engine.camera, () => { try { gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px) } catch {} })
+    }
     this.worldReady = true
+  }
+  // The first draw of everything, a growing handful of objects at a time (the rest hidden), waiting for the
+  // GPU after each and pausing between: the driver's first-use work and the uploads are spread out too.
+  async drawInSteps(scene, camera, sync, budget = 150) {
+    const r = this.engine.renderer, groups = new Map(), all = []
+    scene.traverse(o => {
+      if (!(o.isMesh || o.isPoints || o.isLine || o.isSprite) || !o.visible || !o.material) return
+      const key = (Array.isArray(o.material) ? o.material.map(m => m.uuid).join() : o.material.uuid) + (o.isInstancedMesh ? 'i' : '')
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(o); all.push(o)
+    })
+    for (const o of all) o.visible = false
+    const list = [...groups.values()]
+    // into a 32-pixel corner: the driver's first-use work is the same at any size, the pixels are not
+    const vp = r.getViewport(new THREE.Vector4()), shadows = r.shadowMap.autoUpdate
+    r.setViewport(0, 0, 32, 32)
+    r.shadowMap.autoUpdate = false
+    let i = 0, n = 1, t = performance.now(), worst = 0, steps = 0
+    try {
+      while (i < list.length) {
+        const s0 = performance.now()
+        for (const g of list.slice(i, i + n)) for (const o of g) o.visible = true
+        i += n; steps++
+        r.setRenderTarget(null); r.render(scene, camera); sync()
+        const took = performance.now() - s0
+        worst = Math.max(worst, took)
+        n = took < budget / 2 ? n * 2 : Math.max(1, n >> 1)
+        if (performance.now() - t > budget) { await new Promise(res => setTimeout(res, 16)); t = performance.now() }
+      }
+    } finally { for (const o of all) o.visible = true; r.setViewport(vp); r.shadowMap.autoUpdate = shadows; r.shadowMap.needsUpdate = true }
+    if (this.debug) this.p0.log('dbg draw in steps', list.length, 'materials', all.length, 'objects,', steps, 'steps, worst', Math.round(worst), 'ms')
+  }
+  // Every shader the scene needs, compiled and linked a few at a time with a pause between, so a slow
+  // graphics driver never holds the game up for long in one go. (The city stops a game that has not
+  // answered for 12 s: players on slower devices were stopped while everything compiled at once.)
+  async compileInSteps(scene, camera, budget = 100) {
+    const r = this.engine.renderer, gl = r.getContext(), done = this.linked || (this.linked = new WeakSet())
+    const objs = [], seen = new Set()
+    scene.traverseVisible(o => {
+      if (!(o.isMesh || o.isPoints || o.isLine || o.isSprite) || !o.material) return
+      const key = (Array.isArray(o.material) ? o.material.map(m => m.uuid).join() : o.material.uuid) + (o.isInstancedMesh ? 'i' : '') + (o.isSkinnedMesh ? 's' : '') + (o.geometry?.attributes.color ? 'c' : '')
+      if (!seen.has(key)) { seen.add(key); objs.push(o) }
+    })
+    let t = performance.now()
+    for (const o of objs) {
+      try { r.compile(o, camera, scene) } catch (e) { this.p0.log('compile', e.message) }
+      // wait for the driver to finish linking what was just queued (this is where the time goes)
+      for (const p of r.info.programs || []) if (!done.has(p)) { done.add(p); try { gl.getProgramParameter(p.program, gl.LINK_STATUS) } catch {} }
+      const dt = performance.now() - t
+      if (dt > budget) { this.longStep = Math.max(this.longStep || 0, dt); await new Promise(res => setTimeout(res, 16)); t = performance.now() }
+    }
   }
   async startNow(modeId, opts) {
     if (this.starting) return
@@ -308,11 +372,13 @@ export class Game {
     try { await this.prepareWorld() } catch (e) { this.p0.log('prepare failed', e.message) }
     this.starting = false
     this.pendingStart = null
+    const t1 = performance.now()
     this.clearWorld()
     const M = MODES[modeId]
     this.modeId = modeId
     this.mode = new M(this, opts)
     this.mode.setup()
+    if (this.debug) this.p0.log('dbg start clear+setup', Math.round(performance.now() - t1), 'ms')
     this.state = 'play'
     this.menus.close()
     this.hud.show(true)
@@ -604,6 +670,8 @@ export class Game {
   frame(dt) {
     this.time += dt
     const t0 = performance.now()
+    if (this.debug && this.lastFrameT && t0 - this.lastFrameT > 1500) this.p0.log("dbg stall", Math.round(t0 - this.lastFrameT), "ms between frames, state", this.state)
+    this.lastFrameT = t0
     this.rebuildGrid()
     if (this.pendingStart && !this.starting && this.menus.page === 'deploying' && !this.menus.panel.dirty) { const p = this.pendingStart; this.startNow(p.modeId, p.opts) }
     if (this.state === 'menu') this.menuFrame(dt)
@@ -613,7 +681,9 @@ export class Game {
     const T = [performance.now()]
     // the world round the camera (not while the title screen is up before the first deploy)
     const cp = this.camPos
-    if (this.engine.uiOnly) { this.ui.update(); this.engine.render(false); return }
+    // (and while the world warms up behind the deploying screen: those frames draw the 2D screen only, so
+    // the warm-up's small steps are not undone by a full frame doing all the first-time work at once)
+    if (this.engine.uiOnly || this.starting) { const u = this.engine.uiOnly; this.engine.uiOnly = true; this.ui.update(); this.engine.render(false); this.engine.uiOnly = u; return }
     this.terrain.update(cp.x, cp.y, cp.z, this.settings.quality === 'low' ? 3 : 5); T.push(performance.now())
     this.city.update(cp.x, cp.z, 4); T.push(performance.now())
     this.veg.update(cp.x, cp.z, 3, dt); this.grass.update(cp.x, cp.y, cp.z, dt); T.push(performance.now())

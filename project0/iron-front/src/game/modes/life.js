@@ -26,13 +26,13 @@ const PANTS_COLOR = { jeans: [0.2, 0.27, 0.45], chinos: [0.6, 0.52, 0.38], short
 
 // The counters. price in dollars; a shop buys back what it sells at 40%.
 export const SHOPS = {
-  grocer: { name: 'General store', greet: 'Fresh bread came in this morning.', items: { sandwich: 6, apple: 2, water: 3, soda: 4, hotmeal: 14, ration: 9, canteen: 12 }, buys: ['fish'] },
-  cafe: { name: 'Café', greet: 'Coffee? It is the only thing that kept us going through the war.', items: { coffee: 3, sandwich: 6, hotmeal: 12, soda: 4, water: 3 } },
-  chemist: { name: 'Chemist', greet: 'Take care of yourself out there.', items: { bandage: 4, firstaid: 22, morphine: 12, splint: 10, medkit: 75 } },
-  clothes: { name: 'Clothes shop', greet: 'New season, old stock. Have a look.', clothing: { tshirt: 12, shirt: 25, hoodie: 30, jacket: 90, suit: 140, workjacket: 35, jeans: 30, chinos: 35, shorts: 15, workpants: 40, beanie: 10, sunglasses: 20, sneakers: 45, daypack: 40, assaultpack: 75 } },
-  hardware: { name: 'Hardware & outdoor', greet: 'If it is broken, I have something for it.', items: { repairkit: 55, jerrycan: 30, binoculars: 70, fishingrod: 40, canteen: 12 }, buys: ['fish'] },
+  grocer: { name: 'General store', hours: [7, 21], greet: 'Fresh bread came in this morning.', items: { sandwich: 6, apple: 2, water: 3, soda: 4, hotmeal: 14, ration: 9, canteen: 12 }, buys: ['fish'] },
+  cafe: { name: 'Café', hours: [7, 23], greet: 'Coffee? It is the only thing that kept us going through the war.', items: { coffee: 3, sandwich: 6, hotmeal: 12, soda: 4, water: 3 } },
+  chemist: { name: 'Chemist', hours: [8, 20], greet: 'Take care of yourself out there.', items: { bandage: 4, firstaid: 22, morphine: 12, splint: 10, medkit: 75 } },
+  clothes: { name: 'Clothes shop', hours: [9, 19], greet: 'New season, old stock. Have a look.', clothing: { tshirt: 12, shirt: 25, hoodie: 30, jacket: 90, suit: 140, workjacket: 35, jeans: 30, chinos: 35, shorts: 15, workpants: 40, beanie: 10, sunglasses: 20, sneakers: 45, daypack: 40, assaultpack: 75 } },
+  hardware: { name: 'Hardware & outdoor', hours: [8, 18], greet: 'If it is broken, I have something for it.', items: { repairkit: 55, jerrycan: 30, binoculars: 70, fishingrod: 40, canteen: 12 }, buys: ['fish'] },
   fuel: { name: 'Fuel station', greet: 'Pump is working again. Cash only.', items: { jerrycan: 32, water: 3, soda: 4, sandwich: 7, coffee: 3 }, refuel: true },
-  dealer: { name: 'Car dealer', greet: 'Every one of these survived the war. Mostly.', cars: { scooter: 350, hatch: 900, quad: 800, motorbike: 1100, sedan: 1600, pickup: 2200, van: 2600, sports: 9500 } },
+  dealer: { name: 'Car dealer', hours: [9, 18], greet: 'Every one of these survived the war. Mostly.', cars: { scooter: 350, hatch: 900, quad: 800, motorbike: 1100, sedan: 1600, pickup: 2200, van: 2600, sports: 9500 } },
 }
 const SHOP_KINDS = ['grocer', 'cafe', 'clothes', 'chemist', 'hardware']
 const LINES = {
@@ -101,6 +101,18 @@ export class Life extends Mode {
     s.yaw = a + Math.PI; g.player.pitch = -0.1
     g.p0.log('dbg visit', n.shop, n.name, Math.round(n.s.pos.x), Math.round(n.s.pos.y), Math.round(n.s.pos.z), 'me', Math.round(s.pos.x), Math.round(s.pos.y), Math.round(s.pos.z))
   }
+  // (local testing) stand on the nearest shore, facing the water
+  dbgShore() {
+    const g = this.g, s = g.player.s
+    for (let r = 20; r < 3000; r += 20) for (let k = 0; k < 48; k++) {
+      const a = k / 48 * Math.PI * 2, x = s.pos.x + Math.cos(a) * r, z = s.pos.z + Math.sin(a) * r
+      if (waterLevel(x, z) > heightAt(x, z) + 0.3) continue
+      for (let q = 0; q < 8; q++) {
+        const b = q / 8 * Math.PI * 2, fx = x + Math.sin(b) * 3, fz = z + Math.cos(b) * 3
+        if (waterLevel(fx, fz) > heightAt(fx, fz) + 0.3 && !isBuilt(x, z, 0.5)) { g.preload(x, z); s.pos.set(x, heightAt(x, z), z); s.vel.set(0, 0, 0); s.yaw = b; g.p0.log('dbg shore', Math.round(x), Math.round(z)); return }
+      }
+    }
+  }
   // (local testing) take a job and sit in its vehicle; then each call puts the vehicle at the next stop
   dbgJob(kind) {
     const g = this.g, s = g.player.s
@@ -112,7 +124,7 @@ export class Life extends Mode {
     g.preload(t.x, t.z)
     g.p0.log('dbg job', j.kind, 'stop', j.i, 'of', j.stops.length, 'riders', (j.riders || []).length, 'fare', !!j.fare, 'money', Math.round(this.money))
   }
-  dispose() { this.closeUI(); for (const m of this.beacons || []) this.g.engine.world.remove(m) }
+  dispose() { this.persist(); this.closeUI(); for (const m of this.beacons || []) this.g.engine.world.remove(m) }
   // a point in a building's own frame (x along its width, z to its front), on its floor
   local(b, lx, lz, dy = 0) {
     const c = Math.cos(b.yaw), s = Math.sin(b.yaw)
@@ -187,7 +199,9 @@ export class Life extends Mode {
     // people round you: walkers on the streets, residents and shopkeepers in the buildings within 140 m
     const { place, d } = nearestPlace(px, pz)
     if (place && d < 50 && ['city', 'town', 'village'].includes(place.kind)) {
-      const want = place.kind === 'city' ? 14 : place.kind === 'town' ? 8 : 4
+      // busy by day, a few night owls after ten
+      const h = this.g.sky.hour, busy = h >= 22 || h < 6 ? 0.2 : h < 8 || h >= 20 ? 0.55 : 1
+      const want = Math.round((place.kind === 'city' ? 14 : place.kind === 'town' ? 8 : 4) * busy)
       const walkers = this.npcs.filter(n => n.kind === 'walker' && !n.s.dead).length
       for (let i = walkers, tries = 0; i < want && tries < 30; tries++) {
         const a = Math.random() * Math.PI * 2, r = 25 + Math.random() * 90
@@ -195,6 +209,8 @@ export class Life extends Mode {
         if (!this.sidewalk(x, z)) continue
         const n = this.person(x, z); n.town = place.id; i++
       }
+      // as it gets late, people go home: one at a time, out of your sight (more than 50 m off)
+      if (walkers > want) { const n = this.npcs.find(n => n.kind === 'walker' && !n.s.dead && Math.hypot(n.s.pos.x - px, n.s.pos.z - pz) > 50); if (n) this.remove(n) }
     }
     for (const [bi, b] of BUILDINGS.entries()) {
       if (Math.abs(b.x - px) > 140 || Math.abs(b.z - pz) > 140) continue
@@ -369,8 +385,9 @@ export class Life extends Mode {
     for (const n of this.npcs) { if (n.s.dead || n.s.vehicle) continue; const d = Math.hypot(n.s.pos.x - s.pos.x, n.s.pos.z - s.pos.z); if (d < bd && Math.abs(n.s.pos.y - s.pos.y) < 2) { bd = d; best = n } }
     if (best) {
       const sh = best.shop && SHOPS[best.shop]
-      hud.prompt = sh ? `[F] ${sh.name}: ${best.name.split(' ')[0]}` : `[F] Talk to ${best.name}`
-      if (inp.hit('interact')) { if (sh) this.openUI({ kind: 'shop', shop: best.shop, npc: best }); else this.talk(best) }
+      const open = !sh || this.isOpen(best.shop)
+      hud.prompt = sh ? (open ? `[F] ${sh.name}: ${best.name.split(' ')[0]}` : `${sh.name}: closed, opens at ${String(sh.hours[0]).padStart(2, '0')}:00`) : `[F] Talk to ${best.name}`
+      if (inp.hit('interact')) { if (sh && open) this.openUI({ kind: 'shop', shop: best.shop, npc: best }); else if (sh) g.hud.radio(best.name, 'We are closed. Come back in the morning.'); else this.talk(best) }
       return true
     }
     // fishing at the water's edge
@@ -392,6 +409,8 @@ export class Life extends Mode {
       else this.g.hud.note('Nothing bit this time')
     }
   }
+  // opening hours (the fuel station never closes)
+  isOpen(kind) { const H = SHOPS[kind]?.hours, h = this.g.sky.hour; return !H || (h >= H[0] && h < H[1]) }
   talk(n) {
     const g = this.g, h = g.sky.hour
     const set = g.sky.weatherKey !== 'clear' && Math.random() < 0.4 ? LINES.rain : h < 6 || h > 22 ? LINES.night : h < 10 ? LINES.morning : h > 18 ? LINES.evening : LINES.day
@@ -499,7 +518,7 @@ export class Life extends Mode {
       if (j.i === 0 && s.vehicle === j.v && Math.hypot(j.v.pos.x - f.s.pos.x, j.v.pos.z - f.s.pos.z) < 10 && Math.abs(j.v.speed) < 1.5) {
         if (g.vehicles.enter(f.s, j.v, 'passenger')) { j.i = 1; j.pickup = { x: j.v.pos.x, z: j.v.pos.z }; g.hud.radio(f.name, 'Thanks for stopping. Take me to the marker, please.'); this.beacon(j.stops[1]) }
       } else if (j.i === 1 && s.vehicle === j.v && d < 14 && Math.abs(j.v.speed) < 1.5) {
-        const fare = 15 + Math.hypot(t.x - j.pickup.x, t.z - j.pickup.z) * 0.09
+        const fare = 10 + Math.hypot(t.x - j.pickup.x, t.z - j.pickup.z) * 0.05
         g.vehicles.exit(f.s, true); f.passenger = false; f.kind = 'walker'; f.home = { x: f.s.pos.x, z: f.s.pos.z }
         g.hud.radio(f.name, Math.random() < 0.5 ? 'Keep the change.' : 'Smooth ride. Thank you!')
         this.pay(fare, 'Fare'); j.fare = null

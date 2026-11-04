@@ -332,7 +332,9 @@ export class Game {
     const list = [...groups.values()]
     // into a 32-pixel corner: the driver's first-use work is the same at any size, the pixels are not
     const vp = r.getViewport(new THREE.Vector4()), shadows = r.shadowMap.autoUpdate
-    r.setViewport(0, 0, 32, 32)
+    const corner = () => { r.setViewport(0, 0, 32, 32); r.setScissor(0, 0, 32, 32); r.setScissorTest(true) }
+    const whole = () => { r.setScissorTest(false); r.setViewport(vp) }
+    corner()
     r.shadowMap.autoUpdate = false
     let i = 0, n = 1, t = performance.now(), worst = 0, steps = 0
     try {
@@ -344,11 +346,15 @@ export class Game {
         const took = performance.now() - s0
         worst = Math.max(worst, took)
         n = took < budget / 2 ? n * 2 : Math.max(1, n >> 1)
-        if (performance.now() - t > budget) { await new Promise(res => setTimeout(res, 16)); t = performance.now() }
+        // the screen shows whatever was drawn last when we pause: put the deploying screen back first (each
+        // render clears the whole canvas, not just the corner, and an empty canvas shows white)
+        if (performance.now() - t > budget) { whole(); this.showUI(); await new Promise(res => setTimeout(res, 16)); corner(); t = performance.now() }
       }
-    } finally { for (const o of all) o.visible = true; r.setViewport(vp); r.shadowMap.autoUpdate = shadows; r.shadowMap.needsUpdate = true }
+    } finally { for (const o of all) o.visible = true; whole(); r.shadowMap.autoUpdate = shadows; r.shadowMap.needsUpdate = true; this.showUI() }
     if (this.debug) this.p0.log('dbg draw in steps', list.length, 'materials', all.length, 'objects,', steps, 'steps, worst', Math.round(worst), 'ms')
   }
+  // the 2D screens only (the deploying screen while the world warms up behind it)
+  showUI() { const e = this.engine, u = e.uiOnly; e.uiOnly = true; try { e.render(false) } finally { e.uiOnly = u } }
   // Every shader the scene needs, compiled and linked a few at a time with a pause between, so a slow
   // graphics driver never holds the game up for long in one go. (The city stops a game that has not
   // answered for 12 s: players on slower devices were stopped while everything compiled at once.)
@@ -366,7 +372,7 @@ export class Game {
       // wait for the driver to finish linking what was just queued (this is where the time goes)
       for (const p of r.info.programs || []) if (!done.has(p)) { done.add(p); try { gl.getProgramParameter(p.program, gl.LINK_STATUS) } catch {} }
       const dt = performance.now() - t
-      if (dt > budget) { this.longStep = Math.max(this.longStep || 0, dt); await new Promise(res => setTimeout(res, 16)); t = performance.now() }
+      if (dt > budget) { this.longStep = Math.max(this.longStep || 0, dt); this.showUI(); await new Promise(res => setTimeout(res, 16)); t = performance.now() }
     }
   }
   async startNow(modeId, opts) {

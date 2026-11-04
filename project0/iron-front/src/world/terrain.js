@@ -3,6 +3,7 @@
 // nearest first, and kept in a cache. Flat-shaded and coloured per vertex: grass, forest floor, fields,
 // rock, sand and the beds of rivers and the sea.
 import * as THREE from 'three'
+import { linArray } from '../core/color.js'
 import { heightAt, forestAt, fieldAt, waterLevel, normalAt, landShape, bilinear, base, flatMask } from './heightfield.js'
 import { HALF, LAND_COLORS as C } from './blueprint.js'
 import { hash2 } from '../core/noise.js'
@@ -35,11 +36,17 @@ float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 *
   return mix(mix(gHash(i), gHash(i + vec2(1.0, 0.0)), f.x), mix(gHash(i + vec2(0.0, 1.0)), gHash(i + vec2(1.0, 1.0)), f.x), f.y); }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
-  float near = 1.0 - smoothstep(60.0, 160.0, length(vViewPosition));
-  float coarse = gNoise(vIsland * 0.09) - 0.5, fine = gNoise(vIsland * 0.6) - 0.5;
-  float k = 1.0 + coarse * 0.42 + fine * 0.3 * near;
-  // a touch of brown in the darker patches, like worn ground
-  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.08, 0.95, 0.8), clamp(-coarse * 2.0, 0.0, 0.7)) * k;
+  // grassy ground (green above red and blue) varies most: big dry patches going to straw, darker lush
+  // hollows, and fine mottling close by; fields, rock and sand only get the brightness noise
+  float dist = length(vViewPosition), near = 1.0 - smoothstep(50.0, 180.0, dist);
+  float n1 = gNoise(vIsland * 0.011), n2 = gNoise(vIsland * 0.065), n3 = gNoise(vIsland * 0.55), n4 = gNoise(vIsland * 2.1);
+  vec3 c = diffuseColor.rgb;
+  float green = clamp((c.g - max(c.r, c.b)) * 9.0, 0.0, 1.0);
+  c = mix(c, c * vec3(1.55, 1.12, 0.62), green * smoothstep(0.5, 0.82, n1) * 0.75);
+  c = mix(c, c * vec3(0.72, 0.9, 0.66), green * smoothstep(0.5, 0.18, n2) * 0.65);
+  c = mix(c, c * vec3(1.15, 0.95, 0.75), green * smoothstep(0.62, 0.9, n3) * 0.5 * near);
+  float k = 1.0 + (n2 - 0.5) * 0.3 + (n3 - 0.5) * 0.35 * near + (n4 - 0.5) * 0.28 * near;
+  diffuseColor.rgb = c * k;
 }`)
     }
     this.cache = new Map()    // key -> { mesh, used }
@@ -158,7 +165,7 @@ float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 *
     }
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, v * 3), 3))
-    g.setAttribute('color', new THREE.BufferAttribute(col.subarray(0, v * 3), 3))
+    g.setAttribute('color', new THREE.BufferAttribute(linArray(col.subarray(0, v * 3)), 3))
     g.setIndex(idx)
     g.computeBoundingSphere()
     const mesh = new THREE.Mesh(g, this.material)

@@ -5,6 +5,7 @@
 // bullets still leave the muzzle and go where the crosshair points. Breathing sway, recoil kick and its
 // recovery, a hold-breath for scopes, zeroing for range.
 import * as THREE from 'three'
+import { lin } from '../core/color.js'
 import { buildWeapon } from '../combat/weapon-models.js'
 import { ATTACHMENTS, AMMO, weapon } from '../combat/weapons-data.js'
 import { zeroAngle } from '../combat/ballistics.js'
@@ -45,7 +46,8 @@ export class Player {
     const e = game.engine
     this.vm = new THREE.Group()
     e.vmScene.add(this.vm)
-    this.vmMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })
+    // the weapon in your hands catches the light: a little shine on metal edges reads its shape
+    this.vmMat = new THREE.MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 42, specular: 0x2c2c2a })
     this.armMat = new THREE.MeshLambertMaterial({ color: 0x55603a, flatShading: true })
     this.gloveMat = new THREE.MeshLambertMaterial({ color: 0x222222, flatShading: true })
     this.arms = []
@@ -73,7 +75,7 @@ export class Player {
     this.vmMesh = new THREE.Mesh(this.model.geometry, this.vmMat)
     this.vm.add(this.vmMesh)
     const F = FACTIONS[this.s.faction]
-    this.armMat.color.setRGB(F.uniform[0] * 0.75, F.uniform[1] * 0.75, F.uniform[2] * 0.75)
+    this.armMat.color.setRGB(lin(F.uniform[0] * 0.75), lin(F.uniform[1] * 0.75), lin(F.uniform[2] * 0.75))
     this.zoomIdx = 0
     this.zeroAng = null
   }

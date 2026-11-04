@@ -100,8 +100,8 @@ export const ROAD_WIDTH = { highway: 10, road: 7, dirt: 5, street: 10, runway: 4
 
 // Colours of the land (linear-ish sRGB values 0..1), shared by the terrain mesh and the map.
 export const LAND_COLORS = {
-  sand: [0.86, 0.78, 0.55], grass: [0.42, 0.62, 0.26], grass2: [0.55, 0.68, 0.3], meadow: [0.62, 0.7, 0.32],
-  forest: [0.2, 0.38, 0.17], rock: [0.52, 0.5, 0.47], rockDark: [0.38, 0.37, 0.36], dirt: [0.55, 0.43, 0.3],
+  sand: [0.84, 0.77, 0.56], grass: [0.37, 0.5, 0.23], grass2: [0.46, 0.54, 0.27], meadow: [0.52, 0.56, 0.29],
+  forest: [0.2, 0.31, 0.14], rock: [0.52, 0.5, 0.47], rockDark: [0.38, 0.37, 0.36], dirt: [0.55, 0.43, 0.3],
   snow: [0.92, 0.94, 0.96], seabed: [0.62, 0.6, 0.45], plateau: [0.5, 0.55, 0.32], field1: [0.85, 0.74, 0.32],
   field2: [0.52, 0.36, 0.22], field3: [0.62, 0.75, 0.28], asphalt: [0.2, 0.2, 0.22], concrete: [0.62, 0.62, 0.6],
 }

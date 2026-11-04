@@ -3,6 +3,7 @@
 // pose of each soldier (stance, walk cycle, aim, lean, reload, death) is turned into a matrix per part.
 // Arms reach the weapon by two-bone IK: the right hand on the grip, the left on the handguard.
 import * as THREE from 'three'
+import { lin } from '../core/color.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { buildWeapon, HELD } from '../combat/weapon-models.js'
 import { weapon } from '../combat/weapons-data.js'
@@ -10,38 +11,58 @@ import { FACTIONS } from './factions.js'
 import { hash2 } from '../core/noise.js'
 
 const MAX = 320
-// Geometry for a part: boxes with a camouflage of lighter and darker faces (vertex colour multiplies the
-// instance colour), pivot at the joint.
+// Geometry for a part: boxes, pivot at the joint, with vertex colours that multiply the instance colour
+// (the faction's uniform, gear, skin or headgear). Uniform parts get a camouflage: blotches of dark green,
+// brown and light from a noise at each face's position (the same pattern across a soldier's body). A box's
+// `shade` darkens it (straps, boots, gloves); a negative shade keeps it out of the camouflage.
+const TONES = [[0.62, 0.68, 0.57], [0.95, 0.84, 0.7], [1.13, 1.11, 1.0], [1, 1, 1]].map(t => t.map(lin))
+function camoAt(x, y, z, seed) {
+  const n = hash2(Math.floor(x * 9 + y * 3), Math.floor(y * 9 - z * 4), seed) * 0.55 + hash2(Math.floor(x * 4), Math.floor(y * 4 + z * 4), seed + 1) * 0.45
+  return n < 0.26 ? 0 : n < 0.44 ? 1 : n > 0.8 ? 2 : 3
+}
 function partGeo(boxes, camo = true, seed = 1) {
   const gs = []
-  let k = 0
   for (const [w, h, d, x, y, z, shade = 1] of boxes) {
-    const g = new THREE.BoxGeometry(w, h, d, camo ? 2 : 1, camo ? 2 : 1, camo ? 2 : 1).toNonIndexed()
+    const seg = camo && shade > 0 ? 3 : 1
+    const g = new THREE.BoxGeometry(w, h, d, seg, seg, seg).toNonIndexed()
     g.translate(x, y, z)
-    const n = g.attributes.position.count, c = new Float32Array(n * 3)
-    for (let i = 0; i < n; i += 3) {
-      const v = camo ? 0.78 + 0.44 * hash2(i + k * 977, seed, 9) : 1
-      const tone = camo && hash2(i + k, seed, 10) < 0.18 ? 0.7 : 1
-      for (let j = 0; j < 3; j++) { c[(i + j) * 3] = v * shade * tone; c[(i + j) * 3 + 1] = v * shade * tone; c[(i + j) * 3 + 2] = v * shade * tone }
+    const p = g.attributes.position, n = p.count, c = new Float32Array(n * 3)
+    const sh = lin(Math.abs(shade))
+    // per quad (two triangles), so blotches are square patches rather than diagonal slivers
+    for (let i = 0; i < n; i += 6) {
+      let cx = 0, cy = 0, cz = 0
+      for (let j = 0; j < 6; j++) { cx += p.getX(i + j); cy += p.getY(i + j); cz += p.getZ(i + j) }
+      const tone = camo && shade > 0 ? TONES[camoAt(cx / 6, cy / 6, cz / 6, seed)] : TONES[3]
+      const v = camo ? 1 : 0.94 + 0.12 * hash2(i, seed, 9)
+      for (let j = 0; j < 6; j++) { c[(i + j) * 3] = tone[0] * sh * v; c[(i + j) * 3 + 1] = tone[1] * sh * v; c[(i + j) * 3 + 2] = tone[2] * sh * v }
     }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3))
     g.deleteAttribute('uv')
-    gs.push(g); k++
+    gs.push(g)
   }
   return mergeGeometries(gs)
 }
 const PARTS = {
-  pelvis: partGeo([[0.32, 0.18, 0.2, 0, 0, 0]], true, 1),
-  torso: partGeo([[0.36, 0.5, 0.22, 0, 0.25, 0]], true, 2),
-  vest: partGeo([[0.4, 0.36, 0.27, 0, 0.26, 0.005], [0.1, 0.1, 0.05, -0.1, 0.18, 0.14, 0.85], [0.1, 0.1, 0.05, 0.0, 0.18, 0.14, 0.85], [0.1, 0.1, 0.05, 0.1, 0.18, 0.14, 0.85]], false, 3),
-  pack: partGeo([[0.32, 0.4, 0.16, 0, 0.27, -0.2], [0.26, 0.12, 0.1, 0, 0.13, -0.3, 0.9]], false, 4),
-  head: partGeo([[0.19, 0.23, 0.21, 0, 0.13, 0.01]], false, 5),
-  helmet: partGeo([[0.25, 0.1, 0.27, 0, 0.27, 0.0], [0.22, 0.06, 0.24, 0, 0.215, 0.0, 0.92]], false, 6),
+  // pelvis with a belt, a buckle and a pouch on the hip
+  pelvis: partGeo([[0.32, 0.18, 0.2, 0, 0, 0], [0.34, 0.05, 0.22, 0, 0.07, 0, -0.45], [0.05, 0.035, 0.012, 0, 0.07, 0.112, -0.8], [0.06, 0.09, 0.07, 0.17, 0.02, -0.02, -0.55]], true, 1),
+  torso: partGeo([[0.36, 0.5, 0.22, 0, 0.25, 0], [0.2, 0.05, 0.2, 0, 0.5, 0, 0.9]], true, 2),
+  // a plate carrier: front and back plates, three magazine pouches, an admin pouch, a radio with its aerial
+  vest: partGeo([[0.38, 0.32, 0.06, 0, 0.27, 0.115], [0.38, 0.32, 0.06, 0, 0.27, -0.115], [0.41, 0.1, 0.25, 0, 0.17, 0], [0.07, 0.12, 0.25, 0.17, 0.33, 0, 0.9], [0.07, 0.12, 0.25, -0.17, 0.33, 0, 0.9],
+    [0.09, 0.1, 0.05, -0.1, 0.17, 0.165, 0.85], [0.09, 0.1, 0.05, 0.0, 0.17, 0.165, 0.85], [0.09, 0.1, 0.05, 0.1, 0.17, 0.165, 0.85], [0.16, 0.07, 0.035, 0, 0.32, 0.16, 0.8],
+    [0.08, 0.13, 0.06, 0.12, 0.3, -0.17, 0.7], [0.012, 0.32, 0.012, 0.15, 0.5, -0.17, 0.4]], false, 3),
+  pack: partGeo([[0.32, 0.4, 0.16, 0, 0.27, -0.2], [0.26, 0.12, 0.1, 0, 0.13, -0.3, 0.9], [0.3, 0.06, 0.17, 0, 0.5, -0.2, 0.8], [0.06, 0.25, 0.08, 0.17, 0.25, -0.2, 0.85], [0.06, 0.25, 0.08, -0.17, 0.25, -0.2, 0.85]], false, 4),
+  // a face: eyes, brows, nose, mouth and ears
+  head: partGeo([[0.19, 0.23, 0.21, 0, 0.13, 0.01], [0.04, 0.022, 0.01, 0.045, 0.155, 0.118, 0.22], [0.04, 0.022, 0.01, -0.045, 0.155, 0.118, 0.22], [0.05, 0.012, 0.012, 0.045, 0.178, 0.119, 0.45], [0.05, 0.012, 0.012, -0.045, 0.178, 0.119, 0.45],
+    [0.03, 0.05, 0.03, 0, 0.12, 0.125, 0.92], [0.06, 0.012, 0.01, 0, 0.07, 0.118, 0.55], [0.025, 0.05, 0.04, 0.1, 0.13, 0.0, 0.88], [0.025, 0.05, 0.04, -0.1, 0.13, 0.0, 0.88]], false, 5),
+  // a rounded helmet: dome, brim, chin strap, night-vision mount
+  helmet: partGeo([[0.24, 0.07, 0.26, 0, 0.3, 0.0], [0.27, 0.06, 0.29, 0, 0.255, 0.0, 0.94], [0.2, 0.04, 0.22, 0, 0.345, 0.0], [0.04, 0.025, 0.04, 0, 0.27, 0.15, -0.35], [0.012, 0.13, 0.012, 0.12, 0.17, 0.02, -0.3], [0.012, 0.13, 0.012, -0.12, 0.17, 0.02, -0.3]], false, 6),
   cap: partGeo([[0.22, 0.07, 0.23, 0, 0.255, 0.0], [0.18, 0.02, 0.1, 0, 0.225, 0.14, 0.9]], false, 7),
-  upper: partGeo([[0.11, 0.3, 0.11, 0, -0.15, 0]], true, 8),
-  fore: partGeo([[0.095, 0.27, 0.095, 0, -0.135, 0], [0.085, 0.09, 0.07, 0, -0.31, 0.0, 0.75]], true, 9),
-  thigh: partGeo([[0.15, 0.44, 0.16, 0, -0.22, 0]], true, 10),
-  shin: partGeo([[0.13, 0.42, 0.14, 0, -0.21, 0], [0.14, 0.1, 0.27, 0, -0.45, 0.05, 0.5]], true, 11),
+  upper: partGeo([[0.11, 0.3, 0.11, 0, -0.15, 0], [0.115, 0.06, 0.115, 0, -0.04, 0, 0.92]], true, 8),
+  fore: partGeo([[0.095, 0.27, 0.095, 0, -0.135, 0], [0.085, 0.09, 0.07, 0, -0.31, 0.0, -0.4]], true, 9),
+  // trousers with a cargo pocket
+  thigh: partGeo([[0.15, 0.44, 0.16, 0, -0.22, 0], [0.04, 0.12, 0.1, 0.085, -0.25, 0, 0.88]], true, 10),
+  // knee pad and boot
+  shin: partGeo([[0.13, 0.42, 0.14, 0, -0.21, 0], [0.12, 0.09, 0.04, 0, -0.03, 0.08, -0.4], [0.145, 0.12, 0.28, 0, -0.44, 0.05, -0.32]], true, 11),
 }
 // which colour each part takes from the faction: uniform, gear, skin, headgear
 const SRC = { pelvis: 'uniform', torso: 'uniform', vest: 'gear', pack: 'gear', head: 'skin', helmet: 'helmet', cap: 'helmet', upper: 'uniform', fore: 'uniform', thigh: 'uniform', shin: 'uniform' }
@@ -93,7 +114,7 @@ export class Rig {
     const T = this.tmp
     const col = (src) => {
       const c = src === 'skin' ? SKINS[s.skin % SKINS.length] : src === 'uniform' ? (s.uniform || F.uniform) : src === 'gear' ? (s.gearColor || F.gear) : (s.helmetColor || F.helmet)
-      return _c.setRGB(c[0], c[1], c[2])
+      return _c.setRGB(lin(c[0]), lin(c[1]), lin(c[2]))
     }
     const far = camPos && (s.pos.x - camPos.x) ** 2 + (s.pos.z - camPos.z) ** 2 > 360 * 360
     // root: feet on the ground, facing yaw (+z forward)

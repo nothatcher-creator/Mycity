@@ -3,7 +3,9 @@
 // main and tail rotors and propellers (they spin), landing gear. Each model also returns its hull as boxes
 // (for bullets and collisions) and points for lights, exhausts and the muzzle.
 import * as THREE from 'three'
+import { lin } from '../core/color.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { hash2 } from '../core/noise.js'
 
 const C = {
   olive: [0.33, 0.37, 0.22], tan: [0.62, 0.55, 0.4], grey: [0.42, 0.44, 0.46], dark: [0.12, 0.12, 0.13], tyre: [0.08, 0.08, 0.09],
@@ -11,7 +13,11 @@ const C = {
   canvas: [0.4, 0.42, 0.28], wood: [0.5, 0.38, 0.25], navy: [0.35, 0.4, 0.46], orange: [0.85, 0.45, 0.12], black: [0.06, 0.06, 0.07],
 }
 export const PAINTS = { olive: C.olive, tan: C.tan, grey: C.grey, navy: C.navy, red: [0.7, 0.16, 0.12], blue: [0.18, 0.32, 0.58], white: C.white, green: [0.22, 0.42, 0.28], yellow: [0.85, 0.7, 0.15], black: [0.14, 0.14, 0.15], camo: [0.38, 0.4, 0.26] }
+const MILITARY = [PAINTS.olive, PAINTS.tan, PAINTS.grey, PAINTS.green]
 
+// What the model being built is painted with, and whether it gets camouflage and road dirt.
+const CUR = { paint: null, camo: false, dirt: false }
+const TONE = [[0.62, 0.66, 0.55], [0.96, 0.8, 0.62], [1.12, 1.1, 1.0], [1, 1, 1]].map(t => t.map(lin)), MUD = [0.36, 0.31, 0.24].map(lin)
 class G {
   constructor() { this.parts = [] }
   add(g, col, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
@@ -19,13 +25,16 @@ class G {
     if (rx) g.rotateX(rx); if (ry) g.rotateY(ry); if (rz) g.rotateZ(rz)
     g.translate(x, y, z)
     const n = g.attributes.position.count, c = new Float32Array(n * 3)
-    for (let i = 0; i < n; i++) { c[i * 3] = col[0]; c[i * 3 + 1] = col[1]; c[i * 3 + 2] = col[2] }
+    const r = lin(col[0]), gg = lin(col[1]), b = lin(col[2])
+    for (let i = 0; i < n; i++) { c[i * 3] = r; c[i * 3 + 1] = gg; c[i * 3 + 2] = b }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3))
     g.deleteAttribute('uv'); g.deleteAttribute('normal')
+    g.userData.paint = col === CUR.paint
     this.parts.push(g)
     return this
   }
-  box(w, h, d, col, x, y, z, rx, ry, rz) { return this.add(new THREE.BoxGeometry(w, h, d), col, x, y, z, rx, ry, rz) }
+  // painted panels of a camouflaged vehicle are split into cells about 0.9 m across, so the pattern can show
+  box(w, h, d, col, x, y, z, rx, ry, rz) { const sg = v => col === CUR.paint && CUR.camo ? Math.max(1, Math.min(6, Math.round(v / 0.9))) : 1; return this.add(new THREE.BoxGeometry(w, h, d, sg(w), sg(h), sg(d)), col, x, y, z, rx, ry, rz) }
   cyl(r, len, col, x, y, z, axis = 'z', seg = 10, r2 = r) {
     const g = new THREE.CylinderGeometry(r2, r, len, seg)
     return this.add(g, col, x, y, z, axis === 'z' ? Math.PI / 2 : 0, 0, axis === 'x' ? Math.PI / 2 : 0)
@@ -37,12 +46,33 @@ class G {
     for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { if (p.getZ(i) > 0) p.setZ(i, p.getZ(i) - d * front); else p.setZ(i, p.getZ(i) + d * back) }
     return this.add(g, col, x, y, z)
   }
-  mesh(mat) { if (!this.parts.length) return null; const m = new THREE.Mesh(mergeGeometries(this.parts), mat); m.castShadow = true; return m }
+  // Camouflage blotches on the painted panels of military vehicles, a little variation face to face, and
+  // mud on everything low down (ground vehicles).
+  weather() {
+    for (const g of this.parts) {
+      const p = g.attributes.position, c = g.attributes.color
+      const step = p.count % 6 === 0 ? 6 : 3     // whole quads where the shape is made of them
+      for (let i = 0; i < p.count; i += step) {
+        let cx = 0, cy = 0, cz = 0
+        for (let j = i; j < i + step; j++) { cx += p.getX(j); cy += p.getY(j); cz += p.getZ(j) }
+        cx /= step; cy /= step; cz /= step
+        let tone = TONE[3]
+        if (g.userData.paint && CUR.camo) { const n = hash2(Math.floor(cx * 0.9 + cy * 0.5), Math.floor(cz * 0.9 - cy * 0.45), 31) * 0.6 + hash2(Math.floor(cx * 0.4), Math.floor(cz * 0.4 + cy * 0.3), 32) * 0.4; tone = TONE[n < 0.28 ? 0 : n < 0.46 ? 1 : n > 0.8 ? 2 : 3] }
+        const v = 0.94 + 0.12 * hash2(i, Math.floor(cy * 10), 33)
+        for (let j = i; j < i + step; j++) {
+          const d = CUR.dirt ? Math.max(0, Math.min(1, (1.15 - p.getY(j)) / 1.15)) * 0.6 : 0
+          for (let k = 0; k < 3; k++) c.setComponent(j, k, (c.getComponent(j, k) * tone[k] * v) * (1 - d) + MUD[k] * d * 0.9)
+        }
+      }
+    }
+  }
+  mesh(mat) { if (!this.parts.length) return null; this.weather(); const m = new THREE.Mesh(mergeGeometries(this.parts), mat); m.castShadow = true; return m }
 }
 
 export function buildVehicle(def, paint, mat) {
   const body = new G(), turret = new G(), gun = new G()
   const m = def.model, P = paint || C.olive
+  CUR.paint = P; CUR.camo = MILITARY.includes(P) && def.kind !== 'plane'; CUR.dirt = def.kind === 'car' || def.kind === 'tracked' || def.kind === 'bike'
   const root = new THREE.Group()
   const out = { root, wheels: [], hull: [], turret: null, gun: null, rotors: [], lights: [], exhaust: [], muzzle: new THREE.Vector3(0, 2, 3), gear: null, props: [] }
   const hull = (x, y, z, hx, hy, hz) => out.hull.push({ x, y, z, hx, hy, hz })
@@ -238,6 +268,12 @@ export function buildVehicle(def, paint, mat) {
       out.exhaust.push([0, 0.4, -L / 2])
       break
     }
+  }
+  // lamps you can see, exhaust pipes, and a whip aerial on military ground vehicles
+  if (CUR.dirt) {
+    for (const [x, y, z] of out.lights) body.box(0.2, 0.12, 0.05, C.light, x, y, z + 0.02)
+    for (const [x, y, z] of out.exhaust) body.cyl(0.05, 0.25, C.dark, x, y, z - 0.08)
+    if (CUR.camo && out.hull[0]) { const h0 = out.hull[0]; body.box(0.022, 1.6, 0.022, C.dark, h0.hx * 0.75, h0.y + h0.hy + 0.75, -h0.hz * 0.7) }
   }
   const b = body.mesh(mat)
   if (b) root.add(b)

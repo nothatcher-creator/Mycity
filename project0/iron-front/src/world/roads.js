@@ -2,6 +2,7 @@
 // dirt tracks, the airfield's runway and taxiways; and bridges (deck, railings, pillars) where a road
 // crosses water. Meshes are cut into 512 m tiles that are shown near the camera.
 import * as THREE from 'three'
+import { linArray } from '../core/color.js'
 import { roadLines, heightAt } from './heightfield.js'
 import { makeBox } from './collision.js'
 import { Kit } from './kit.js'
@@ -24,7 +25,7 @@ export class Roads {
     for (const t of this.tiles.values()) {
       const g = new THREE.BufferGeometry()
       g.setAttribute('position', new THREE.Float32BufferAttribute(t.pos, 3))
-      g.setAttribute('color', new THREE.Float32BufferAttribute(t.col, 3))
+      g.setAttribute('color', new THREE.Float32BufferAttribute(linArray(t.col.slice()), 3))
       g.setAttribute('normal', new THREE.Float32BufferAttribute(t.nrm, 3))
       g.setIndex(t.idx)
       g.computeBoundingSphere()

@@ -31,21 +31,34 @@ void main() {
   vec3 col = mix(horizon, top, pow(max(y, 0.0), 0.55));
   col = mix(col, ground, smoothstep(0.0, -0.12, y));
   float sd = max(dot(d, sunDir), 0.0);
-  col += sunCol * (pow(sd, 900.0) * 6.0 + pow(sd, 12.0) * 0.25) * (1.0 - cloud * 0.8);
-  col += horizon * pow(sd, 3.0) * 0.12 * (1.0 - night);
-  // moon and stars at night
+  float day = 1.0 - night;
+  // haze brightens the horizon, more towards the sun; a warm band round the sun at dawn and dusk
+  col += horizon * pow(1.0 - abs(y), 6.0) * 0.18 * day;
+  col += sunCol * pow(sd, 6.0) * 0.18 * day * (1.0 - cloud * 0.6);
+  float warm = clamp(1.0 - abs(sunDir.y) * 4.0, 0.0, 1.0) * day;
+  col = mix(col, vec3(1.0, 0.55, 0.3), warm * pow(sd, 3.0) * pow(1.0 - max(y, 0.0), 4.0) * 0.55 * (1.0 - cloud * 0.6));
+  // the sun: a disc and a glow
+  col += sunCol * (smoothstep(0.9994, 0.99975, sd) * 5.0 + pow(sd, 260.0) * 0.8) * (1.0 - cloud * 0.85);
+  // the moon, and stars only in full night: small, round, twinkling
   float md = max(dot(d, moonDir), 0.0);
-  col += vec3(0.85, 0.9, 1.0) * pow(md, 1800.0) * 2.0 * night;
+  col += vec3(0.85, 0.9, 1.0) * (smoothstep(0.99955, 0.9998, md) * 1.6 + pow(md, 400.0) * 0.12) * night;
   if (y > 0.0) {
-    vec2 sp = d.xz / (y + 0.05) * 60.0;
-    float st = step(0.996, h(floor(sp))) * night * (1.0 - cloud);
-    col += vec3(st);
-    // clouds: a layer of soft, blocky shapes drifting with the wind
-    vec2 cp = d.xz / (y + 0.12) * 1.6 + vec2(time * 0.004, time * 0.0015);
-    float c = n2(cp * 2.0) * 0.6 + n2(cp * 5.0) * 0.3 + n2(cp * 11.0) * 0.1;
-    float cov = smoothstep(1.0 - cloud * 0.95 - 0.05, 1.05 - cloud * 0.7, c) * smoothstep(0.0, 0.2, y);
-    vec3 cc = mix(vec3(1.0), horizon * 0.8, 0.35) * (0.55 + 0.45 * (1.0 - night)) * mix(1.0, 0.55, cloud);
-    col = mix(col, cc, cov * 0.92);
+    float nightOnly = smoothstep(0.6, 0.95, night);
+    vec2 sp = d.xz / (y + 0.4) * 90.0, cell = floor(sp), f = fract(sp) - 0.5;
+    float r = h(cell);
+    float st = step(0.985, r) * smoothstep(0.16, 0.0, length(f)) * (0.6 + 0.4 * sin(time * 2.0 + r * 80.0));
+    col += vec3(0.9, 0.93, 1.0) * st * nightOnly * (1.0 - cloud) * smoothstep(0.0, 0.25, y);
+    // clouds: layered noise on a flat deck, drifting with the wind; scattered on a clear day, a lid in a
+    // storm; lit on the side towards the sun, grey underneath, tinted at dusk
+    vec2 cp = d.xz / (y + 0.1) * 1.4 + vec2(time * 0.004, time * 0.0015);
+    float c = n2(cp * 1.6) * 0.5 + n2(cp * 3.7) * 0.25 + n2(cp * 8.3) * 0.15 + n2(cp * 19.0) * 0.1;
+    float cover = 0.22 + cloud * 0.78;
+    float cov = smoothstep(1.0 - cover * 0.9, 1.0 - cover * 0.9 + 0.22, c) * smoothstep(0.0, 0.18, y);
+    float thick = smoothstep(1.0 - cover * 0.9, 1.0, c);
+    vec3 lit = mix(vec3(1.0, 0.98, 0.95), sunCol * vec3(1.0, 0.8, 0.65), warm * 0.8);
+    vec3 shade = mix(horizon * 0.75, vec3(0.42, 0.45, 0.5), cloud);
+    vec3 cc = mix(lit, shade, thick * 0.75 + cloud * 0.3) * (0.06 + 0.94 * day) * (1.0 + pow(sd, 8.0) * 0.4 * (1.0 - thick));
+    col = mix(col, cc, cov * mix(0.88, 0.97, cloud));
   }
   gl_FragColor = vec4(col, 1.0);
 }`
@@ -121,7 +134,7 @@ export class Sky {
     U.sunCol.value.setRGB(1, 0.9 - dusk * 0.35, 0.8 - dusk * 0.5)
     // fog matches the horizon
     const f = this.scene.fog
-    f.color.copy(U.horizon.value)
+    f.color.setRGB(Math.pow(U.horizon.value.r, 2.2), Math.pow(U.horizon.value.g, 2.2), Math.pow(U.horizon.value.b, 2.2))
     f.far = this.w.fog * (1 - night * 0.45)
     f.near = Math.min(f.far * 0.15, 150)
     // lights
@@ -131,8 +144,8 @@ export class Sky {
     const lightDir = sun.y > -0.05 ? sun : moon
     this.sun.position.copy(anchor).addScaledVector(lightDir, 150)
     this.sun.target.position.copy(anchor)
-    if (sun.y <= -0.05) { this.sun.intensity = 0.35 * (1 - cl * 0.6); this.sun.color.setRGB(0.6, 0.7, 1) }
-    this.hemi.intensity = (0.25 + 0.95 * day) * (0.7 + 0.3 * wl)
+    if (sun.y <= -0.05) { this.sun.intensity = 0.3 * (1 - cl * 0.6); this.sun.color.setRGB(0.55, 0.66, 1) }
+    this.hemi.intensity = (0.13 + 1.07 * day) * (0.7 + 0.3 * wl)
     this.hemi.color.copy(U.horizon.value).lerp(new THREE.Color(1, 1, 1), 0.4)
     this.hemi.groundColor.setRGB(0.35 * (0.2 + day), 0.3 * (0.2 + day), 0.22 * (0.2 + day))
     this.dome.position.copy(anchor)

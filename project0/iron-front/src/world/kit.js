@@ -2,6 +2,7 @@
 // together in a building's own frame and baked into one coloured mesh per tile, with a collider for every
 // solid part (tagged with its material for the bullets) and a pane of breakable glass in every window.
 import * as THREE from 'three'
+import { linArray } from '../core/color.js'
 import { makeBox } from './collision.js'
 
 export class Kit {
@@ -126,7 +127,7 @@ export class Kit {
   geometry() {
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3))
-    g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3))
+    g.setAttribute('color', new THREE.Float32BufferAttribute(linArray(this.col.slice()), 3))
     g.setIndex(this.pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(this.idx, 1) : new THREE.Uint16BufferAttribute(this.idx, 1))
     g.computeBoundingSphere()
     return g

@@ -3,12 +3,13 @@
 // geometry and the points the game needs: the sight line (for aiming down sights), the muzzle (for flash
 // and bullets), the magazine (for reloads) and the support hand.
 import * as THREE from 'three'
+import { lin } from '../core/color.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { ATTACHMENTS } from './weapons-data.js'
 
 const COL = {
-  metal: [0.13, 0.13, 0.14], dark: [0.07, 0.07, 0.08], poly: [0.1, 0.1, 0.11], tan: [0.56, 0.48, 0.34], wood: [0.42, 0.25, 0.13],
-  woodL: [0.52, 0.33, 0.17], olive: [0.3, 0.33, 0.2], steel: [0.32, 0.33, 0.35], green: [0.24, 0.3, 0.2], lens: [0.25, 0.45, 0.6],
+  metal: [0.21, 0.21, 0.22], dark: [0.12, 0.12, 0.13], poly: [0.17, 0.17, 0.18], tan: [0.6, 0.52, 0.38], wood: [0.46, 0.28, 0.15],
+  woodL: [0.56, 0.36, 0.19], olive: [0.36, 0.39, 0.25], steel: [0.44, 0.45, 0.47], hole: [0.03, 0.03, 0.03], green: [0.24, 0.3, 0.2], lens: [0.25, 0.45, 0.6],
   red: [0.7, 0.12, 0.08], brass: [0.7, 0.55, 0.2], sand: [0.6, 0.53, 0.38],
 }
 class Parts {
@@ -20,7 +21,7 @@ class Parts {
     // a slight darkening on downward faces reads as ambient occlusion
     g.computeVertexNormals()
     const nr = g.attributes.normal
-    for (let i = 0; i < n; i++) { const s = 0.82 + 0.18 * (nr.getY(i) * 0.5 + 0.5); c[i * 3] = color[0] * s; c[i * 3 + 1] = color[1] * s; c[i * 3 + 2] = color[2] * s }
+    for (let i = 0; i < n; i++) { const s = 0.82 + 0.18 * (nr.getY(i) * 0.5 + 0.5); c[i * 3] = lin(color[0] * s); c[i * 3 + 1] = lin(color[1] * s); c[i * 3 + 2] = lin(color[2] * s) }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3))
     g.deleteAttribute('uv')
     this.list.push(g)
@@ -60,6 +61,14 @@ export function buildWeapon(def, att = {}) {
     muzzle.set(0, 0.03, barrelZ - bLen)
     if (m.brake) { P.cyl(0.018, 0.06, COL.metal, 0, 0.03, muzzle.z - 0.03); muzzle.z -= 0.06 }
     if (m.can) { P.cyl(0.022, 0.18, COL.dark, 0, 0.03, muzzle.z - 0.09, 10); muzzle.z -= 0.18 }
+    // receiver details: rail teeth, ejection port, charging handle, trigger guard, magazine well, gas block
+    if (!isAk && body !== 'smg') for (let i = 0; i < 7; i++) P.box(0.054 * th, 0.008, 0.012, COL.metal, 0, 0.087 * th, 0.03 - i * recLen / 7)
+    P.box(0.004, 0.024, 0.065, COL.hole, -0.029 * th, 0.032, -0.03)
+    if (isAk) { P.box(0.004, 0.014, 0.07, COL.steel, -0.03, 0.045, -0.04); P.box(0.006, 0.02, 0.02, COL.steel, 0.03, 0.03, 0.02) }
+    else { P.box(0.03, 0.012, 0.035, COL.dark, 0, 0.076 * th, 0.075); P.box(0.012, 0.014, 0.012, COL.metal, -0.03 * th, 0.05, 0.02) }
+    P.box(0.006, 0.006, 0.075, COL.dark, 0, -0.048, -0.03); P.box(0.006, 0.03, 0.006, COL.dark, 0, -0.033, -0.068)
+    P.box(0.042, 0.03, 0.075, COL.metal, 0, -0.03, -0.07)
+    P.box(0.026, 0.032, 0.026, COL.dark, 0, 0.044, barrelZ - 0.03)
     // magazine
     if (m.mag === 'curved') { P.box(0.03, 0.12, 0.06, COL.metal, 0, -0.09, -0.06, 0.25); P.box(0.03, 0.09, 0.055, COL.metal, 0, -0.18, -0.03, 0.5); magPos.set(0, -0.12, -0.05) }
     else if (m.mag === 'stanag') { P.box(0.028, 0.15, 0.062, COL.dark, 0, -0.08, -0.07, 0.12); magPos.set(0, -0.1, -0.07) }
@@ -142,7 +151,7 @@ export function buildWeapon(def, att = {}) {
     sightY = 0.065; support.set(0, -0.01, -0.34); magPos.set(0, 0.01, -0.12)
   } else if (body === 'pistol' || body === 'revolver') {
     const L = (m.barrel || 0.11) + 0.08
-    if (body === 'pistol') { P.box(0.03, 0.035, L, COL.dark, 0, 0.05, -L / 2 + 0.04); P.box(0.028, 0.025, L * 0.85, furn, 0, 0.022, -L / 2 + 0.05) }
+    if (body === 'pistol') { P.box(0.03, 0.035, L, COL.dark, 0, 0.05, -L / 2 + 0.04); P.box(0.028, 0.025, L * 0.85, furn, 0, 0.022, -L / 2 + 0.05); for (let i = 0; i < 4; i++) P.box(0.032, 0.026, 0.004, COL.hole, 0, 0.053, 0.03 - i * 0.009); P.box(0.004, 0.012, 0.03, COL.hole, -0.016, 0.055, -0.02) }
     else { P.cyl(0.01, L, COL.steel, 0, 0.05, -L / 2 + 0.02); P.cyl(0.022, 0.045, COL.steel, 0, 0.04, 0.0, 8); P.box(0.03, 0.03, 0.06, COL.steel, 0, 0.04, 0.02) }
     P.box(0.028, 0.1, 0.04, body === 'revolver' ? COL.wood : furn, 0, -0.03, 0.035, 0.22)
     trigger()

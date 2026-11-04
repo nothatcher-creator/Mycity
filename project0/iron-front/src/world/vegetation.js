@@ -2,6 +2,7 @@
 // Placed on a jittered grid from the forest map (the same everywhere), drawn as instanced meshes in 256 m
 // tiles: full models near the player, cheap cones further out. Trunks near the player are colliders.
 import * as THREE from 'three'
+import { lin } from '../core/color.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { forestAt, heightAt, waterLevel, roadAt, fieldAt } from './heightfield.js'
 import { hash2 } from '../core/noise.js'
@@ -14,7 +15,8 @@ const SPACING = 10
 function colored(geo, color) {
   const g = geo.index ? geo.toNonIndexed() : geo
   const n = g.attributes.position.count, c = new Float32Array(n * 3)
-  for (let i = 0; i < n; i++) { c[i * 3] = color[0]; c[i * 3 + 1] = color[1]; c[i * 3 + 2] = color[2] }
+  const r = lin(color[0]), gg = lin(color[1]), b = lin(color[2])
+  for (let i = 0; i < n; i++) { c[i * 3] = r; c[i * 3 + 1] = gg; c[i * 3 + 2] = b }
   g.setAttribute('color', new THREE.BufferAttribute(c, 3))
   g.deleteAttribute('uv')
   return g

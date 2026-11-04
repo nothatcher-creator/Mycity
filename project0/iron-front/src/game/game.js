@@ -7,13 +7,14 @@ import { Engine, QUALITY } from '../core/engine.js'
 import { Input } from '../core/input.js'
 import { initHeightfieldAsync, heightAt, normalAt } from '../world/heightfield.js'
 import { Terrain } from '../world/terrain.js'
-import { Sky } from '../world/sky.js'
+import { Sky, WEATHER } from '../world/sky.js'
 import { Water } from '../world/water.js'
 import { Rain } from '../world/rain.js'
 import { Collision, raycastTerrain, makeBox } from '../world/collision.js'
 import { buildPlaces, POINTS, BUILDINGS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
 import { Vegetation } from '../world/vegetation.js'
+import { Grass } from '../world/grass.js'
 import { CityStream } from '../world/citystream.js'
 import { UI, C, loadFonts } from '../ui/ui.js'
 import { HUD } from '../ui/hud.js'
@@ -84,6 +85,7 @@ export class Game {
     this.rain = new Rain(this.engine, q)
     this.roads = new Roads(this.engine.world, this.collision)
     this.veg = new Vegetation(this.engine.world, this.collision, q)
+    this.grass = new Grass(this.engine.world, q)
     this.city = new CityStream(this.engine.world, this.collision, q)
     this.fx = new Effects(this.engine.world, q)
     this.ballistics = new Ballistics(this)
@@ -179,7 +181,7 @@ export class Game {
     if (chosen) this.settings.qualityChosen = true
     this.engine.setQuality(q)
     this.terrain.setQuality(q, QUALITY[q].view)
-    this.veg.setQuality(q); this.city.setQuality(q); this.sky.setQuality(q)
+    this.veg.setQuality(q); this.grass.setQuality(q); this.city.setQuality(q); this.sky.setQuality(q)
     this.save.store()
   }
   bindPointer() {
@@ -230,6 +232,9 @@ export class Game {
       if (e.code === 'Numpad8') { const x = s.pos.x + Math.sin(s.yaw) * 2.5, z = s.pos.z + Math.cos(s.yaw) * 2.5, y = heightAt(x, z); this.collision.add(makeBox(x, y + 0.5, z, 1.5, 0.5, 0.2, s.yaw, 'sandbag', 'wall')); const m = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.4), new THREE.MeshLambertMaterial({ color: 0xa68f5f })); m.position.set(x, y + 0.5, z); m.rotation.y = s.yaw; this.engine.world.add(m); p0.log('dbg wall placed') }
       // an enemy anti-tank team 160 m ahead (tests AI rockets), and a wound for yourself (tests medics)
       if (e.code === 'Numpad2') { const a0 = s.vehicle ? s.vehicle.yaw : s.yaw; let x = 0, z = 0; for (let k = 0; k < 24; k++) { const a = a0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.26, r = 150 - (k % 3) * 25; x = s.pos.x + Math.sin(a) * r; z = s.pos.z + Math.cos(a) * r; const hy = heightAt(x, z) + 1.6, dx = s.pos.x - x, dy = s.pos.y + 1.5 - hy, dz = s.pos.z - z, d = Math.hypot(dx, dy, dz); if (raycastTerrain(x, hy, z, dx / d, dy / d, dz / d, d - 2, 2) < 0) break } const q = this.mode?.spawnSquad?.('nlf', x, z, 3, { type: 'hold', pos: new THREE.Vector3(x, 0, z) }, { roles: ['at'] }); p0.log('dbg at team', !!q, Math.round(x), Math.round(z)) }
+      if (e.code === 'Backslash') { const K = ['low', 'medium', 'high'], q = K[(K.indexOf(this.engine.qualityKey) + 1) % 3]; this.settings.qualityChosen = true; this.settings.quality = q; this.setQuality(q, true); p0.log('dbg quality', q) }
+      if (e.code === 'BracketRight') { this.sky.hour = (this.sky.hour + 2) % 24; this.sky.cycle = false; p0.log('dbg hour', this.sky.hour.toFixed(1)) }
+      if (e.code === 'BracketLeft') { const K = Object.keys(WEATHER), k = K[(K.indexOf(this.sky.weatherKey) + 1) % K.length]; this.sky.setWeather(k); this.sky.w = { ...WEATHER[k] }; p0.log('dbg weather', k) }
       if (e.code === 'Numpad6') { for (const id of ['radio', 'c4', 'mine', 'sandbags', 'ration']) s.inv.add({ kind: id === 'ration' ? 'food' : 'tool', id }); this.player.pitch = -0.012; p0.log('dbg gear', this.gear.owned(s).join(','), 'sel', this.gear.selected(s)) }
       if (e.code === 'Numpad4') { const L = ['luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1) }
       if (e.code === 'Numpad3') { s.blood = 40; s.bleed = 0.2; p0.log('dbg wounded', s.blood) }
@@ -588,7 +593,7 @@ export class Game {
     if (this.engine.uiOnly) { this.ui.update(); this.engine.render(false); return }
     this.terrain.update(cp.x, cp.y, cp.z, this.settings.quality === 'low' ? 3 : 5); T.push(performance.now())
     this.city.update(cp.x, cp.z, 4); T.push(performance.now())
-    this.veg.update(cp.x, cp.z, 3, dt); T.push(performance.now())
+    this.veg.update(cp.x, cp.z, 3, dt); this.grass.update(cp.x, cp.y, cp.z, dt); T.push(performance.now())
     this.roads.update(cp.x, cp.z, QUALITY[this.settings.quality].view)
     this.W.ladders = this.city.ladders
     this.engine.setView(cp, this.camQuat, this.fov || 70)

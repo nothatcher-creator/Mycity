@@ -46,6 +46,20 @@ Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with 
 **Phones and tablets:** the city's stick moves you and its left and right turn you (the platform follows one finger at a time, so moving and looking with two fingers is not possible; a setting switches the stick back to strafing); aim assist pulls the view onto a visible enemy within about 5° while aiming or firing (a setting turns it off); drag anywhere else to look, also up and down; buttons for fire (hold), aim,
 reload, stance, jump, use, grenade, view, map, inventory, heal and the menu.
 
+### Look
+
+Colours are written as display values and converted to linear once where each mesh is built
+(`src/core/color.js`); before, raw palettes were lit past white and the island looked washed out. The
+ground has large dry patches, darker lush hollows and fine mottling close by; grass clumps (medium and
+high quality, `src/world/grass.js`) cover the ground round you in 16 m chunks, sway in the wind and fade
+into the ground at the edge, with tall golden stalks in the wheat. The sky has layered clouds lit from
+the sun's side, a sun disc and glow, a warm band at dawn and dusk, and small twinkling stars only in full
+night; nights are darker and bluer. Soldiers wear camouflage in square blotches, plate carriers with
+pouches and a radio, belts, knee pads, boots and rounded helmets, and have faces. Weapons have rail
+teeth, ejection ports, charging handles, trigger guards and gas blocks; the one in your hands is shiny.
+Military vehicles carry blocky camouflage on their painted panels, mud low down, visible lamps,
+exhausts and a whip aerial.
+
 ### Interface
 
 All interface is drawn by the game on canvases (`src/ui/`): dark olive glass panels with chamfered
@@ -133,6 +147,7 @@ F11 back to the menu, Home completes the current objective, End moves you near i
 fighter, helicopter, tank or jeep, F4 teleports to open country, Insert spawns an enemy crewed
 technical, Numpad2 an enemy anti-tank team with a sight line to you, Numpad3 wounds you (medic test),
 Numpad9 logs your state and every AI's,
+] moves the clock on two hours, [ changes the weather, \ cycles the graphics quality,
 Numpad6 gives you all the field gear (and aims at the ground 80 m out), Numpad4 spawns the next new vehicle, Delete puts you in a boat, F1 swings a jet's aim, F2 prints the vehicle's state.
 
 - `tools/pack.sh` builds `build/experience.zip` (and refuses lines over 1,000 characters).

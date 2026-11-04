@@ -36,7 +36,9 @@ export class MapView {
     this.cx += wx - nx; this.cz += wz - nz
     this.panel.dirty = true
   }
-  pointerDown(x, y, button) { this.drag = { x, y, cx: this.cx, cz: this.cz, moved: false, button } }
+  // a second finger on the map (a pinch) cancels the tap so it never drops a waypoint by accident
+  pointerDown(x, y, button) { if (this.drag && this.g.input.touch) { this.drag.moved = true; return } this.drag = { x, y, cx: this.cx, cz: this.cz, moved: false, button } }
+  zoomBy(f) { this.zoom = Math.max(0.9, Math.min(60, this.zoom * f)); this.panel.dirty = true }
   pointerMove(x, y) {
     this.hover = this.toWorld(x, y)
     if (this.drag && (this.drag.button === 0 || this.drag.button === 2)) {
@@ -81,7 +83,7 @@ export class MapView {
     }
     for (let i = 0; i < 12; i++) {
       const [x] = this.toScreen(-HALF + i * 1000 + 500, 0), [, y] = this.toScreen(0, -HALF + i * 1000 + 500)
-      text(c, 'ABCDEFGHIJKL'[i], x, 16, { size: 12, align: 'center', color: '#fff', shadow: true })
+      text(c, 'ABCDEFGHIJKL'[i], x, 60, { size: 12, align: 'center', color: '#fff', shadow: true })
       text(c, String(i + 1), 8, y + 4, { size: 12, color: '#fff', shadow: true })
     }
     // places
@@ -109,17 +111,24 @@ export class MapView {
       c.beginPath(); c.moveTo(0, -10); c.lineTo(-6, 7); c.lineTo(6, 7); c.closePath(); c.fill(); c.stroke(); c.restore()
     }
     const wp = this.g.waypoint
+    if (wp && s) { const [x, y] = this.toScreen(wp.x, wp.z); text(c, `${Math.round(Math.hypot(wp.x - s.pos.x, wp.z - s.pos.z))} m`, x + 14, y - 10, { size: 12, weight: 800, color: C.gold2, shadow: true }) }
     if (wp) { const [x, y] = this.toScreen(wp.x, wp.z); c.strokeStyle = C.gold2; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 8, 0, Math.PI * 2); c.moveTo(x - 12, y); c.lineTo(x + 12, y); c.moveTo(x, y - 12); c.lineTo(x, y + 12); c.stroke() }
     // the side panel: grid reference, legend, controls
     box(c, 12, H - 132, 330, 120)
     if (this.hover) text(c, `${gridRef(this.hover[0], this.hover[1])}   ${Math.round(heightAt(this.hover[0], this.hover[1]))} m`, 24, H - 108, { size: 14, weight: 700 })
     if (s && this.hover) text(c, `Distance ${Math.round(Math.hypot(this.hover[0] - s.pos.x, this.hover[1] - s.pos.z))} m`, 24, H - 88, { size: 12, color: C.dim })
-    text(c, 'Wheel: zoom   Drag: pan   Click: waypoint   Right click: clear', 24, H - 64, { size: 11, color: C.dim })
+    text(c, this.g.input.touch ? 'Drag: pan   + / −: zoom   Tap: waypoint' : 'Wheel: zoom   Drag: pan   Click: waypoint   Right click: clear', 24, H - 64, { size: 11, color: C.dim })
     text(c, 'You   Squad   Friendly   Enemy   Objective', 24, H - 42, { size: 11, color: C.dim })
     const L = [['#fff', 24], ['#5ab0ff', 60], ['#6ab04c', 110], ['#e0483a', 170], [C.gold2, 220]]
     for (const [col, x] of L) { c.fillStyle = col; c.fillRect(x - 10, H - 30, 6, 6) }
     // buttons
-    this.panel.button(c, 'close', W - 130, H - 54, 116, 40, 'CLOSE [M]', () => this.g.closeMap(), { align: 'center' })
+    this.panel.button(c, 'close', W - 130, H - 54, 116, 40, this.g.input.touch ? 'CLOSE' : 'CLOSE [M]', () => this.g.closeMap(), { align: 'center' })
+    // zoom and centre (for touch screens, and handy with a mouse too)
+    const zx = W - 62, zy = 70
+    this.panel.button(c, 'zin', zx, zy, 48, 44, '+', () => this.zoomBy(1.6), { align: 'center', font: FONT(22, 800) })
+    this.panel.button(c, 'zout', zx, zy + 50, 48, 44, '−', () => this.zoomBy(1 / 1.6), { align: 'center', font: FONT(22, 800) })
+    if (s) this.panel.button(c, 'me', zx - 20, zy + 100, 68, 36, 'ME', () => { this.cx = s.pos.x; this.cz = s.pos.z; this.panel.dirty = true }, { align: 'center', font: FONT(12, 800) })
+    if (wp) this.panel.button(c, 'clearwp', zx - 40, zy + 142, 88, 36, 'CLEAR WP', () => { this.g.waypoint = null; this.panel.dirty = true }, { align: 'center', font: FONT(11, 800) })
     if (this.g.playerSquad) this.panel.button(c, 'mode', W - 300, H - 54, 160, 40, this.mode === 'squad' ? 'CLICK: SQUAD MOVE' : 'CLICK: WAYPOINT', () => { this.mode = this.mode === 'squad' ? 'waypoint' : 'squad'; this.panel.dirty = true }, { align: 'center' })
   }
 }

@@ -286,11 +286,23 @@ export class HUD {
     }
     const sc = (W / 2) / range
     // units: friends (green, blue for the squad), known enemies (red), vehicles, objectives
-    for (const u of g.radar()) {
-      const x = (u.x - s.pos.x) * sc, y = (u.z - s.pos.z) * sc
-      if (x * x + y * y > (W / 2) ** 2) continue
+    const rim = W / 2 - 9
+    const items = g.radar()
+    if (g.waypoint) items.push({ x: g.waypoint.x, z: g.waypoint.z, color: C.gold2, kind: 'waypoint' })
+    for (const u of items) {
+      let x = (u.x - s.pos.x) * sc, y = (u.z - s.pos.z) * sc
+      const r = Math.hypot(x, y)
+      // objectives and the waypoint beyond the range sit on the rim, pointing the way; others drop off
+      if (r > rim) {
+        if (u.kind !== 'objective' && u.kind !== 'waypoint') continue
+        x *= rim / r; y *= rim / r
+        const a = Math.atan2(y, x)
+        c.fillStyle = u.color; c.beginPath(); c.moveTo(x + Math.cos(a) * 6, y + Math.sin(a) * 6); c.lineTo(x + Math.cos(a + 2.3) * 5, y + Math.sin(a + 2.3) * 5); c.lineTo(x + Math.cos(a - 2.3) * 5, y + Math.sin(a - 2.3) * 5); c.fill()
+        continue
+      }
       c.fillStyle = u.color
-      if (u.kind === 'objective') { c.strokeStyle = u.color; c.lineWidth = 2; c.strokeRect(x - 5, y - 5, 10, 10) }
+      if (u.kind === 'waypoint') { c.strokeStyle = u.color; c.lineWidth = 2; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y); c.lineTo(x, y + 6); c.lineTo(x - 6, y); c.closePath(); c.stroke() }
+      else if (u.kind === 'objective') { c.strokeStyle = u.color; c.lineWidth = 2; c.strokeRect(x - 5, y - 5, 10, 10) }
       else if (u.kind === 'vehicle') c.fillRect(x - 4, y - 3, 8, 6)
       else { c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill() }
     }

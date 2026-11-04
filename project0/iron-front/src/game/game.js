@@ -690,7 +690,13 @@ export class Game {
       if (s.team === me.team) out.push({ x: s.pos.x, z: s.pos.z, color: this.playerSquad?.members.includes(s) ? '#5ab0ff' : '#6ab04c', kind: 'unit' })
       else if (known.has(s) || (all && this.settings.reveal)) out.push({ x: s.pos.x, z: s.pos.z, color: '#e0483a', kind: 'unit' })
     }
-    for (const v of this.vehicles.list) if (v.alive && (all || v.pos.distanceTo(me.pos) < 400)) out.push({ x: v.pos.x, z: v.pos.z, color: v.faction && hostile(v.faction, me.team) ? '#e0483a' : '#c9c3a0', kind: 'vehicle' })
+    for (const v of this.vehicles.list) {
+      if (!v.alive || (!all && v.pos.distanceTo(me.pos) > 400)) continue
+      // an enemy vehicle only once someone in it has been spotted (or with the reveal setting)
+      const bad = v.faction && hostile(v.faction, me.team)
+      if (bad && !(this.settings.reveal || v.seats.some(q => q.occupant && known.has(q.occupant)))) continue
+      out.push({ x: v.pos.x, z: v.pos.z, color: bad ? '#e0483a' : '#c9c3a0', kind: 'vehicle' })
+    }
     if (this.mode?.objectives) for (const o of this.mode.objectives()) out.push({ ...o, kind: 'objective' })
     return out
   }

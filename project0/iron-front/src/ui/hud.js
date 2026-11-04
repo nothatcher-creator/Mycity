@@ -355,7 +355,7 @@ export class HUD {
       text(c, label, x + 16 * sc + kw, 21 * sc, { size: 14 * sc, weight: 700, color: C.gold2 })
     }
     const t = this.g.mode?.centerText?.()
-    if (t) { c.save(); c.shadowColor = 'rgba(0,0,0,0.7)'; c.shadowBlur = 8; text(c, t, W / 2, 74 * sc, { size: 24 * sc, align: 'center', weight: 700, color: C.white }); c.restore() }
+    if (t) text(c, t, W / 2, 74 * sc, { size: 24 * sc, align: 'center', weight: 700, color: C.white, shadow: true })
   }
   drawMode(c, p) {
     const m = this.g.mode

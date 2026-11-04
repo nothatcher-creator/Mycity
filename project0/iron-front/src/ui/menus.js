@@ -46,7 +46,8 @@ export class Menus {
   }
   wheel(dy) { this.scroll = Math.max(0, this.scroll + Math.sign(dy) * 60); this.panel.dirty = true }
   toggleSquad() { if (this.page === 'squad') this.close(); else this.open('squad') }
-  update(dt) { this.t = (this.t || 0) + dt; if (this.page === 'main' && Math.floor(this.t * 2) !== this.lastBlink) { this.lastBlink = Math.floor(this.t * 2); this.panel.dirty = true } }
+  // the title screen redraws only when its tip changes (every 8 s): a full-screen canvas is costly to upload
+  update(dt) { this.t = (this.t || 0) + dt; if (this.page === 'main' && Math.floor(this.t / 8) !== this.lastBlink) { this.lastBlink = Math.floor(this.t / 8); this.panel.dirty = true } }
   // ---------- drawing ----------
   draw(c, p) {
     const W = p.w, H = p.h, s = this.s
@@ -81,10 +82,9 @@ export class Menus {
   // The logo: a stencil-style block. Returns the y below it.
   title(c, x, y, s, big = true) {
     const k = big ? 1 : 0.62
-    c.save(); c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 12 * s
-    text(c, 'O P E R A T I O N', x + 2 * s, y, { size: 15 * k * s, weight: 700, color: C.gold })
+    text(c, 'O P E R A T I O N', x + 2 * s, y, { size: 15 * k * s, weight: 700, color: C.gold, shadow: true })
+    text(c, 'IRON FRONT', x + 2 * s, y + 56 * k * s, { size: 60 * k * s, weight: 700, color: 'rgba(0,0,0,0.55)' })
     text(c, 'IRON FRONT', x, y + 54 * k * s, { size: 60 * k * s, weight: 700, color: C.text })
-    c.restore()
     c.font = FONT(60 * k * s, 700); const w = c.measureText('IRON FRONT').width
     c.fillStyle = C.gold; c.fillRect(x, y + 66 * k * s, w, 3 * s)
     for (let i = 0; i < 6; i++) { c.fillStyle = `rgba(224,165,38,${0.5 - i * 0.07})`; c.fillRect(x + w + 6 * s + i * 7 * s, y + 66 * k * s, 4 * s, 3 * s) }
@@ -142,8 +142,7 @@ export class Menus {
     if (!this.g.input.touch) c.fillStyle = 'rgba(224,165,38,0.35)', c.fillRect(x, fy - 20 * s, W - x * 2, 1)
     if (!this.g.input.touch) {
       let cx = x
-      const blink = Math.floor((this.t || 0) * 2) % 2 === 0
-      for (const [k, l] of [['SPACE', 'Deploy'], ['ENTER', 'Chat'], ['ESC', 'Leave']]) { cx += chip(c, k, cx, fy - 13 * s, 20 * s, { size: 10.5 * s, fill: k === 'SPACE' && blink ? 'rgba(224,165,38,0.45)' : undefined }) + 6 * s; text(c, l, cx, fy + 1 * s, { size: 12 * s, weight: 600, color: C.text }); c.font = FONT(12 * s, 600); cx += c.measureText(l).width + 20 * s }
+      for (const [k, l] of [['SPACE', 'Deploy'], ['ENTER', 'Chat'], ['ESC', 'Leave']]) { cx += chip(c, k, cx, fy - 13 * s, 20 * s, { size: 10.5 * s, fill: k === 'SPACE' ? 'rgba(224,165,38,0.45)' : undefined }) + 6 * s; text(c, l, cx, fy + 1 * s, { size: 12 * s, weight: 600, color: C.text }); c.font = FONT(12 * s, 600); cx += c.measureText(l).width + 20 * s }
     }
     if (!this.g.input.touch) text(c, 'Built for Project 0 lot 3084', W - x, fy, { size: 11 * s, color: C.dim, align: 'right' })
   }

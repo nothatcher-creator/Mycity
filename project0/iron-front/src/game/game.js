@@ -258,6 +258,7 @@ export class Game {
       if (e.code === 'Minus' && this.mode?.dbgJob) { const sp = s.inv.add({ kind: 'tool', id: 'fishingrod' }); this.mode.dbgShore(); p0.log('dbg rod', sp) }
       if (e.code === 'NumLock' && this.mode?.dbgJob) this.mode.dbgJob(this.dbgJobKind || 'bus')
       if (e.code === 'CapsLock' && this.mode?.dbgJob) { this.dbgJobKind = 'taxi'; this.mode.dbgJob('taxi') }
+      if (e.code === 'Numpad9' && this.mode?.civ) { const L = this.mode.civ.list; p0.log('dbg civ', L.length, 'scared', L.filter(n => n.scared).length, 'crouched', L.filter(n => n.s.stance === 1).length, 'dead', L.filter(n => n.s.dead).length, 'dangers', (this.dangers || []).length) }
       if (e.code === 'Numpad9' && this.mode?.npcs) { const M = this.mode, by = {}; for (const n of M.npcs) by[n.kind] = (by[n.kind] || 0) + 1; p0.log('dbg life', 'ui', M.uiOpen, this.touchCtl.panel.visible, this.ui.blocking, JSON.stringify(by), 'traffic', M.traffic.length, 'money', M.money, 'food', M.hunger.toFixed(2), M.thirst.toFixed(2), 'home', Math.round(M.home.x), Math.round(M.home.z), 'me', Math.round(s.pos.x), Math.round(s.pos.z), 'job', M.job?.kind || '-', M.job?.i, 'shops', [...new Set(M.npcs.filter(n => n.shop).map(n => n.shop))].join('|')) }
       if (e.code === 'Numpad9' && s.vehicle) { const v = s.vehicle; p0.log('dbg veh', v.def.name, 'pos', v.pos.x.toFixed(1), v.pos.y.toFixed(2), v.pos.z.toFixed(2), 'land', heightAt(v.pos.x, v.pos.z).toFixed(2), 'floor', this.collision.floorAt(v.pos.x, v.pos.y + 1.5, v.pos.z, 1.5, 6).toFixed(2), 'water', waterLevelAt(v.pos.x, v.pos.z).toFixed(2), 'spd', v.speed.toFixed(1), 'eng', v.engine, 'hp', Math.round(v.hp)) }
       if (e.code === 'Numpad9') p0.log('dbg state stam', s.stamina.toFixed(2), 'spr', s.sprint, s.winded, 'spd', s.speed.toFixed(1), 'blood', Math.round(s.blood), 'bleed', s.bleed.toFixed(2), 'y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2), 'xz', s.pos.x.toFixed(1), s.pos.z.toFixed(1), 'yaw', s.yaw.toFixed(2), 'ammo', s.w?.rec.mag, 'fingers', this.touchCtl.fingers.map(f => f.role + (f.hold ? ':' + f.hold : '')).join('|'), 'stick', this.input.stick ? this.input.stick.x.toFixed(2) + ',' + this.input.stick.y.toFixed(2) : '-')
@@ -490,6 +491,7 @@ export class Game {
     if (target && s.isPlayer) this.hud.note('Missile locked')
     this.ballistics.fire({ origin: sh.origin, dir: sh.dir, v: sh.v, ammo: sh.ammo, owner: s, tracer: sh.tracer, suppressed: sh.suppressed, target })
     this.mode?.onShot?.(s, sh)
+    this.noteDanger(sh.origin.x, sh.origin.z)
     const a = AMMO[sh.ammo]
     const fp = s.isPlayer && this.player.view === 'fp'
     const m = fp ? this.player.camPos.clone().addScaledVector(sh.dir, 0.9).add(_v.set(0, -0.08, 0)) : sh.origin.clone().addScaledVector(sh.dir, 0.7)
@@ -500,7 +502,14 @@ export class Game {
   }
   // An explosion: blast for everyone in range (less behind cover), vehicles by armour, windows break,
   // fuel and ammunition nearby go up, the AI hears it, the camera shakes.
+  // where shots and blasts were lately (townspeople run from them): one entry a second per spot
+  noteDanger(x, z) {
+    const D = this.dangers || (this.dangers = [])
+    if (D.some(d => this.time - d.t < 1 && Math.abs(d.x - x) < 20 && Math.abs(d.z - z) < 20)) return
+    D.push({ x, z, t: this.time }); if (D.length > 24) D.shift()
+  }
   explode(x, y, z, ex, src, directVehicle = null, big = false) {
+    this.noteDanger(x, z)
     if (DEBUG) this.p0.log('dbg explode', x.toFixed(1), y.toFixed(1), z.toFixed(1), ex.radius, ex.heat || 0)
     const r = ex.radius
     this.fx.explosion(x, y, z, r, { fire: big })
@@ -702,6 +711,7 @@ export class Game {
     this.W.ladders = this.city.ladders
     this.engine.setView(cp, this.camQuat, this.fov || 70)
     this.sky.update(this.state === 'paused' ? 0 : dt, this.engine.camera.position)
+    this.city.night.value = Math.max(0, Math.min(1, (this.sky.night - 0.35) / 0.4))
     this.water.update(dt, cp, this.sky)
     this.rain.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.sfx)
     this.fx.update(this.state === 'paused' ? 0 : dt, cp); T.push(performance.now())

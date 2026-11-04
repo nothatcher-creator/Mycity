@@ -14,6 +14,7 @@ import { QUALITY } from '../../core/engine.js'
 import { VEHICLES } from '../../vehicles/vehicle-data.js'
 import { Inventory, ITEMS } from '../inventory.js'
 import { C, text } from '../../ui/ui.js'
+import { Civilians } from '../civilians.js'
 
 export const CONTROL = { kaldor: 'vdf', tovar: 'vdf', kessel: 'vdf', sorn: 'vdf', anselm: 'cef', power: 'cef', halvik: 'res', koriv: 'res',
   dresk: 'nlf', sentinel: 'nlf', grail: 'nlf', hallen: 'nlf', quarry: 'nlf', marsk: 'nlf', lumber: 'nlf', ilsen: 'nlf', belno: 'nlf' }
@@ -60,19 +61,28 @@ export class FreeRoam extends Mode {
     // a vehicle beside the start
     const vp = this.findGround(x, z, 25)
     if (vp) this.park(this.faction === 'nlf' || this.faction === 'res' ? 'technical' : 'jeep', vp[0], vp[1], yaw + 1.2, { faction: this.faction })
+    this.civ = new Civilians(g)
     this.update(0, true)
     g.hud.note(`Free Roam: ${FACTIONS[this.faction].name}. M for the map, P for the sandbox tools.`, C.gold2)
   }
   enemyOf(f) { return hostile(f, this.faction) }
+  onKill(sol, killer) {
+    super.onKill(sol, killer)
+    if (sol.civilian && killer?.isPlayer) this.g.hud.note(`You killed a civilian, ${sol.name}.`, C.red)
+  }
   update(dt, first = false) {
     super.update(dt)
     const g = this.g, s = g.player?.s
     if (!s) return
+    this.civ?.update(dt)
     if (g.settings.god && !s.dead) { s.blood = 100; s.bleed = 0 }
     this.tick -= dt
     if (this.tick > 0 && !first) return
     this.tick = 1
     const px = s.pos.x, pz = s.pos.z
+    // townspeople in the towns your side holds (fewer at night)
+    { const { place, d } = nearestPlace(px, pz), h = g.sky.hour, held = place && d < 60 && ['city', 'town', 'village'].includes(place.kind) && this.control[place.id] === this.faction
+      this.civ?.populate(px, pz, held ? place : null, held ? Math.round((place.kind === 'city' ? 8 : place.kind === 'town' ? 5 : 3) * (h >= 22 || h < 6 ? 0.25 : 1)) : 0) }
     const cap = QUALITY[g.settings.quality].aiNear + 6
     let near = 0
     for (const o of g.soldiers) if (!o.dead && !o.isPlayer && Math.hypot(o.pos.x - px, o.pos.z - pz) < 1000) near++

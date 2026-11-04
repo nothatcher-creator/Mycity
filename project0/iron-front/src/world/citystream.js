@@ -16,6 +16,21 @@ export class CityStream {
     this.collision = collision
     this.mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })
     this.glassMat = new THREE.MeshLambertMaterial({ color: 0x8fb4c8, transparent: true, opacity: 0.45, depthWrite: false })
+    // At night some windows are lit: a warm glow, the same windows every night (a hash of where the pane is)
+    this.night = { value: 0 }
+    this.glassMat.onBeforeCompile = sh => {
+      sh.uniforms.uNight = this.night
+      sh.vertexShader = 'varying float vLit;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+        #ifdef USE_INSTANCING
+        vec4 ic = modelMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        #else
+        vec4 ic = modelMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        #endif
+        vLit = step(0.58, fract(sin(dot(floor(ic.xz * 0.45) + floor(ic.y / 2.9) * 7.0, vec2(12.9898, 78.233))) * 43758.5453));`)
+      sh.fragmentShader = 'uniform float uNight; varying float vLit;\n' + sh.fragmentShader
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += vec3(1.0, 0.62, 0.28) * 1.6 * uNight * vLit;')
+        .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n  gl_FragColor.a = mix(gl_FragColor.a, 0.92, uNight * vLit);')
+    }
     this.glassGeo = new THREE.BoxGeometry(2, 2, 2)
     this.lampMat = new THREE.MeshBasicMaterial({ color: 0xffd9a0, fog: true })
     this.lampGeo = new THREE.SphereGeometry(0.22, 6, 4)
@@ -23,9 +38,15 @@ export class CityStream {
     this.camXZ = { value: new THREE.Vector2() }
     this.shellMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })
     this.shellMat.onBeforeCompile = sh => {
-      sh.uniforms.hideR = this.hide; sh.uniforms.camXZ = this.camXZ
-      sh.vertexShader = 'uniform float hideR; uniform vec2 camXZ; attribute vec2 center;\n' + sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+      sh.uniforms.hideR = this.hide; sh.uniforms.camXZ = this.camXZ; sh.uniforms.uNight = this.night
+      sh.vertexShader = 'uniform float hideR; uniform vec2 camXZ; attribute vec2 center; varying vec3 vWp;\n' + sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+        vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;
         if (distance(center, camXZ) < hideR) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);`)
+      // the painted windows of the distant buildings (their dark blue-grey) light up in patches at night
+      sh.fragmentShader = 'uniform float uNight; varying vec3 vWp;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        float isWin = step(vColor.r * 2.0, vColor.b) * step(max(vColor.r, max(vColor.g, vColor.b)), 0.07) * step(0.03, vColor.b);
+        float lit = step(0.6, fract(sin(dot(vec2(floor((vWp.x + vWp.z) / 2.6), floor(vWp.y / 2.9)), vec2(12.9898, 78.233))) * 43758.5453));
+        totalEmissiveRadiance += vec3(1.0, 0.62, 0.28) * 1.4 * uNight * isWin * lit;`)
     }
     this.broken = new Set()      // glass and props destroyed (kept while the tile is unloaded)
     this.destroyed = new Set()   // wall sections blown out

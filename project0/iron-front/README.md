@@ -29,7 +29,8 @@ Independent Resistance (RES).
 
 | | |
 |---|---|
-| Move / sprint / walk | W A S D, Shift, Alt |
+| Move / sprint / walk | W A S D, Shift, Caps Lock (walk on/off) |
+| Free look (turn the head, not the gun) | hold Alt |
 | Jump or vault / crouch / prone / lean | Space, C, Z, Q and E |
 | Fire / aim down sights | left mouse / hold right mouse |
 | Reload / fire mode / zeroing | R, B, Page Up and Page Down |

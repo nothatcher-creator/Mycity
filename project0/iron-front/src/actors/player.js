@@ -15,6 +15,7 @@ import { FACTIONS, hostile } from './factions.js'
 import { STAND, CROUCH, PRONE } from './soldier.js'
 import { ITEMS } from '../game/inventory.js'
 
+const _flE = new THREE.Euler()
 export class Player {
   constructor(game, soldier) {
     this.game = game
@@ -95,8 +96,9 @@ export class Player {
     const wheel = input.takeWheel()
     if (s.dead) { this.deathCam(dt); return }
     if (s.vehicle) return     // the vehicle drives the camera
-    // look (free look turns the head only)
-    if (input.down('freeLook') && this.view === 'fp') {
+    // look (hold free look, Alt, to turn the head only: the body and the gun keep their direction)
+    this.freeLooking = input.down('freeLook')
+    if (this.freeLooking) {
       this.freeLook.yaw = Math.max(-1.6, Math.min(1.6, this.freeLook.yaw + look.yaw))
       this.freeLook.pitch = Math.max(-1.2, Math.min(1.2, this.freeLook.pitch + look.pitch))
     } else {
@@ -124,7 +126,9 @@ export class Player {
     }
     // aiming or firing while Shift is held stops the sprint (it used to block both until Shift was let go)
     inp.sprint = input.down('sprint') && !s.ads && !(input.mouse.left || input.mouse.right || this.touchFire || this.touchAds)
-    inp.walk = input.down('walk')
+    // walking is a toggle (Caps Lock)
+    if (input.hit('walk')) { this.walking = !this.walking; g.hud?.note(this.walking ? 'Walking' : 'Running') }
+    inp.walk = !!this.walking
     if (input.hit('jump')) inp.jump = true
     if (input.hit('crouch')) s.setStance(s.stance === CROUCH ? STAND : CROUCH)
     if (input.hit('prone')) s.setStance(s.stance === PRONE ? CROUCH : PRONE)
@@ -188,7 +192,7 @@ export class Player {
     if (left && s.w && !this.binoculars && !g.ui.blocking) {
       const dir = this.aimDirection(true)
       const origin = this.view === 'fp' ? this.camPos.clone() : this.muzzleWorld()
-      if (this.view === 'tp') {
+      if (this.view === 'tp' && !this.freeLooking) {
         // where the crosshair points, from the camera; the bullet goes there from the muzzle
         const target = this.crosshairTarget()
         dir.subVectors(target, origin).normalize()
@@ -342,8 +346,11 @@ export class Player {
     pos.y += Math.abs(Math.cos(this.bob)) * 0.01 * bob + this.sway.y * (1 - a) * 0.3
     pos.z += this.kick * 0.035
     rx += this.kick * 0.05
+    // free look: the gun keeps pointing where the body faces, so it swings aside as the head turns
+    const fl = this.freeLook
+    if (Math.abs(fl.yaw) + Math.abs(fl.pitch) > 0.001) { _flE.set(-fl.pitch, -fl.yaw, 0, 'YXZ'); pos.applyEuler(_flE); rx -= fl.pitch; ry -= fl.yaw }
     this.vm.position.copy(pos)
-    this.vm.rotation.set(rx + this.sway.y * 2, ry + this.sway.x * 2, rz)
+    this.vm.rotation.set(rx + this.sway.y * 2, ry + this.sway.x * 2, rz, Math.abs(fl.yaw) > 0.001 ? 'YXZ' : 'XYZ')
     // arms from off-screen shoulders to the grip and the handguard
     this.vm.updateMatrixWorld(true)
     const grip = _v3.set(0, -0.05, 0.02).applyMatrix4(this.vm.matrixWorld)

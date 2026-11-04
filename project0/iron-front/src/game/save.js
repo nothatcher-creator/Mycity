@@ -19,6 +19,8 @@ export class Save {
     // only keep bindings for actions that still exist
     // two-thumb touch (core/touch.js): the stick strafes again unless the player turns turning back on
     if (!this.settings.touch2) { this.settings.stickTurns = false; this.settings.touch2 = true }
+    // Alt became free look (as in Arma) and walking a Caps Lock toggle: old saved keys for them give way
+    if (!this.settings.alt2) { const b = this.settings.binds || {}; if (b.walk === 'AltLeft') delete b.walk; if (b.freeLook === 'Backquote') delete b.freeLook; this.settings.alt2 = true }
     this.settings.binds = Object.fromEntries(Object.entries(this.settings.binds || {}).filter(([a]) => a in DEFAULT_BINDS))
     this.data.settings = this.settings
     this.timer = null

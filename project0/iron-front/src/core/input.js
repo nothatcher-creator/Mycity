@@ -3,17 +3,17 @@
 // Enter (chat) and Escape (leave) belong to the city and cannot be bound. Ctrl is avoided by default:
 // with W held, Ctrl+W closes the browser tab.
 export const DEFAULT_BINDS = {
-  forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', sprint: 'ShiftLeft', walk: 'AltLeft',
+  forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', sprint: 'ShiftLeft', walk: 'CapsLock',
   jump: 'Space', crouch: 'KeyC', prone: 'KeyZ', leanL: 'KeyQ', leanR: 'KeyE', reload: 'KeyR', interact: 'KeyF',
   view: 'KeyV', inventory: 'Tab', map: 'KeyM', fireMode: 'KeyB', grenade: 'KeyG', melee: 'KeyX',
   slot1: 'Digit1', slot2: 'Digit2', slot3: 'Digit3', slot4: 'Digit4', slot5: 'Digit5',
   zeroUp: 'PageUp', zeroDown: 'PageDown', binoculars: 'KeyO', nvg: 'KeyN', light: 'KeyL', heal: 'KeyH',
-  squad: 'KeyT', gear: 'KeyY', gearNext: 'KeyU', pause: 'KeyP', shoulder: 'KeyK', bipod: 'KeyJ', holdBreath: 'ShiftLeft', freeLook: 'Backquote',
+  squad: 'KeyT', gear: 'KeyY', gearNext: 'KeyU', pause: 'KeyP', shoulder: 'KeyK', bipod: 'KeyJ', holdBreath: 'ShiftLeft', freeLook: 'AltLeft',
   // vehicles
   vUp: 'Space', vDown: 'KeyC', vBoost: 'ShiftLeft', vSeat: 'KeyX', vLight: 'KeyL', vEngine: 'KeyE', vHorn: 'KeyH', vFlares: 'KeyR', vGear: 'KeyG',
 }
 export const ACTION_NAMES = {
-  forward: 'Move forward', back: 'Move back', left: 'Strafe left', right: 'Strafe right', sprint: 'Sprint', walk: 'Walk (slow)',
+  forward: 'Move forward', back: 'Move back', left: 'Strafe left', right: 'Strafe right', sprint: 'Sprint', walk: 'Walk (toggle)',
   jump: 'Jump / vault', crouch: 'Crouch', prone: 'Prone', leanL: 'Lean left', leanR: 'Lean right', reload: 'Reload',
   interact: 'Interact / enter vehicle', view: 'First / third person', inventory: 'Inventory', map: 'Map', fireMode: 'Fire mode',
   grenade: 'Throw grenade', melee: 'Melee', slot1: 'Primary weapon', slot2: 'Launcher', slot3: 'Sidearm', slot4: 'Next grenade (frag, smoke, flash)', slot5: 'Medkit / tool',
@@ -48,6 +48,9 @@ export class Input {
       if (e.touch) { this.touch = true }
       // (a jump of hundreds of pixels comes with the pointer lock itself in some browsers: not a real movement)
       if (Math.abs(e.dx) > 250 || Math.abs(e.dy) > 250) return
+      // a second button pressed while one is held comes as a move with new buttons, not as a press (the
+      // browser's rule for chorded buttons): firing while holding the right button to aim lives here
+      if (!e.touch && typeof e.buttons === 'number') { this.mouse.left = !!(e.buttons & 1); this.mouse.right = !!(e.buttons & 2) }
       if (!e.touch && (p0.input.pointer.locked || (e.buttons & 2) || (this.dragLook && (e.buttons & 1)))) {
         this.look.dx += e.dx; this.look.dy += e.dy
       }

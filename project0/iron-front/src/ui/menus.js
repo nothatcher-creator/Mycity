@@ -396,6 +396,7 @@ export class Menus {
     y = this.choices(c, p, x, y, w, 'Default view', [{ label: 'First person', v: 'fp' }, { label: 'Third person', v: 'tp' }], st.view, v => { st.view = v; g.save.store() }, s)
     tog('Compass', st.hud.compass, v => { st.hud.compass = v })
     tog('Minimap', st.hud.minimap, v => { st.hud.minimap = v })
+    tog('Waypoint and objective markers', st.hud.markers !== false, v => { st.hud.markers = v })
     tog('Weapon panel', st.hud.weapon, v => { st.hud.weapon = v })
     tog('Crosshair', st.hud.crosshair, v => { st.hud.crosshair = v })
     y += 8 * s
@@ -455,9 +456,10 @@ export class Menus {
       g.mode?.admin ? { id: 'sandbox', label: 'SANDBOX TOOLS', sub: 'Spawn vehicles and squads, time, weather, teleport', fn: () => this.open('sandbox', true) } : null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
+      g.player && !g.player.s.dead && !g.player.s.vehicle ? { id: 'unstuck', label: 'UNSTUCK', sub: 'Stuck in a wall or a hole? Move to clear ground nearby', fn: () => { g.unstuck(); g.resume() } } : null,
       null,
       { id: 'quit', label: 'SAVE AND QUIT TO MENU', fn: () => { g.mode?.persist?.(); g.quitToMenu() } },
-    ].filter((v, i) => v || i === 5)
+    ].filter((v, i) => v || i === 6)
     this.column(c, p, x, 150 * s, Math.min(400 * s, W - x * 2), items, s)
     const m = g.mode
     if (m && W > 900 * s) {

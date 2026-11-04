@@ -114,7 +114,10 @@ export class Player {
     s.yaw += rk.yaw * 0.5 * dt * 14
     // movement keys
     const inp = s.input
-    inp.fwd = (input.down('forward') ? 1 : 0) - (input.down('back') ? 1 : 0)
+    // auto-run (the key by the 1, or the menu): forward until you press forward or back yourself
+    if (input.hit('autoRun')) { this.autoRun = !this.autoRun; g.hud?.note(this.autoRun ? 'Auto-run on' : 'Auto-run off') }
+    if (this.autoRun && (input.down('forward') || input.down('back') || s.dead)) this.autoRun = false
+    inp.fwd = (input.down('forward') || this.autoRun ? 1 : 0) - (input.down('back') ? 1 : 0)
     inp.side = (input.down('right') ? 1 : 0) - (input.down('left') ? 1 : 0)
     // the touch stick is analogue: walk slowly with a small push
     if (input.stick) { inp.fwd = Math.max(-1, Math.min(1, input.stick.y * 1.2)); inp.side = Math.max(-1, Math.min(1, input.stick.x * 1.2)) }

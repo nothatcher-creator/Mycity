@@ -1,12 +1,14 @@
 // The in-game display. Small panels that redraw only when what they show changes (the compass every
 // frame it turns, the minimap four times a second), so the interface stays cheap.
 import * as THREE from 'three'
+import { heightAt } from '../world/heightfield.js'
 import { Panel, C, FONT, MONO, text, box, bar, chip, icon, chamfer, header } from './ui.js'
 import { AMMO, ATTACHMENTS } from '../combat/weapons-data.js'
 import { FACTIONS } from '../actors/factions.js'
 import { mapImage, worldToMap, gridRef } from './mapimage.js'
 
 const HEAD = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+const _mv = new THREE.Vector3()
 export class HUD {
   constructor(game) {
     this.g = game
@@ -32,6 +34,8 @@ export class HUD {
     this.scope = this.mk((c, p) => this.drawScope(c, p), { order: 1 })
     this.vign = this.mk((c, p) => this.drawVignette(c, p), { order: -1 })
     this.touch = this.mk((c, p) => this.drawTouch(c, p), { order: 3 })
+    // the waypoint and the mode's objectives on screen, each a small panel moved to where it is (Arma's markers)
+    this.marks = [0, 1, 2, 3].map(() => { const p = this.mk((c, q) => this.drawMark(c, q)); p.m = null; p.show(false); return p })
     this.last = {}
     this.layout()
   }
@@ -82,7 +86,7 @@ export class HUD {
     this.touch.place(0, 0, W, H)
     for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.dirty = true
   }
-  show(v) { this.visible = v; for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.show(v) }
+  show(v) { this.visible = v; if (!v) for (const p of this.marks || []) p.show(false); for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.show(v) }
   note(t, color = C.text) { this.messages.push({ text: t, t: this.g.time, color }); if (this.messages.length > 7) this.messages.shift(); this.feed.dirty = true }
   radio(who, t) { this.note(`${who}: ${t}`, C.gold2); this.g.sfx?.ui('radio') }
   kill(t) { this.kills.push({ text: t, t: this.g.time }); if (this.kills.length > 5) this.kills.shift(); this.feed.dirty = true }
@@ -90,6 +94,7 @@ export class HUD {
   damage(fromYaw) { this.dmgDirs.push({ yaw: fromYaw, t: this.g.time }); this.vign.dirty = true }
 
   update(dt) {
+    this.updateMarks()
     const g = this.g, s = g.player?.s, o = this.opts
     if (!this.visible || !s) return
     const scoped = g.player.scoped || g.player.binoculars || (s.vehicle && g.vcontrol.zoom > 1.5 && s.seat?.role === 'gunner')
@@ -342,6 +347,31 @@ export class HUD {
       c.strokeStyle = this.hitKill ? C.red : C.white; c.lineWidth = 2
       for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { c.beginPath(); c.moveTo(cx + dx * 7, cy + dy * 7); c.lineTo(cx + dx * 14, cy + dy * 14); c.stroke() }
     }
+  }
+  updateMarks() {
+    const g = this.g, P = g.player, s = P?.s, e = g.engine
+    const list = this.visible && s && !s.dead && !P.scoped && g.settings.hud?.markers !== false ? g.markers().slice(0, this.marks.length) : []
+    const W = e.width, H = e.height, sc = this.s
+    this.marks.forEach((p, i) => {
+      const m = list[i]
+      if (!m) { if (p.visible) p.show(false); return }
+      const y = (m.y ?? heightAt(m.x, m.z)) + 2.2
+      const v = e.toScene(_mv.set(m.x, y, m.z), _mv).project(e.camera)
+      if (v.z > 1) { if (p.visible) p.show(false); return }      // behind you
+      const sx = Math.max(30 * sc, Math.min(W - 30 * sc, (v.x * 0.5 + 0.5) * W)), sy = Math.max(60 * sc, Math.min(H - 60 * sc, (-v.y * 0.5 + 0.5) * H))
+      p.place(sx - 40 * sc, sy - 14 * sc, 80 * sc, 40 * sc)
+      const d = Math.hypot(m.x - s.pos.x, m.z - s.pos.z), label = d < 1000 ? `${Math.round(d / (d < 100 ? 1 : 10)) * (d < 100 ? 1 : 10)} m` : `${(d / 1000).toFixed(1)} km`
+      const key = (m.color || '') + label
+      if (p.key !== key) { p.key = key; p.m = { color: m.color || C.gold2, label }; p.dirty = true }
+      if (!p.visible) p.show(true)
+    })
+  }
+  drawMark(c, p) {
+    const m = p.m, sc = this.s; if (!m) return
+    const cx = p.w / 2, cy = 14 * sc, r = 7 * sc
+    c.beginPath(); c.moveTo(cx, cy - r); c.lineTo(cx + r, cy); c.lineTo(cx, cy + r); c.lineTo(cx - r, cy); c.closePath()
+    c.fillStyle = 'rgba(0,0,0,0.35)'; c.fill(); c.strokeStyle = m.color; c.lineWidth = 2.2; c.stroke()
+    text(c, m.label, cx, cy + r + 12 * sc, { size: 11 * sc, weight: 700, align: 'center', color: m.color, shadow: true })
   }
   drawCenter(c, p) {
     const W = p.w, sc = this.s

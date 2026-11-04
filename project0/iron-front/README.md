@@ -31,6 +31,8 @@ Independent Resistance (RES).
 |---|---|
 | Move / sprint / walk | W A S D, Shift, Caps Lock (walk on/off) |
 | Free look (turn the head, not the gun) | hold Alt |
+| Auto-run on / off | the key left of 1 (` ): forward or back takes over again |
+| At a body | F searches it, R takes every magazine that fits your weapons in one go |
 | Jump or vault / crouch / prone / lean | Space, C, Z, Q and E |
 | Fire / aim down sights | left mouse / hold right mouse |
 | Reload / fire mode / zeroing | R, B, Page Up and Page Down |
@@ -43,7 +45,7 @@ Independent Resistance (RES).
 | Heal | H: a bandage if bleeding, a splint for a broken leg, then a first aid kit or medkit, then a painkiller |
 | Vehicles | W S throttle or pitch, A D steer or roll, Space and C up and down, Shift boost, X change seat, R flares, G landing gear, H horn, L headlights, E engine on/off, V first person (the driver's seat with a dashboard and wheel; a gunner looks along the gun), Tab the vehicle's storage |
 
-Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with flight assist on.
+The waypoint (set on the map) and the mode's objectives show on screen as small diamonds with their distance (a setting hides them). The pause menu has UNSTUCK: out of a wall or a hole to clear ground nearby. A body at your feet takes the prompt over a vehicle further off. Enter (chat) and Esc (leave) belong to the city. Aircraft follow the mouse with flight assist on.
 
 **Phones and tablets:** two thumbs at once. The game draws its own movement stick (the city's is hidden
 with `"stick": false` in `experience.json`): put your left thumb down anywhere in the lower left and it

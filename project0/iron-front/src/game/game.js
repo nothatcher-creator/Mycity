@@ -24,7 +24,7 @@ import { Menus } from '../ui/menus.js'
 import { InventoryUI } from '../ui/invui.js'
 import { Effects } from '../combat/effects.js'
 import { Ballistics } from '../combat/ballistics.js'
-import { AMMO } from '../combat/weapons-data.js'
+import { AMMO, weapon } from '../combat/weapons-data.js'
 import { Rig } from '../actors/rig.js'
 import { Soldier, PRONE } from '../actors/soldier.js'
 import { Player } from '../actors/player.js'
@@ -255,6 +255,9 @@ export class Game {
       if (e.code === 'ScrollLock' && this.mode?.dbgVisit) this.mode.dbgVisit()
       if (e.code === 'F2' && this.mode?.dbgVisit) this.mode.dbgVisit('dealer')
       if (e.code === 'Period') this.input.look.dx += 200
+      if (e.code === 'Slash') { const x = s.pos.x + Math.sin(s.yaw) * 180 + 40, z = s.pos.z + Math.cos(s.yaw) * 180; this.waypoint = { x, z, y: heightAt(x, z) }; p0.log('dbg waypoint') }
+      if (e.code === 'Semicolon') { const x = s.pos.x + Math.sin(s.yaw) * 1.2, z = s.pos.z + Math.cos(s.yaw) * 1.2; const o = this.addSoldier({ faction: 'vdf', role: 'rifleman', x, z }); o.die(null, null); p0.log('dbg body', this.loot.length, s.inv.countAmmo(s.w.def)) }
+      if (e.code === 'Quote') p0.log('dbg ammo', s.inv.countAmmo(s.w.def), this.loot.map(l => l.items.length).join())
       if (e.code === 'Equal' && this.mode?.dbgJob) { this.mode.money += 5000; p0.log('dbg money', this.mode.money) }
       if (e.code === 'Minus' && this.mode?.dbgJob) { const sp = s.inv.add({ kind: 'tool', id: 'fishingrod' }); this.mode.dbgShore(); p0.log('dbg rod', sp) }
       if (e.code === 'NumLock' && this.mode?.dbgJob) this.mode.dbgJob(this.dbgJobKind || 'bus')
@@ -420,6 +423,15 @@ export class Game {
     this.hud.show(false); this.map.close(); this.invui.close()
     this.p0.input.unlockPointer()
     this.menus.open('main')
+  }
+  // Out of a wall or a hole: the nearest clear, level ground within 40 m (outside buildings)
+  unstuck() {
+    const s = this.player?.s; if (!s || s.dead || s.vehicle) return
+    const p = (this.mode?.findGround || (() => null)).call(this.mode, s.pos.x, s.pos.z, 40, 40, Math.random, 1)
+    if (!p) { this.hud.note('No clear ground near: try the map teleport or respawn'); return }
+    s.pos.set(p[0], heightAt(p[0], p[1]) + 0.05, p[1]); s.vel.set(0, 0, 0); s.ladder = null; s.vault = null; s.vaultT = 0
+    this.preload(p[0], p[1])
+    this.hud.note('Moved to clear ground')
   }
   // Eat or drink something: stamina back (and in Life, hunger and thirst)
   consume(s, id) {
@@ -828,7 +840,10 @@ export class Game {
     hud.prompt = ''
     if (s.dead) return
     if (this.mode?.interact?.(s, hud, inp)) return
-    const v = this.vehicles.nearest(s.pos, 3)
+    // a body at your feet comes before a vehicle further off (both close: the nearer one)
+    const body0 = this.loot.find(l => Math.hypot(l.x - s.pos.x, l.z - s.pos.z) < 2 && Math.abs(l.y - s.pos.y) < 2.5)
+    let v = this.vehicles.nearest(s.pos, 3)
+    if (v && body0 && Math.hypot(body0.x - s.pos.x, body0.z - s.pos.z) < Math.hypot(v.pos.x - s.pos.x, v.pos.z - s.pos.z) - Math.max(v.def.size[0], v.def.size[2]) / 2 + 0.5) v = null
     if (v) {
       const free = v.seats.find(q => !q.occupant)
       hud.prompt = free ? `[F] Enter ${v.def.name}` : `${v.def.name}: full`
@@ -845,7 +860,20 @@ export class Game {
       return
     }
     const body = this.loot.find(l => Math.hypot(l.x - s.pos.x, l.z - s.pos.z) < 2 && Math.abs(l.y - s.pos.y) < 2.5)
-    if (body) { hud.prompt = `[F] Search ${body.name}`; if (inp.hit('interact')) this.invui.open(body); return }
+    if (body) {
+      // the magazines and rounds there that fit your weapons, in one go
+      const want = new Set(['primary', 'sidearm', 'launcher'].map(k => s.inv.weapons[k] && weapon(s.inv.weapons[k].id).ammo).filter(Boolean))
+      const fits = body.items.filter(it => (it.kind === 'mag' || it.kind === 'ammo') && want.has(it.ammo) && (it.rounds ?? it.count ?? 1) > 0)
+      hud.prompt = `[F] Search ${body.name}${fits.length ? `   [R] Take ammo (${fits.length})` : ''}`
+      if (inp.hit('interact')) this.invui.open(body)
+      if (fits.length && inp.hit('reload')) {
+        let n = 0
+        for (const it of fits) { if (!s.inv.add(it)) break; body.items.splice(body.items.indexOf(it), 1); n++ }
+        hud.note(n ? `Took ${n} magazine${n === 1 ? '' : 's'} of ammo${n < fits.length ? ' (no room for the rest)' : ''}` : 'No room for more ammo'); if (n) this.sfx.ui('pickup')
+        inp.pressed.delete('reload')
+      }
+      return
+    }
     for (const tv of this.vehicles.list) if (tv.supply && tv.alive && tv.pos.distanceTo(s.pos) < 9) {
       hud.prompt = `[F] ${tv.supply === 'ammo' ? 'Rearm' : tv.supply === 'medical' ? 'Heal' : 'Resupply'} at the ${tv.def.name}`
       if (inp.hit('interact')) this.resupply(s, tv.supply)

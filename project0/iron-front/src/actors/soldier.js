@@ -89,7 +89,7 @@ export class Soldier {
   get reloading() { return this.w && this.w.reloadT > 0 }
   canFire() {
     const w = this.w
-    return this.canAct && w && this.switchT <= 0 && w.reloadT <= 0 && w.cooldown <= 0 && w.boltT <= 0 && !this.swimming && !this.ladder && this.vaultT <= 0 && (this.input.sprint ? this.speed < 2 : true)
+    return this.canAct && w && this.switchT <= 0 && w.reloadT <= 0 && w.cooldown <= 0 && w.boltT <= 0 && !this.swimming && !this.ladder && this.vaultT <= 0 && !this.sprint
   }
   // Pulls the trigger: `held` is true while it stays down. Returns the shots fired ([] when none) as
   // { origin, dir, ammo, v } for the ballistics; `origin` and `dir` come from the controller.
@@ -261,7 +261,9 @@ export class Soldier {
     // 0.78), down to 0.62 for the heaviest
     const load = Math.max(0.62, Math.min(1.05, 1.12 - Math.max(0, weight - 12) / 70))
     const hurt = this.legHurt ? 0.55 : 1
-    let sprint = inp.sprint && this.stance !== PRONE && this.stamina > 0.05 && inp.fwd > 0 && !this.ads && !this.legHurt
+    // out of breath: no sprint until stamina is back to a third (it used to flick on and off at empty)
+    if (this.stamina <= 0.05) this.winded = true; else if (this.stamina > 0.33) this.winded = false
+    let sprint = inp.sprint && this.stance !== PRONE && !this.winded && inp.fwd > 0 && !this.ads && !this.legHurt
     let maxV = this.stance === PRONE ? 0.9 : this.stance === CROUCH ? 2.1 : 3.6
     if (sprint) maxV = 6.2
     if (inp.walk || this.ads) maxV = Math.min(maxV, this.stance === PRONE ? 0.6 : 1.5)

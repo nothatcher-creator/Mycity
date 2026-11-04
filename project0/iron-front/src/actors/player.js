@@ -122,7 +122,8 @@ export class Player {
       s.yaw -= inp.side * dt * (1.2 + Math.min(1, s.speed / 4) * 0.4)
       inp.side = 0
     }
-    inp.sprint = input.down('sprint') && !s.ads
+    // aiming or firing while Shift is held stops the sprint (it used to block both until Shift was let go)
+    inp.sprint = input.down('sprint') && !s.ads && !(input.mouse.left || input.mouse.right || this.touchFire || this.touchAds)
     inp.walk = input.down('walk')
     if (input.hit('jump')) inp.jump = true
     if (input.hit('crouch')) s.setStance(s.stance === CROUCH ? STAND : CROUCH)

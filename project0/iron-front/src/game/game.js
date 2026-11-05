@@ -31,6 +31,8 @@ import { Player } from '../actors/player.js'
 import { AI } from '../actors/ai.js'
 import { FACTIONS, ROLES, hostile } from '../actors/factions.js'
 import { kit, ITEMS } from './inventory.js'
+import { buildInventory } from './loadout.js'
+import { openArsenal } from '../ui/arsenal.js'
 import { Vehicles } from '../vehicles/vehicles.js'
 import { VehicleControl } from '../vehicles/vcontrol.js'
 import { SFX } from './sfx.js'
@@ -212,6 +214,7 @@ export class Game {
     if (DEBUG) p0.on('keydown', e => {
       if (e.code === 'F9' && this.state === 'menu') { this.start('freeroam', { ...this.menus.setup }); return }
       if (e.code === 'Home' && this.state === 'menu') { this.start('life', {}); return }
+      if (e.code === 'Insert' && this.state !== 'play') { if (this.menus.page !== 'arsenal') openArsenal(this.menus); else { const T = ['primary', 'att', 'sidearm', 'launcher', 'clothing', 'items', 'slots']; this.menus.ars.tab = T[(T.indexOf(this.menus.ars.tab) + 1) % T.length]; this.menus.panel.dirty = true } return }
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
       if (e.code === 'F3' && this.state === 'menu') { const room = p0.room; try { if (room && !Object.keys(room.state).some(k => k.startsWith('srv:'))) { room.set('srv:dbg1', { id: 'dbg1', name: 'Kaldor nights', host: p0.me.id, hostName: p0.me.name, kind: 'domination', place: 'kaldor', minutes: 20, max: 12, hour: 23, weather: 'fog', seed: 7, start: Date.now(), round: 1, created: Date.now(), limit: 250 }); room.set('srv:dbg2', { id: 'dbg2', name: 'Casual', host: 'nobody', hostName: 'Someone', kind: 'tdm', place: 'tovar', minutes: 12, max: 8, hour: 13, weather: 'clear', seed: 9, start: Date.now() - 300000, round: 2, created: Date.now(), limit: 30 }); room.set('pl:' + p0.me.id, { match: 'dbg1.1', team: 'A', k: 3, d: 1, name: p0.me.name }) } } catch (err) { p0.log('dbg srv', err.message) } this.menus.open('online', true); return }
@@ -466,6 +469,9 @@ export class Game {
     return s
   }
   spawnPlayer(o) {
+    // a saved loadout marked for deploying (Free Roam, Battle)
+    const d = this.save.data, LO = d.loadoutUse != null && d.loadouts?.[d.loadoutUse]
+    if (!o.inv && LO && this.mode?.loadouts) o = { ...o, inv: buildInventory(LO).inv }
     const s = this.addSoldier({ ...o, name: o.name || 'You' })
     s.allowDown = !!o.allowDown
     this.player = new Player(this, s)

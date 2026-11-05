@@ -32,6 +32,7 @@ export const ARENAS = ['kaldor', 'tovar', 'halvik', 'koriv', 'dresk', 'sentinel'
 const LETTERS = 'ABCDEFG'
 
 export class Battle extends Mode {
+  get loadouts() { return true }      // the Arsenal and saved loadouts apply here
   get name() { return BATTLES[this.kind].name }
   setup() {
     const g = this.g, o = this.opts

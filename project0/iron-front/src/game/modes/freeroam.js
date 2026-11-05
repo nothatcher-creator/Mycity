@@ -28,6 +28,7 @@ export const CIVIL = { city: ['bus', 'sedan', 'taxi', 'police', 'van', 'hatch', 
 
 export class FreeRoam extends Mode {
   get name() { return 'Free Roam' }
+  get loadouts() { return true }      // the Arsenal and saved loadouts apply here
   setup() {
     const g = this.g, o = this.opts
     const save = g.save.data.freeroam

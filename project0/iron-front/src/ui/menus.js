@@ -16,6 +16,7 @@ import { CONTROL } from '../game/modes/freeroam.js'
 import { BATTLES, ARENAS } from '../game/modes/battle.js'
 import { MISSIONS, CHAPTER, drawBriefing } from '../game/modes/campaign.js'
 import { ONLINE_KINDS, ONLINE_PLACES, serverList } from '../game/modes/online.js'
+import { drawArsenal, openArsenal } from './arsenal.js'
 
 export class Menus {
   constructor(game) {
@@ -127,12 +128,13 @@ export class Menus {
       { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
       { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
       { id: 'online', label: 'MULTIPLAYER', sub: `Server browser · ${(this.g.p0.room?.players || []).length} in this lot now · ${serverList(this.g.p0.room).length} server${serverList(this.g.p0.room).length === 1 ? '' : 's'}`, fn: () => this.open('online', true) },
+      { id: 'arsenal', label: 'ARSENAL', sub: 'Every weapon, attachment and item: make and save loadouts', fn: () => openArsenal(this) },
       { id: 'life', label: 'LIFE', sub: this.g.save.data.life ? `Continue · $${this.g.save.data.life.money ?? 0} in your wallet` : MODE_INFO[4].desc, fn: () => this.g.start('life', { resume: !!this.g.save.data.life }) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
-    ].filter((v, i) => v || i === 6)
+    ].filter((v, i) => v || i === 7)
     const colW = Math.min(430 * s, W - x * 2)
     this.column(c, p, x, top + (this.g.input.touch ? 26 : 22) * s, colW, items, s, { numbered: !portrait })
     // the field report on the right, on screens wide enough for it
@@ -354,6 +356,7 @@ export class Menus {
     p.button(c, 'create', x, y, 260 * s, 50 * s, 'CREATE AND JOIN', () => g.start('online', { ...o }), { align: 'center', font: FONT(17 * s, 900), color: C.gold2 })
     p.button(c, 'back', x + 272 * s, y, 130 * s, 50 * s, 'BACK', () => this.back(), { align: 'center' })
   }
+  page_arsenal(c, p, W, H, s) { drawArsenal(this, c, p, W, H, s) }
   page_results(c, p, W, H, s) {
     const g = this.g, r = g.mode?.results?.() || { title: '', lines: [] }, x = W / 2
     text(c, r.title, x, H * 0.24, { size: 48 * s, weight: 900, align: 'center', color: r.title === 'VICTORY' ? C.gold2 : r.title === 'DEFEAT' ? C.red : C.text, shadow: true })
@@ -454,12 +457,13 @@ export class Menus {
       { id: 'resume', label: 'RESUME', fn: () => g.resume() },
       { id: 'map', label: 'MAP', fn: () => { g.resume(); g.openMap() } },
       g.mode?.admin ? { id: 'sandbox', label: 'SANDBOX TOOLS', sub: 'Spawn vehicles and squads, time, weather, teleport', fn: () => this.open('sandbox', true) } : null,
+      g.mode?.loadouts && g.player && !g.player.s.dead ? { id: 'arsenal', label: 'ARSENAL', sub: 'Every weapon, attachment and item: change kit, save loadouts', fn: () => openArsenal(this) } : null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       g.player && !g.player.s.dead && !g.player.s.vehicle ? { id: 'unstuck', label: 'UNSTUCK', sub: 'Stuck in a wall or a hole? Move to clear ground nearby', fn: () => { g.unstuck(); g.resume() } } : null,
-      null,
+      'sep',
       { id: 'quit', label: 'SAVE AND QUIT TO MENU', fn: () => { g.mode?.persist?.(); g.quitToMenu() } },
-    ].filter((v, i) => v || i === 6)
+    ].filter(Boolean).map(v => v === 'sep' ? null : v)
     this.column(c, p, x, 150 * s, Math.min(400 * s, W - x * 2), items, s)
     const m = g.mode
     if (m && W > 900 * s) {

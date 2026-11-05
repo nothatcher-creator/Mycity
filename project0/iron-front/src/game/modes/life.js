@@ -362,44 +362,32 @@ export class Life extends Mode {
     if (killer?.isPlayer && sol !== killer && sol.faction === 'civ') { const fine = Math.min(this.money, 250); this.money -= fine; g.hud.note(`${sol.name} is dead. The police fine you ${money(fine)}.`, C.red) }
   }
   // ---- what F does here: talk, shop, work, home, fish ----
-  interact(s, hud, inp) {
-    const g = this.g
-    if (this.fishT > 0) { hud.prompt = '[F] Stop fishing'; if (inp.hit('interact')) { this.fishT = 0; hud.note('You reel in') } return true }
-    // home
-    if (Math.hypot(s.pos.x - this.homeIn.x, s.pos.z - this.homeIn.z) < 2.2 || Math.hypot(s.pos.x - this.home.x, s.pos.z - this.home.z) < 2) {
-      hud.prompt = '[F] Home: sleep, stash, wardrobe'
-      if (inp.hit('interact')) this.openUI({ kind: 'home' })
-      return true
-    }
-    // delivery doors
+  // What you can do here (the game's action list, nearest first)
+  actions(s) {
+    const g = this.g, out = []
+    if (this.fishT > 0) return [{ label: 'Stop fishing', fn: () => { this.fishT = 0; g.hud.note('You reel in') } }]
+    if (Math.hypot(s.pos.x - this.homeIn.x, s.pos.z - this.homeIn.z) < 2.2 || Math.hypot(s.pos.x - this.home.x, s.pos.z - this.home.z) < 2)
+      out.push({ label: 'Home: sleep, stash, wardrobe', fn: () => this.openUI({ kind: 'home' }) })
     if (this.job?.kind === 'delivery') {
       const t = this.job.stops[this.job.i]
-      if (t && !s.vehicle && Math.hypot(s.pos.x - t.x, s.pos.z - t.z) < 2.5) {
-        hud.prompt = s.inv.count('parcel') ? '[F] Deliver the parcel' : 'Fetch a parcel from the van (Tab by the van)'
-        if (inp.hit('interact') && s.inv.count('parcel')) { s.inv.use('parcel'); this.pay(45, 'Parcel delivered'); this.job.i++; this.nextStop() }
-        return true
-      }
+      if (t && !s.vehicle && Math.hypot(s.pos.x - t.x, s.pos.z - t.z) < 2.5)
+        out.push(s.inv.count('parcel') ? { label: 'Deliver the parcel', fn: () => { s.inv.use('parcel'); this.pay(45, 'Parcel delivered'); this.job.i++; this.nextStop() } } : { label: 'Fetch a parcel from the van (Tab by the van)', fn: null })
     }
-    // people
     let best = null, bd = 2.4
     for (const n of this.npcs) { if (n.s.dead || n.s.vehicle) continue; const d = Math.hypot(n.s.pos.x - s.pos.x, n.s.pos.z - s.pos.z); if (d < bd && Math.abs(n.s.pos.y - s.pos.y) < 2) { bd = d; best = n } }
     if (best) {
-      const sh = best.shop && SHOPS[best.shop]
-      const open = !sh || this.isOpen(best.shop)
-      hud.prompt = sh ? (open ? `[F] ${sh.name}: ${best.name.split(' ')[0]}` : `${sh.name}: closed, opens at ${String(sh.hours[0]).padStart(2, '0')}:00`) : `[F] Talk to ${best.name}`
-      if (inp.hit('interact')) { if (sh && open) this.openUI({ kind: 'shop', shop: best.shop, npc: best }); else if (sh) g.hud.radio(best.name, 'We are closed. Come back in the morning.'); else this.talk(best) }
-      return true
+      const sh = best.shop && SHOPS[best.shop], first = best.name.split(' ')[0]
+      if (sh && this.isOpen(best.shop)) {
+        out.push({ label: `${sh.name}: buy and sell (${first})`, fn: () => this.openUI({ kind: 'shop', shop: best.shop, npc: best }) })
+        out.push({ label: `Ask ${first} for work`, fn: () => { this.openUI({ kind: 'shop', shop: best.shop, npc: best }); this.ui.tab = 'work'; this.ui.panel.dirty = true } })
+      } else if (sh) out.push({ label: `${sh.name}: closed, opens at ${String(sh.hours[0]).padStart(2, '0')}:00`, fn: () => g.hud.radio(best.name, 'We are closed. Come back in the morning.') })
+      out.push({ label: `Talk to ${best.name}`, fn: () => this.talk(best) })
     }
-    // fishing at the water's edge
     if (s.inv.count('fishingrod') && !s.vehicle) {
       const fx = s.pos.x + Math.sin(s.yaw) * 3, fz = s.pos.z + Math.cos(s.yaw) * 3
-      if (waterLevel(fx, fz) > heightAt(fx, fz) + 0.3) {
-        hud.prompt = '[F] Fish'
-        if (inp.hit('interact')) { this.fishT = 8 + Math.random() * 10; hud.note('You cast the line. Wait for a bite...') }
-        return true
-      }
+      if (waterLevel(fx, fz) > heightAt(fx, fz) + 0.3) out.push({ label: 'Fish', fn: () => { this.fishT = 8 + Math.random() * 10; g.hud.note('You cast the line. Wait for a bite...') } })
     }
-    return false
+    return out
   }
   fishing(dt, s) {
     this.fishT -= dt

@@ -201,6 +201,7 @@ export class Game {
       // in play on a touch screen every finger is tracked (stick, look, buttons at once)
       if (e.touch && this.touchPlay()) { this.touchCtl.down(e); return }
       if (this.map.visible) { this.ui.click(e.x, e.y); if (this.map.visible) this.map.pointerDown(e.x, e.y, e.button); return }
+      if (this.invui.visible) this.invui.press = { x: e.x - this.invui.panel.x, y: e.y - this.invui.panel.y, button: e.button, touch: !!e.touch }
       if (this.ui.click(e.x, e.y)) { this.input.mouse.left = false; return }
       if (this.invui.visible) { this.invui.pointerDown(e.x, e.y, e.button); return }
       // a finger on the screen (not on a button, not on the city's stick at the bottom left) turns the view
@@ -820,6 +821,8 @@ export class Game {
         this.vcontrol.update(dt, s, inp)
         if (s.vehicle) { this.camPos.copy(this.vcontrol.camPos); this.camQuat.copy(this.vcontrol.camQuat); this.fov = this.vcontrol.fov }
       } else {
+        // the wheel opens the action menu when there is something to do here (else it changes weapon)
+        if (inp.mouse.wheel && !s.ads && !p.binoculars && this.acts?.length) this.actionWheel(inp.takeWheel())
         p.update(dt, inp, this.ui)
         this.camPos.copy(p.camPos); this.camQuat.copy(p.camQuat); this.fov = p.fov
         this.interactions()
@@ -850,54 +853,68 @@ export class Game {
     if (s.dead && !this.deadHandled) { this.deadHandled = true; this.deadAt = this.time; this.p0.input.unlockPointer() }
     if (s.dead && this.deadHandled && this.time - this.deadAt > 2.5 && !this.menus.visible && !this.mode?.spectate) this.menus.open('dead')
   }
-  // What the player can use nearby: vehicles, bodies and crates to search, wounded friends, ladders.
-  interactions() {
-    const s = this.player.s, hud = this.hud, inp = this.input
-    hud.prompt = ''
-    if (s.dead) return
-    if (this.mode?.interact?.(s, hud, inp)) return
-    // a body at your feet comes before a vehicle further off (both close: the nearer one)
-    const body0 = this.loot.find(l => Math.hypot(l.x - s.pos.x, l.z - s.pos.z) < 2 && Math.abs(l.y - s.pos.y) < 2.5)
-    let v = this.vehicles.nearest(s.pos, 3)
-    if (v && body0 && Math.hypot(body0.x - s.pos.x, body0.z - s.pos.z) < Math.hypot(v.pos.x - s.pos.x, v.pos.z - s.pos.z) - Math.max(v.def.size[0], v.def.size[2]) / 2 + 0.5) v = null
-    if (v) {
-      const free = v.seats.find(q => !q.occupant)
-      hud.prompt = free ? `[F] Enter ${v.def.name}` : `${v.def.name}: full`
-      if (v.hp < v.maxHp && s.inv.count('repairkit')) hud.prompt += '   [R] Repair'
-      if (inp.hit('interact') && free && this.vehicles.enter(s, v)) { this.player.lastView = this.player.view; this.vcontrol.entered(v); hud.note(`${v.def.name}: ${s.seat.role}`); this.mode?.onEnterVehicle?.(v) }
-      if (inp.hit('reload') && v.hp < v.maxHp && s.inv.count('repairkit')) { s.inv.use('repairkit'); v.hp = Math.min(v.maxHp, v.hp + v.maxHp * 0.45); v.burning = 0; v.mobility = 1; hud.note('Vehicle repaired') }
-      if (inp.hit('heal') && s.inv.count('jerrycan') && v.fuel < v.maxFuel) { s.inv.use('jerrycan'); v.fuel = Math.min(v.maxFuel, v.fuel + v.maxFuel * 0.4); hud.note('Refuelled') }
-      return
-    }
+  // What the player can do here (Arma's action menu): everything near, nearest first. The first is the
+  // default ([F] or USE); the mouse wheel (or the ••• button on a touch screen) opens the whole list, the wheel
+  // picks and F does it. An action may also have its own key (R repairs, takes ammo; H refuels).
+  gatherActions(s) {
+    const out = [...(this.mode?.actions?.(s) || [])]
+    const SEAT = { driver: 'driver', pilot: 'pilot', copilot: 'co-pilot', gunner: 'gunner', commander: 'commander', passenger: 'passenger' }
     const down = this.soldiers.find(o => o.down && !o.dead && o !== s && o.team === s.team && o.pos.distanceTo(s.pos) < 2)
-    if (down) {
-      hud.prompt = `[F] Revive ${down.name}`
-      if (inp.hit('interact')) { if (s.treat('medkit', down) || s.treat('firstaid', down)) { down.down = false; down.blood = Math.max(down.blood, 40); hud.note(`${down.name} revived`) } else hud.note('You need a medkit or first aid kit') }
-      return
-    }
+    if (down) out.push({ label: `Revive ${down.name}`, fn: () => { if (s.treat('medkit', down) || s.treat('firstaid', down)) { down.down = false; down.blood = Math.max(down.blood, 40); this.hud.note(`${down.name} revived`) } else this.hud.note('You need a medkit or a first aid kit') } })
+    // a body at your feet comes before a vehicle further off (both close: the nearer one)
     const body = this.loot.find(l => Math.hypot(l.x - s.pos.x, l.z - s.pos.z) < 2 && Math.abs(l.y - s.pos.y) < 2.5)
+    const v = this.vehicles.nearest(s.pos, 3)
+    const bodyActs = [], vActs = []
     if (body) {
+      bodyActs.push({ label: `Search ${body.name}`, fn: () => this.invui.open(body) })
       // the magazines and rounds there that fit your weapons, in one go
       const want = new Set(['primary', 'sidearm', 'launcher'].map(k => s.inv.weapons[k] && weapon(s.inv.weapons[k].id).ammo).filter(Boolean))
       const fits = body.items.filter(it => (it.kind === 'mag' || it.kind === 'ammo') && want.has(it.ammo) && (it.rounds ?? it.count ?? 1) > 0)
-      hud.prompt = `[F] Search ${body.name}${fits.length ? `   [R] Take ammo (${fits.length})` : ''}`
-      if (inp.hit('interact')) this.invui.open(body)
-      if (fits.length && inp.hit('reload')) {
+      if (fits.length) bodyActs.push({ label: `Take ammo (${fits.length})`, key: 'reload', fn: () => {
         let n = 0
         for (const it of fits) { if (!s.inv.add(it)) break; body.items.splice(body.items.indexOf(it), 1); n++ }
-        hud.note(n ? `Took ${n} magazine${n === 1 ? '' : 's'} of ammo${n < fits.length ? ' (no room for the rest)' : ''}` : 'No room for more ammo'); if (n) this.sfx.ui('pickup')
-        inp.pressed.delete('reload')
-      }
-      return
+        this.hud.note(n ? `Took ${n} magazine${n === 1 ? '' : 's'} of ammo${n < fits.length ? ' (no room for the rest)' : ''}` : 'No room for more ammo'); if (n) this.sfx.ui('pickup')
+      } })
     }
-    for (const tv of this.vehicles.list) if (tv.supply && tv.alive && tv.pos.distanceTo(s.pos) < 9) {
-      hud.prompt = `[F] ${tv.supply === 'ammo' ? 'Rearm' : tv.supply === 'medical' ? 'Heal' : 'Resupply'} at the ${tv.def.name}`
-      if (inp.hit('interact')) this.resupply(s, tv.supply)
-      return
+    if (v) {
+      const name = v.def.name, roles = [...new Set(v.seats.filter(q => !q.occupant).map(q => q.role))]
+      const enter = role => () => { if (this.vehicles.enter(s, v, role)) { this.player.lastView = this.player.view; this.vcontrol.entered(v); this.hud.note(`${name}: ${s.seat.role}`); this.mode?.onEnterVehicle?.(v) } }
+      if (!roles.length) vActs.push({ label: `${name}: full`, fn: null })
+      else { vActs.push({ label: `Get in ${name}`, fn: enter(null) }); if (roles.length > 1) for (const r of roles) vActs.push({ label: `Get in ${name} as ${SEAT[r] || r}`, fn: enter(r) }) }
+      if (v.hp < v.maxHp && s.inv.count('repairkit')) vActs.push({ label: `Repair the ${name}`, key: 'reload', fn: () => { s.inv.use('repairkit'); v.hp = Math.min(v.maxHp, v.hp + v.maxHp * 0.45); v.burning = 0; v.mobility = 1; this.hud.note('Vehicle repaired') } })
+      if (s.inv.count('jerrycan') && v.fuel < v.maxFuel) vActs.push({ label: 'Refuel from the jerrycan', key: 'heal', fn: () => { s.inv.use('jerrycan'); v.fuel = Math.min(v.maxFuel, v.fuel + v.maxFuel * 0.4); this.hud.note('Refuelled') } })
+      if (!v.seats.some(q => q.occupant && hostile(q.occupant.team, s.team))) vActs.push({ label: `Open the ${name}'s storage`, fn: () => { this.map.close(); this.invui.open(this.vehicleStore(v)) } })
     }
+    const bodyFirst = body && (!v || Math.hypot(body.x - s.pos.x, body.z - s.pos.z) < Math.hypot(v.pos.x - s.pos.x, v.pos.z - s.pos.z) - Math.max(v.def.size[0], v.def.size[2]) / 2 + 0.5)
+    out.push(...(bodyFirst ? [...bodyActs, ...vActs] : [...vActs, ...bodyActs]))
+    for (const tv of this.vehicles.list) if (tv.supply && tv.alive && tv.pos.distanceTo(s.pos) < 9) { out.push({ label: `${tv.supply === 'ammo' ? 'Rearm' : tv.supply === 'medical' ? 'Heal' : 'Resupply'} at the ${tv.def.name}`, fn: () => this.resupply(s, tv.supply) }); break }
     const ladder = this.W.ladders.find(L => Math.hypot(L.x - s.pos.x, L.z - s.pos.z) < 1.5 && s.pos.y < L.y1 - 0.5 && s.pos.y > L.y0 - 1)
-    if (ladder && !s.ladder) hud.prompt = '[W] Climb the ladder'
+    if (ladder && !s.ladder) out.push({ label: 'Climb the ladder: walk into it (W)', fn: null })
+    return out
   }
+  interactions() {
+    const s = this.player.s, hud = this.hud, inp = this.input, A = this.actMenu || (this.actMenu = { open: false, sel: 0, t: 0 })
+    hud.prompt = ''; hud.actions = null
+    if (s.dead) { this.acts = []; A.open = false; return }
+    const acts = this.gatherActions(s), live = acts.filter(a => a.fn)
+    this.acts = live
+    // an action's own key
+    for (const a of live) if (a.key && inp.hit(a.key)) { a.fn(); inp.pressed.delete(a.key); A.open = false; return }
+    if (A.open) { A.t -= 1 / 60; if (A.t <= 0 || !live.length) A.open = false; A.sel = Math.min(A.sel, live.length - 1) }
+    if (A.open) hud.actions = { list: live.map(a => a.label), sel: A.sel }
+    const def = A.open ? live[A.sel] : live[0] || acts[0]
+    if (def) hud.prompt = def.fn ? `[F] ${def.label}${!A.open && live.length > 1 ? (this.input.touch ? `   (••• ${live.length - 1} more)` : `   (scroll: ${live.length - 1} more)`) : ''}` : def.label
+    if (inp.hit('interact') && def?.fn) { A.open = false; def.fn() }
+  }
+  // the wheel (or the ••• button) with actions near: open the list, or move along it
+  actionWheel(w) {
+    const A = this.actMenu || (this.actMenu = { open: false, sel: 0, t: 0 })
+    if (!this.acts?.length) return false
+    if (!A.open) { A.open = true; A.sel = 0 } else A.sel = (A.sel + (w > 0 ? 1 : -1) + this.acts.length) % this.acts.length
+    A.t = this.input.touch ? 10 : 4
+    return true
+  }
+  doAction(i) { const a = this.acts?.[i]; if (this.actMenu) this.actMenu.open = false; a?.fn?.() }
   // A vehicle's storage: a pile of items that rides with it, up to the space it has. Military vehicles start
   // with a few supplies, civilian ones with odds and ends.
   vehicleStore(v) {

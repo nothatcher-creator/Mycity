@@ -35,6 +35,8 @@ export class HUD {
     this.vign = this.mk((c, p) => this.drawVignette(c, p), { order: -1 })
     this.touch = this.mk((c, p) => this.drawTouch(c, p), { order: 3 })
     // the waypoint and the mode's objectives on screen, each a small panel moved to where it is (Arma's markers)
+    // the action menu (the mouse wheel, or ••• on a touch screen)
+    this.actP = this.mk((c, p) => this.drawActions(c, p), { order: 5 }); this.actP.show(false)
     this.marks = [0, 1, 2, 3].map(() => { const p = this.mk((c, q) => this.drawMark(c, q)); p.m = null; p.show(false); return p })
     this.last = {}
     this.layout()
@@ -86,7 +88,7 @@ export class HUD {
     this.touch.place(0, 0, W, H)
     for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.dirty = true
   }
-  show(v) { this.visible = v; if (!v) for (const p of this.marks || []) p.show(false); for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.show(v) }
+  show(v) { this.visible = v; if (!v) { for (const p of this.marks || []) p.show(false); this.actP?.show(false) } for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.show(v) }
   note(t, color = C.text) { this.messages.push({ text: t, t: this.g.time, color }); if (this.messages.length > 7) this.messages.shift(); this.feed.dirty = true }
   radio(who, t) { this.note(`${who}: ${t}`, C.gold2); this.g.sfx?.ui('radio') }
   kill(t) { this.kills.push({ text: t, t: this.g.time }); if (this.kills.length > 5) this.kills.shift(); this.feed.dirty = true }
@@ -95,6 +97,9 @@ export class HUD {
 
   update(dt) {
     this.updateMarks()
+    { const A = this.actions, k = A ? A.list.join('|') + '#' + A.sel : ''
+      if (k !== this.last.acts) { this.last.acts = k; if (A) { const e = this.g.engine, sc = this.s, w = Math.min(340 * sc, e.width - 24), h = (A.list.length * 30 + 34) * sc; this.actP.place(e.width - w - 12 * sc - (this.g.input.touch ? 90 * sc : 0), Math.max(80 * sc, e.height * 0.42 - h / 2), w, h) } this.actP.dirty = true }
+      this.actP.show(!!A && this.visible && !this.g.ui.blocking) }
     const g = this.g, s = g.player?.s, o = this.opts
     if (!this.visible || !s) return
     const scoped = g.player.scoped || g.player.binoculars || (s.vehicle && g.vcontrol.zoom > 1.5 && s.seat?.role === 'gunner')
@@ -133,7 +138,7 @@ export class HUD {
     if (scoped && g.player.binoculars) this.scope.dirty = true
     else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
     if (this.compact) this.modeP.show(!s.vehicle && this.visible)
-    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
+    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role, (g.acts?.length || 0) > 1].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
     this.touch.show(g.input.touch)
   }
   crossSpread() {
@@ -385,6 +390,13 @@ export class HUD {
     c.fillStyle = 'rgba(0,0,0,0.35)'; c.fill(); c.strokeStyle = m.color; c.lineWidth = 2.2; c.stroke()
     text(c, m.label, cx, cy + r + 12 * sc, { size: 11 * sc, weight: 700, align: 'center', color: m.color, shadow: true })
   }
+  drawActions(c, p) {
+    const A = this.actions, sc = this.s, g = this.g
+    if (!A) return
+    box(c, 0, 0, p.w, p.h)
+    text(c, g.input.touch ? 'ACTIONS · tap one' : 'ACTIONS · wheel to choose, F to do', 10 * sc, 18 * sc, { size: 10.5 * sc, weight: 800, color: C.gold })
+    A.list.forEach((label, i) => p.button(c, 'act' + i, 6 * sc, 26 * sc + i * 30 * sc, p.w - 12 * sc, 27 * sc, label, () => g.doAction(i), { selected: i === A.sel, font: FONT(12.5 * sc, 700) }))
+  }
   drawCenter(c, p) {
     const W = p.w, sc = this.s
     if (this.prompt) {
@@ -535,6 +547,7 @@ export class HUD {
     btn('stance', R - r * 2.5, B - r * 2.2, ['STAND', 'CROUCH', 'PRONE'][s.stance], ['stand', 'crouch', 'prone'][s.stance], () => g.input.pressed.add(s.stance === 0 ? 'crouch' : 'prone'))
     btn('jump', R - r * 4.6, B + r * 0.2, 'JUMP', 'jump', () => g.input.pressed.add('jump'), r * 0.8)
     btn('use', R - r * 4.2, B - r * 2.2, 'USE', 'hand', () => g.input.pressed.add('interact'), r * 0.8)
+    if ((g.acts?.length || 0) > 1) btn('acts', R - r * 4.2, B - r * 3.75, '•••', 'menu', () => { if (g.actMenu?.open) g.actMenu.open = false; else g.actionWheel(1) }, r * 0.55)
     btn('nade', R - r * 0.2, B - r * 5.2, { frag: 'FRAG', smoke: 'SMOKE', flash: 'FLASH' }[P.nade] || 'NADE', 'grenade', () => g.input.pressed.add('grenade'), r * 0.8)
     btn('nadenext', R + r * 0.75, B - r * 6.1, '', 'reload', () => g.input.pressed.add('slot4'), r * 0.42)
     if (g.gear?.selected(s)) { btn('gear', R - r * 2.3, B - r * 4.4, 'GEAR', 'gear', () => g.input.pressed.add('gear'), r * 0.8); btn('gearnext', R - r * 3.6, B - r * 5.3, '', 'reload', () => g.input.pressed.add('gearNext'), r * 0.5) }

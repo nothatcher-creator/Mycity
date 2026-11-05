@@ -19,12 +19,15 @@ export class InventoryUI {
   get visible() { return this.panel.visible }
   layout() { const e = this.g.engine, t = this.g.input.touch, safe = t ? 60 : 0; this.panel.place(0, safe, e.width, e.height - safe); this.s = t ? Math.max(0.72, Math.min(1.15, Math.min(e.width, e.height - safe) / 640)) : Math.max(0.45, Math.min(1.15, Math.min(e.width / 1280, e.height / 720))) }
   open(loot = null) {
-    this.loot = loot; this.sel = null; this.wsel = null
+    this.loot = loot; this.sel = null; this.wsel = null; this.ctx = null
     this.layout(); this.panel.show(true)
     this.g.p0.input.unlockPointer()
   }
   close() { if (!this.visible) return; this.panel.show(false); this.loot = null; if (this.g.state === 'play' && !this.g.input.touch && !this.g.menus.visible && !this.g.map.visible) this.g.p0.input.lockPointer() }
-  pointerDown() {} pointerMove() {} pointerUp() {}
+  // a click on nothing closes an open options menu
+  pointerDown() { if (this.ctx) { this.ctx = null; this.sel = null; this.dirty() } } pointerMove() {} pointerUp() {}
+  // where an options menu opens: at the pointer for a right click or a tap (touch), else none (the bar)
+  popAt() { const q = this.press; return q && (q.button === 2 || q.touch) ? { x: q.x, y: q.y } : null }
   update() {
     const s = this.g.player?.s, L = this.loot
     if (!L || !s) return
@@ -50,7 +53,7 @@ export class InventoryUI {
       const id = inv.worn[slot], def = CLOTHING[id]
       const label = def ? def.name : '—'
       const sub = def ? [def.cap ? `+${def.cap} space` : '', def.armor ? `armour ${Object.entries(def.armor).map(([a, v]) => a + ' ' + v).join(', ')}` : ''].filter(Boolean).join(' · ') : ''
-      p.button(c, 'w' + slot, x, y, colW, 26 * k, `${slot.toUpperCase()}: ${label}`, def ? () => { this.sel = { clothing: slot }; this.dirty() } : null, { font: FONT(12 * k, 600), selected: this.sel?.clothing === slot, color: def ? C.text : C.dim })
+      p.button(c, 'w' + slot, x, y, colW, 26 * k, `${slot.toUpperCase()}: ${label}`, def ? () => { this.sel = { clothing: slot }; this.ctx = this.popAt(); this.dirty() } : null, { font: FONT(12 * k, 600), selected: this.sel?.clothing === slot, color: def ? C.text : C.dim })
       if (sub) text(c, sub, x + colW - 8 * k, y + 17 * k, { size: 10 * k, align: 'right', color: C.dim })
       y += 29 * k
     }
@@ -71,7 +74,7 @@ export class InventoryUI {
       text(c, `${+used.toFixed(1)}/${cap}`, x + colW, y + 12 * k, { size: 11 * k, align: 'right', color: C.dim }); y += 20 * k
       for (const it of inv.containers[cid]) {
         if (y > H - 40 * k) break
-        p.button(c, 'i' + cid + inv.containers[cid].indexOf(it), x, y, colW, 24 * k, itemName(it), () => { this.sel = { item: it, from: cid }; this.wsel = null; this.dirty() }, { font: FONT(12 * k, 600), selected: this.sel?.item === it })
+        p.button(c, 'i' + cid + inv.containers[cid].indexOf(it), x, y, colW, 24 * k, itemName(it), () => { this.sel = { item: it, from: cid }; this.ctx = this.popAt(); this.wsel = null; this.dirty() }, { font: FONT(12 * k, 600), selected: this.sel?.item === it })
         text(c, `${itemSize(it)} · ${itemWeight(it).toFixed(1)} kg`, x + colW - 8 * k, y + 16 * k, { size: 10 * k, align: 'right', color: C.dim })
         y += 26 * k
       }
@@ -95,7 +98,7 @@ export class InventoryUI {
       }
       for (const it of this.loot.items) {
         if (ly > H - 40 * k) break
-        p.button(c, 'l' + this.loot.items.indexOf(it), lx, ly, colW, 24 * k, itemName(it), () => this.take(it), { font: FONT(12 * k, 600) })
+        p.button(c, 'l' + this.loot.items.indexOf(it), lx, ly, colW, 24 * k, itemName(it), () => { const at = this.popAt(); if (at) { this.sel = { loot: it }; this.ctx = at; this.dirty() } else this.take(it) }, { font: FONT(12 * k, 600) })
         text(c, 'take', lx + colW - 8 * k, ly + 16 * k, { size: 10 * k, align: 'right', color: C.dim })
         ly += 26 * k
       }
@@ -113,11 +116,23 @@ export class InventoryUI {
       if (it.id === 'nvg') acts.push(['Put on / off', () => { g.player.nvg = !g.player.nvg }])
       for (const [cid, label] of CONT) if (cid !== this.sel.from && inv.free(cid) >= itemSize(it)) acts.push([`Move to ${label.toLowerCase()}`, () => { inv.remove(it); inv.containers[cid].push(it); this.sel = { item: it, from: cid } }])
       acts.push([this.loot?.vehicle ? 'Store' : 'Drop', () => { inv.remove(it); this.drop([it]); this.sel = null }])
+      acts.push(['Inspect', () => { g.hud.note(`${itemName(it)}: ${itemSize(it)} space, ${itemWeight(it).toFixed(1)} kg${def?.food ? `, food +${def.food}` : ''}${def?.water ? `, drink +${def.water}` : ''}${def?.heal ? `, heals ${def.heal}` : ''}`) }])
+    } else if (this.sel?.loot && this.loot?.items.includes(this.sel.loot)) {
+      const it = this.sel.loot, same = this.loot.items.filter(o => o.id === it.id && o.kind === it.kind && o.ammo === it.ammo)
+      acts.push(['Take', () => { this.take(it); this.sel = null }])
+      if (same.length > 1) acts.push([`Take all ${same.length}`, () => { for (const o of same) this.take(o, true); this.sel = null }])
     } else if (this.sel?.clothing) {
       const slot = this.sel.clothing
       acts.push([`Take off ${CLOTHING[inv.worn[slot]].name}`, () => { const r = inv.takeOff(slot); this.drop([{ kind: 'clothing', id: r.id }, ...r.spilled]); this.sel = null; s.pack = !!inv.worn.backpack }])
     }
-    if (acts.length) {
+    if (acts.length && this.ctx) {
+      // the options where you clicked (right click, or a tap on a touch screen)
+      const bw = 210 * k, bh = acts.length * 36 * k + 30 * k, bx = Math.max(8 * k, Math.min(W - bw - 8 * k, this.ctx.x)), by = Math.max(8 * k, Math.min(H - bh - 8 * k, this.ctx.y))
+      box(c, bx, by, bw, bh, { fill: 'rgba(14,18,12,0.97)' })
+      const nm = this.sel?.item || this.sel?.loot
+      text(c, nm ? itemName(nm) : this.sel?.clothing ? CLOTHING[inv.worn[this.sel.clothing]]?.name || '' : '', bx + 10 * k, by + 18 * k, { size: 11 * k, weight: 800, color: C.gold, max: bw - 20 * k })
+      acts.forEach(([l, fn], i) => p.button(c, 'a' + i, bx + 6 * k, by + 26 * k + i * 36 * k, bw - 12 * k, 32 * k, l, () => { fn(); this.ctx = null; this.dirty() }, { font: FONT(12.5 * k, 700) }))
+    } else if (acts.length) {
       box(c, 0, ay - 8 * k, W, 64 * k, { fill: 'rgba(0,0,0,0.6)' })
       acts.forEach(([l, fn], i) => p.button(c, 'a' + i, 20 * k + i * 190 * k, ay, 180 * k, 40 * k, l, () => { fn(); this.dirty() }, { align: 'center', font: FONT(13 * k, 700) }))
     }

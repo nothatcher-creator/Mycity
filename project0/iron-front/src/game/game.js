@@ -808,7 +808,7 @@ export class Game {
     // Hitches in play (a frame more than a second after the last): three within half a minute and the graphics
     // step down (a lower setting, then fewer pixels below Low), so a struggling phone or laptop keeps going
     // instead of freezing until the city gives up on it. Not during loading or with the game paused.
-    if (this.state === 'play' && !this.starting && this.lastFrameGap > 1000) {
+    if (this.state === 'play' && !this.starting && this.lastFrameGap > 1000 && !(this.debug && this.settings.qualityChosen)) {
       const H = this.hitches = (this.hitches || []).filter(t => t0 - t < 30000); H.push(t0)
       if (H.length >= 3 && t0 - (this.reliefT || 0) > 20000) {
         this.hitches = []; this.reliefT = t0

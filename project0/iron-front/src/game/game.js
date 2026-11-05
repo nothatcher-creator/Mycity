@@ -83,6 +83,7 @@ export class Game {
     p0.log('world built in', Math.round(performance.now() - t0), 'ms; buildings', BUILDINGS.length)
     const q = this.settings.quality
     this.engine = new Engine(p0)
+    this.engine.resScale = this.settings.resScale ?? 1
     this.engine.setQuality(q)
     this.collision = new Collision()
     this.sky = new Sky(this.engine.scene, this.engine.world, q)

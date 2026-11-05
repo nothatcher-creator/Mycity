@@ -142,6 +142,7 @@ quads over the 3D view.
 - **Saves** (`src/game/save.js`): settings, key bindings, campaign progress, liberated places and the
   free-roam position and kit, kept by the city (`p0.save`, 16 KB).
 - **Sound** (`src/game/sfx.js`): 35 effects, all synthesised for this game by `tools/sfxgen.py`.
+- **Resolution**: Medium and High draw at the screen's full resolution (Medium up to 1.5x pixel density, High up to 2x on sharp screens; Low at 75%); very wide windows stop at about 2560 drawn pixels across. Settings has a Resolution choice (75% to 150%) on top.
 - **Light version**: the game measures the first frames and drops to low quality on slow machines
   (fewer pixels, shorter view, fewer AI near you). In play, three frames more than a second apart within half a minute lower the graphics a step (below Low: fewer pixels still), so a struggling device keeps running instead of freezing until the city stops it.
 - **Parachutes** (`src/actors/chutes.js`): bailing out of an aircraft above 20 m opens a canopy; glide the way you look, W faster, S to flare and slow down, A and D to drift; the drop shows your height.

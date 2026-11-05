@@ -7,9 +7,9 @@ import * as THREE from 'three'
 export const ANCHOR = new THREE.Vector3(0, 9.5, 0)
 
 export const QUALITY = {
-  low: { name: 'Low', pixel: 0.6, shadows: false, view: 1800, trees: 0.45, aiNear: 18, grass: false, msaa: false },
-  medium: { name: 'Medium', pixel: 0.85, shadows: false, view: 2800, trees: 0.75, aiNear: 32, grass: true, msaa: false },
-  high: { name: 'High', pixel: 1, shadows: true, view: 4000, trees: 1, aiNear: 48, grass: true, msaa: true },
+  low: { name: 'Low', pixel: 0.75, dpr: 1, shadows: false, view: 1800, trees: 0.45, aiNear: 18, grass: false, msaa: false },
+  medium: { name: 'Medium', pixel: 1, dpr: 1.5, shadows: false, view: 2800, trees: 0.75, aiNear: 32, grass: true, msaa: false },
+  high: { name: 'High', pixel: 1, dpr: 2, shadows: true, view: 4000, trees: 1, aiNear: 48, grass: true, msaa: true },
 }
 
 export class Engine {
@@ -56,8 +56,10 @@ export class Engine {
     const w = this.p0.width, h = this.p0.height
     this.width = w; this.height = h
     // `relief` (0..1) is set while play keeps hitching: fewer pixels to draw
-    const pr = Math.min(this.p0.pixelRatio || 1, 2) * this.quality.pixel * Math.min(1, 1600 / Math.max(w, 1)) * (1 - 0.35 * (this.relief || 0))
-    this.renderer.setPixelRatio(Math.max(0.3, pr))
+    // the screen's density (up to the setting's limit) x the setting's share x the player's resolution choice;
+    // very wide windows stop at about 2560 drawn pixels across
+    const pr = Math.min(this.p0.pixelRatio || 1, this.quality.dpr || 2) * this.quality.pixel * (this.resScale || 1) * Math.min(1, 2560 / Math.max(w, 1)) * (1 - 0.35 * (this.relief || 0))
+    this.renderer.setPixelRatio(Math.max(0.3, Math.min(3, pr)))
     this.renderer.setSize(w, h, false)
     this.camera.aspect = w / h
     this.camera.updateProjectionMatrix()

@@ -381,7 +381,8 @@ export class Menus {
     let y = 50 * s - this.scroll
     text(c, 'SETTINGS', x, y + 30 * s, { size: 28 * s, weight: 900 }); y += 56 * s
     y = this.choices(c, p, x, y, w, 'Graphics', Object.entries(QUALITY).map(([k, q]) => ({ label: q.name, v: k })), st.quality, v => g.setQuality(v, true), s)
-    text(c, 'Low is for slow machines (no grass, shorter view, fewer soldiers near you).', x + 150 * s, y + 2 * s, { size: 11 * s, color: C.dim }); y += 18 * s
+    y = this.choices(c, p, x, y, w, 'Resolution', [0.75, 1, 1.25, 1.5].map(v => ({ label: Math.round(v * 100) + '%', v })), st.resScale ?? 1, v => { st.resScale = v; g.engine.resScale = v; g.engine.relief = 0; g.engine.resize(); g.save.store() }, s)
+    text(c, 'Low suits slow machines (no grass, shorter view, fewer soldiers near you). Resolution over 100% is sharper but heavier', x + 150 * s, y + 2 * s, { size: 11 * s, color: C.dim }); y += 18 * s
     const step = (label, val, fmt, dec, inc) => {
       text(c, label, x, y + 18 * s, { size: 14 * s, weight: 700, color: C.dim })
       p.button(c, label + '-', x + 150 * s, y, 44 * s, 30 * s, '-', () => { dec(); g.save.store(); this.panel.dirty = true }, { align: 'center' })
@@ -401,8 +402,8 @@ export class Menus {
     y = this.choices(c, p, x, y, w, 'Default view', [{ label: 'First person', v: 'fp' }, { label: 'Third person', v: 'tp' }], st.view, v => { st.view = v; g.save.store() }, s)
     tog('Compass', st.hud.compass, v => { st.hud.compass = v })
     tog('Minimap', st.hud.minimap, v => { st.hud.minimap = v })
-    tog('Waypoint and objective markers', st.hud.markers !== false, v => { st.hud.markers = v })
-    tog('Tips the first time something happens', st.tips !== false, v => { st.tips = v })
+    tog('Objective markers', st.hud.markers !== false, v => { st.hud.markers = v })
+    tog('First-time tips', st.tips !== false, v => { st.tips = v })
     tog('Weapon panel', st.hud.weapon, v => { st.hud.weapon = v })
     tog('Crosshair', st.hud.crosshair, v => { st.hud.crosshair = v })
     y += 8 * s

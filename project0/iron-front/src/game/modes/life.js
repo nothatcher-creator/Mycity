@@ -285,7 +285,8 @@ export class Life extends Mode {
   // walking: towards a target, a pause, a new target near home (shopkeepers stay at the counter)
   walk(n, dt) {
     const s = n.s
-    if (s.dead || s.vehicle || s.brain) return
+    if (s.dead) { if (s.deadT < 3) s.step(dt, this.g.W); return }
+    if (s.vehicle || s.brain) return
     const P = this.g.player?.s
     // stop and face you when you are close
     const near = P && Math.hypot(P.pos.x - s.pos.x, P.pos.z - s.pos.z) < 2.6

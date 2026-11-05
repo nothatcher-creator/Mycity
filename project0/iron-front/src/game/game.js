@@ -214,6 +214,7 @@ export class Game {
     if (DEBUG) p0.on('keydown', e => {
       if (e.code === 'F9' && this.state === 'menu') { this.start('freeroam', { ...this.menus.setup }); return }
       if (e.code === 'Home' && this.state === 'menu') { this.start('life', {}); return }
+      if (e.code === 'PageUp' && this.state === 'menu') { this.start('survival', {}); return }
       if (e.code === 'Insert' && this.state !== 'play') { if (this.menus.page !== 'arsenal') openArsenal(this.menus); else { const T = ['primary', 'att', 'sidearm', 'launcher', 'clothing', 'items', 'slots']; this.menus.ars.tab = T[(T.indexOf(this.menus.ars.tab) + 1) % T.length]; this.menus.panel.dirty = true } return }
       if (e.code === 'F10' && this.state === 'menu') { const kinds = ['domination', 'tdm', 'conquest', 'koth', 'ctf', 'sector', 'survival']; this.dbgKind = (this.dbgKind ?? -1) + 1; const kind = kinds[this.dbgKind % kinds.length]; p0.log('dbg battle', kind); this.start('battle', { ...this.menus.bsetup, kind, limit: null, teamSize: 8 }); return }
       if (e.code === 'F11' && this.state === 'play') { this.quitToMenu(); return }
@@ -235,7 +236,7 @@ export class Game {
         p0.log('dbg moved near objective')
       }
       if (e.code === 'Home' && this.modeId === 'campaign') { this.mode.dbgSkip = true; p0.log('dbg skip objective', this.mode.idx) }
-      if (this.state !== 'play' || !(this.mode?.admin || this.mode?.npcs)) return
+      if (this.state !== 'play' || !(this.mode?.admin || this.mode?.npcs || this.mode?.inf)) return
       const s = this.player.s
       if (e.code === 'F8') { const x = s.pos.x + Math.sin(s.yaw) * 90, z = s.pos.z + Math.cos(s.yaw) * 90; const q = this.mode.spawnSquad('nlf', x, z, 4, { type: 'attack', pos: s.pos.clone() }); this.mode.patrols.push(q); p0.log('dbg enemy squad at', x.toFixed(0), z.toFixed(0)) }
       if (e.code === 'F7' || e.code === 'F6' || e.code === 'F5' || e.code === 'F3') { const type = { F7: 'jeep', F6: 'scoutheli', F5: 'mbt', F3: 'fighter' }[e.code]; const v = this.mode.admin('vehicle', type); if (v && !s.vehicle && this.vehicles.enter(s, v)) { this.vcontrol.entered(v); p0.log('dbg entered', type) } }
@@ -276,6 +277,9 @@ export class Game {
       if (e.code === 'Minus' && this.mode?.dbgJob) { const sp = s.inv.add({ kind: 'tool', id: 'fishingrod' }); this.mode.dbgShore(); p0.log('dbg rod', sp) }
       if (e.code === 'NumLock' && this.mode?.dbgJob) this.mode.dbgJob(this.dbgJobKind || 'bus')
       if (e.code === 'CapsLock' && this.mode?.dbgJob) { this.dbgJobKind = 'taxi'; this.mode.dbgJob('taxi') }
+      if (e.code === 'Digit9' && this.mode?.inf) { const x = s.pos.x + Math.sin(s.yaw) * 2.2, z = s.pos.z + Math.cos(s.yaw) * 2.2; this.mode.spawnInfected(x, z); const n = this.mode.inf[this.mode.inf.length - 1]; n.chase = true; n.s.yaw = s.yaw + Math.PI; p0.log('dbg infected in front') }
+      if (e.code === 'Comma') { this.noteDanger(s.pos.x + 5, s.pos.z); p0.log('dbg noise') }
+      if (e.code === 'Numpad9' && this.mode?.inf) { const M = this.mode; p0.log('dbg surv inf', M.inf.length, 'chasing', M.inf.filter(n => n.chase).length, 'dead', M.inf.filter(n => n.s.dead).length, 'piles', M.piles.length, 'items', M.piles.reduce((n, q) => n + q.items.length, 0), 'guns', M.piles.filter(q => Object.values(q.body.inv.weapons).some(Boolean)).length, 'blood', Math.round(s.blood), 'food', M.hunger.toFixed(2), M.thirst.toFixed(2), 'near', Math.round(Math.min(...M.inf.filter(n => !n.s.dead).map(n => n.s.pos.distanceTo(s.pos)), 999))) }
       if (e.code === 'Numpad9' && this.mode?.civ) { const L = this.mode.civ.list; p0.log('dbg civ', L.length, 'scared', L.filter(n => n.scared).length, 'crouched', L.filter(n => n.s.stance === 1).length, 'dead', L.filter(n => n.s.dead).length, 'dangers', (this.dangers || []).length) }
       if (e.code === 'Numpad9' && this.mode?.npcs) { const M = this.mode, by = {}; for (const n of M.npcs) by[n.kind] = (by[n.kind] || 0) + 1; p0.log('dbg life', 'ui', M.uiOpen, this.touchCtl.panel.visible, this.ui.blocking, JSON.stringify(by), 'traffic', M.traffic.length, 'money', M.money, 'food', M.hunger.toFixed(2), M.thirst.toFixed(2), 'home', Math.round(M.home.x), Math.round(M.home.z), 'me', Math.round(s.pos.x), Math.round(s.pos.z), 'job', M.job?.kind || '-', M.job?.i, 'shops', [...new Set(M.npcs.filter(n => n.shop).map(n => n.shop))].join('|')) }
       if (e.code === 'Numpad9' && s.vehicle) { const v = s.vehicle; p0.log('dbg veh', v.def.name, 'pos', v.pos.x.toFixed(1), v.pos.y.toFixed(2), v.pos.z.toFixed(2), 'land', heightAt(v.pos.x, v.pos.z).toFixed(2), 'floor', this.collision.floorAt(v.pos.x, v.pos.y + 1.5, v.pos.z, 1.5, 6).toFixed(2), 'water', waterLevelAt(v.pos.x, v.pos.z).toFixed(2), 'spd', v.speed.toFixed(1), 'eng', v.engine, 'hp', Math.round(v.hp)) }

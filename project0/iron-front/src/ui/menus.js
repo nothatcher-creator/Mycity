@@ -128,13 +128,14 @@ export class Menus {
       { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
       { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
       { id: 'online', label: 'MULTIPLAYER', sub: `Server browser · ${(this.g.p0.room?.players || []).length} in this lot now · ${serverList(this.g.p0.room).length} server${serverList(this.g.p0.room).length === 1 ? '' : 's'}`, fn: () => this.open('online', true) },
+      { id: 'survival', label: 'SURVIVAL', sub: this.g.save.data.survival ? `Continue · alive ${Math.floor((this.g.save.data.survival.alive || 0) / 1440)} days ${Math.floor(((this.g.save.data.survival.alive || 0) % 1440) / 60)} h` : 'After the outbreak: scavenge, eat, drink, avoid the infected. One life.', fn: () => this.g.start('survival', { resume: !!this.g.save.data.survival }) },
       { id: 'arsenal', label: 'ARSENAL', sub: 'Every weapon, attachment and item: make and save loadouts', fn: () => openArsenal(this) },
       { id: 'life', label: 'LIFE', sub: this.g.save.data.life ? `Continue · $${this.g.save.data.life.money ?? 0} in your wallet` : MODE_INFO[4].desc, fn: () => this.g.start('life', { resume: !!this.g.save.data.life }) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
       { id: 'about', label: 'HOW TO PLAY & CREDITS', fn: () => this.open('about', true) },
-    ].filter((v, i) => v || i === 7)
+    ].filter((v, i) => v || i === 8)
     const colW = Math.min(430 * s, W - x * 2)
     this.column(c, p, x, top + (this.g.input.touch ? 26 : 22) * s, colW, items, s, { numbered: !portrait })
     // the field report on the right, on screens wide enough for it

@@ -167,6 +167,25 @@ export class Player {
     if (!kinds.includes(this.nade)) this.nade = kinds[0] || null
     if (input.hit('slot4') && kinds.length) { this.nade = kinds[(kinds.indexOf(this.nade) + 1) % kinds.length]; g.hud?.note(`Grenade: ${ITEMS[this.nade].name} (${s.inv.count(this.nade)})`) }
     if (input.hit('grenade') && this.nade) g.throwGrenade(s, this.nade, this.aimDirection())
+    // melee (X): a rifle butt, or a fist, at whoever is right in front of you
+    this.meleeT = Math.max(0, (this.meleeT || 0) - dt)
+    if (input.hit('melee') && this.meleeT <= 0 && !s.ladder && !s.swimming) {
+      this.meleeT = 0.75; this.kick = 1.6; this.meleeAnim = 0.3
+      let best = null, bd = 2.4
+      for (const o of g.soldiersNear(s.pos.x, s.pos.z, 3)) {
+        if (o === s || o.dead || o.vehicle || Math.abs(o.pos.y - s.pos.y) > 1.6) continue
+        const dx = o.pos.x - s.pos.x, dz = o.pos.z - s.pos.z, d = Math.hypot(dx, dz)
+        let da = Math.atan2(dx, dz) - s.yaw; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2
+        if (d < bd && (Math.abs(da) < 1.25 || d < 1.6)) { bd = d; best = o }
+      }
+      // someone right beside you: you turn to them as you strike
+      if (best) { const ta = Math.atan2(best.pos.x - s.pos.x, best.pos.z - s.pos.z); let dd = ta - s.yaw; while (dd > Math.PI) dd -= Math.PI * 2; while (dd < -Math.PI) dd += Math.PI * 2; if (Math.abs(dd) > 1.25) s.yaw = ta }
+      if (best) {
+        const head = Math.random() < 0.35, dmg = (s.w ? 40 : 26) * (head ? 1.8 : 1)
+        best.hurt(head ? 'head' : 'torso', dmg, 0, s, new THREE.Vector3(Math.sin(s.yaw), 0, Math.cos(s.yaw)), 'melee')
+        g.hud?.hit?.(best.dead); g.sfx?.impact?.('body', best.pos.x, best.pos.y + 1.2, best.pos.z)
+      } else g.sfx?.ui?.('throw')
+    }
     // aiming down sights: hold the right button (or the touch button)
     const wantAds = (input.mouse.right || this.touchAds) && s.w && s.switchT <= 0 && !s.sprint && !s.ladder && !s.swimming
     s.ads = !!wantAds

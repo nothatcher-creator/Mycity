@@ -35,6 +35,12 @@ FACTIONS.civ = {
   uniform: [0.55, 0.6, 0.7], gear: [0.3, 0.3, 0.3], helmet: [0.3, 0.3, 0.35], accent: [0.9, 0.8, 0.4], headgear: 'none',
   weapons: {}, sidearm: null, vehicles: [], skill: 0, ranks: ['', '', '', '', '', ''],
 }
+// Survival's infected (not a side in the war modes)
+FACTIONS.inf = {
+  id: 'inf', name: 'Infected', short: 'INF', color: '#8a8a6a', civil: true,
+  uniform: [0.42, 0.45, 0.38], gear: [0.3, 0.3, 0.28], helmet: [0.3, 0.3, 0.3], accent: [0.6, 0.2, 0.15], headgear: 'none',
+  weapons: {}, sidearm: null, vehicles: [], skill: 0, ranks: ['', '', '', '', '', ''],
+}
 export const ROLES = {
   rifleman: { name: 'Rifleman', grenades: 2 },
   autorifleman: { name: 'Autorifleman', grenades: 1 },
@@ -48,5 +54,5 @@ export const ROLES = {
   grenadier: { name: 'Grenadier', grenades: 4 },
 }
 // Who fights whom in a free battle (modes can set their own sides).
-export const ENEMIES = { vdf: ['nlf'], nlf: ['vdf', 'cef', 'res'], cef: ['nlf'], res: ['nlf'] }
+export const ENEMIES = { vdf: ['nlf'], nlf: ['vdf', 'cef', 'res'], cef: ['nlf'], res: ['nlf'], inf: ['surv'] }
 export const hostile = (a, b) => a !== b && (ENEMIES[a]?.includes(b) || ENEMIES[b]?.includes(a))

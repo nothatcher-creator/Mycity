@@ -52,7 +52,8 @@ export class Civilians {
     const g = this.g, P = g.player?.s
     for (const n of this.list) {
       const s = n.s
-      if (s.dead || s.vehicle) continue
+      if (s.dead) { if (s.deadT < 3) s.step(dt, g.W); continue }
+      if (s.vehicle) continue
       const d = this.danger(s.pos.x, s.pos.z)
       if (d) {
         // run: thirty metres straight away from it, then down in a crouch

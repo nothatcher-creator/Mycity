@@ -7,7 +7,7 @@ import * as THREE from 'three'
 import { Mode, nearestPlace, onRoad } from './base.js'
 import { PLACES } from '../../world/blueprint.js'
 import { BUILDINGS, isBuilt } from '../../world/places.js'
-import { heightAt, roadAt } from '../../world/heightfield.js'
+import { heightAt, roadAt, waterLevel } from '../../world/heightfield.js'
 import { Inventory, ITEMS, newMag } from '../inventory.js'
 import { weapon, stats } from '../../combat/weapons-data.js'
 import { C, text, bar } from '../../ui/ui.js'
@@ -23,10 +23,10 @@ const angle = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; w
 const gun = (id, mags = 1) => () => { const def = weapon(id); return { weapon: id, mags: Array.from({ length: mags }, () => newMag(def, stats(def, {}))) } }
 const item = (kind, id, count) => () => ({ kind, id, ...(count ? { count } : {}) })
 const LOOT = {
-  home: [[10, item('food', 'apple')], [6, item('food', 'sandwich')], [8, item('water', 'water')], [4, item('water', 'soda')], [6, item('med', 'bandage', 2)], [2, item('med', 'morphine')], [2, item('med', 'firstaid')],
+  home: [[5, item('tool', 'matches')], [10, item('food', 'apple')], [6, item('food', 'sandwich')], [8, item('water', 'water')], [4, item('water', 'soda')], [6, item('med', 'bandage', 2)], [2, item('med', 'morphine')], [2, item('med', 'firstaid')],
     [3, item('clothing', 'hoodie')], [3, item('clothing', 'jacket')], [2, item('clothing', 'cargopants')], [3, item('clothing', 'daypack')], [2, item('clothing', 'beanie')], [2, item('tool', 'binoculars')], [2, item('water', 'canteen')],
     [2, gun('p17', 2)], [1, gun('vm9', 2)], [1.5, gun('ranch870', 0)], [1, item('ammo', null)], [0.6, gun('fjell', 1)], [1, item('tool', 'jerrycan')]],
-  shop: [[12, item('food', 'sandwich')], [10, item('water', 'water')], [8, item('water', 'soda')], [6, item('food', 'ration')], [5, item('food', 'apple')], [4, item('med', 'bandage', 2)], [2, item('water', 'canteen')], [2, item('clothing', 'daypack')], [1, item('tool', 'repairkit')]],
+  shop: [[4, item('tool', 'matches')], [12, item('food', 'sandwich')], [10, item('water', 'water')], [8, item('water', 'soda')], [6, item('food', 'ration')], [5, item('food', 'apple')], [4, item('med', 'bandage', 2)], [2, item('water', 'canteen')], [2, item('clothing', 'daypack')], [1, item('tool', 'repairkit')]],
   military: [[6, gun('brenner', 2)], [5, gun('ks47', 2)], [3, gun('vr4c', 2)], [2, gun('br51', 1)], [1, gun('halberd', 0)], [6, item('med', 'firstaid')], [3, item('med', 'medkit')], [5, item('med', 'bandage', 3)],
     [4, item('clothing', 'helmet')], [3, item('clothing', 'platecarrier')], [3, item('clothing', 'assaultpack')], [3, item('clothing', 'chestrig')], [4, item('grenade', 'frag')], [2, item('grenade', 'smoke')], [5, item('food', 'ration')], [3, item('water', 'canteen')], [1.2, item('tool', 'nvg')], [4, item('mag', null)]],
 }
@@ -67,7 +67,7 @@ export class Survival extends Mode {
   starter() {
     const inv = new Inventory()
     inv.wear('tshirt'); inv.wear('jeans'); inv.wear('sneakers')
-    inv.add({ kind: 'med', id: 'bandage', count: 1 }); inv.add({ kind: 'water', id: 'water' }); inv.add({ kind: 'food', id: 'apple' })
+    inv.add({ kind: 'med', id: 'bandage', count: 1 }); inv.add({ kind: 'water', id: 'water' }); inv.add({ kind: 'food', id: 'apple' }); inv.add({ kind: 'tool', id: 'matches' })
     return inv
   }
   dress(s) { s.plain = true; s.noVest = !s.inv.worn.vest; s.unarmed = !s.w; s.uniform = { hoodie: [0.38, 0.4, 0.44], jacket: [0.3, 0.2, 0.14], combatshirt: [0.36, 0.42, 0.25], fieldjacket: [0.36, 0.42, 0.25] }[s.inv.worn.shirt] || [0.8, 0.8, 0.78]; s.pants = { jeans: [0.2, 0.27, 0.45], cargopants: [0.36, 0.38, 0.28], combatpants: [0.36, 0.42, 0.25] }[s.inv.worn.pants] || [0.25, 0.25, 0.27]; s.headgear = s.inv.worn.head === 'helmet' ? 'helmet' : s.inv.worn.head ? 'cap' : 'none'; s.pack = !!s.inv.worn.backpack }
@@ -171,6 +171,7 @@ export class Survival extends Mode {
     if (!s) return
     if (!s.dead) { this.alive += dt * (g.sky.cycle ? 1 : 0) * 1; this.needs(dt, s) }
     this.infUpdate(dt)
+    this.firesUpdate(dt)
     s.unarmed = !s.w
     this.tick -= dt
     if (this.tick > 0 && !first) return
@@ -215,7 +216,44 @@ export class Survival extends Mode {
     this.warnT -= dt
     if (this.warnT <= 0 && low < 0.2) { this.warnT = 60; g.hud.note(this.hunger < this.thirst ? 'You are starving: eat something' : 'You are parched: drink something', C.amber) }
   }
-  onConsume(s, def) { if (def.food) this.hunger = Math.min(1, this.hunger + def.food / 100); if (def.water) this.thirst = Math.min(1, this.thirst + def.water / 100) }
+  onConsume(s, def) {
+    if (def.food) this.hunger = Math.min(1, this.hunger + def.food / 100); if (def.water) this.thirst = Math.min(1, this.thirst + def.water / 100)
+    // raw meat: a fair chance of being sick (you lose water and some of what you ate)
+    if (def.raw && Math.random() < 0.45) { this.thirst = Math.max(0, this.thirst - 0.2); this.hunger = Math.max(0, this.hunger - def.food / 150); s.stamina = Math.min(s.stamina, 0.2); this.g.hud.note('That was raw: you are sick. Cook meat on a fire.', C.amber) }
+  }
+  // ---- campfires: lit with matches, burn four minutes, cook meat and fish ----
+  actions(s) {
+    const g = this.g, out = []
+    if (s.vehicle || s.dead) return out
+    const fire = (this.fires || []).find(f => Math.hypot(f.x - s.pos.x, f.z - s.pos.z) < 2.6)
+    if (fire) {
+      const raw = s.inv.count('venison'), fish = s.inv.count('fish')
+      if (raw) out.push({ label: `Cook venison (${raw})`, fn: () => this.cook(s, 'venison', 'cookedvenison', 'venison') })
+      if (fish) out.push({ label: `Cook fish (${fish})`, fn: () => this.cook(s, 'fish', 'cookedfish', 'fish') })
+      if (!raw && !fish) out.push({ label: `Campfire (${Math.ceil(fire.t / 60)} min left): cook meat and fish here`, fn: null })
+    } else if (s.inv.count('matches') && s.onGround && waterLevel(s.pos.x, s.pos.z) < s.pos.y - 0.3) {
+      out.push({ label: 'Light a campfire (uses the matches)', fn: () => {
+        s.inv.use('matches')
+        const x = s.pos.x + Math.sin(s.yaw) * 1.4, z = s.pos.z + Math.cos(s.yaw) * 1.4
+        ;(this.fires || (this.fires = [])).push({ x, z, y: heightAt(x, z), t: 240, fx: 0 })
+        g.hud.note('The fire catches. Stand by it to cook.'); g.sfx.ui('click')
+      } })
+    }
+    return out
+  }
+  cook(s, from, to, what) {
+    let n = 0
+    while (s.inv.count(from)) { s.inv.use(from); if (!s.inv.add({ kind: 'food', id: to })) break; n++ }
+    this.g.hud.note(`Cooked ${n} ${what}`, C.gold2); this.g.sfx.ui('pickup')
+  }
+  firesUpdate(dt) {
+    const g = this.g
+    for (const f of this.fires || []) {
+      f.t -= dt; f.fx -= dt
+      if (f.fx <= 0) { f.fx = 0.22; g.fx.burn(f.x + (Math.random() - 0.5) * 0.4, f.y + 0.25, f.z + (Math.random() - 0.5) * 0.4, 0.45) }
+    }
+    if (this.fires) this.fires = this.fires.filter(f => f.t > 0)
+  }
   onKill(sol, killer) {
     super.onKill(sol, killer)
     if (sol.isPlayer) { this.g.save.data.survival = null; this.g.save.store(); this.diedAfter = this.days() }

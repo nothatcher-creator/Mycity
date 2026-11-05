@@ -46,6 +46,7 @@ const JOBS = {
   bus: { name: 'Bus driver', desc: 'Drive the city bus round five stops. $30 a stop, $40 bonus for the round.', vehicle: 'bus' },
   delivery: { name: 'Parcel delivery', desc: 'Load three parcels into the van and deliver them to the doors. $45 each.', vehicle: 'van' },
   taxi: { name: 'Taxi driver', desc: 'Pick up the fare and drive them where they want to go. Paid by the distance.', vehicle: 'taxi' },
+  fire: { name: 'Firefighter', desc: 'Drive the fire engine to the burning building and hose it down (near the engine). $120 a fire, faster is better.', vehicle: 'firetruck' },
 }
 const DAY = 24 * 60          // seconds of play in a game day at the sky's speed (only used for needs)
 const money = n => '$' + Math.round(n).toLocaleString('en-US')
@@ -374,6 +375,10 @@ export class Life extends Mode {
       if (t && !s.vehicle && Math.hypot(s.pos.x - t.x, s.pos.z - t.z) < 2.5)
         out.push(s.inv.count('parcel') ? { label: 'Deliver the parcel', fn: () => { s.inv.use('parcel'); this.pay(45, 'Parcel delivered'); this.job.i++; this.nextStop() } } : { label: 'Fetch a parcel from the van (Tab by the van)', fn: null })
     }
+    if (this.job?.kind === 'fire' && this.job.fire && !s.vehicle) {
+      const F = this.job.fire, fp = this.job.stops[0], dF = Math.hypot(s.pos.x - fp.x, s.pos.z - fp.z), dE = Math.hypot(s.pos.x - this.job.v.pos.x, s.pos.z - this.job.v.pos.z)
+      if (dF < 18) out.push(dE > 30 ? { label: 'The hose does not reach: bring the engine closer', fn: null } : F.hosing ? { label: `Stop hosing (fire ${Math.max(0, Math.round(F.hp))}%)`, fn: () => { F.hosing = false } } : { label: `Hose down the fire (${Math.max(0, Math.round(F.hp))}%): stand still`, fn: () => { F.hosing = true; const b = this.local(F.b, 0, 0); s.yaw = Math.atan2(b.x - s.pos.x, b.z - s.pos.z); g.player.pitch = 0.1 } })
+    }
     let best = null, bd = 2.4
     for (const n of this.npcs) { if (n.s.dead || n.s.vehicle) continue; const d = Math.hypot(n.s.pos.x - s.pos.x, n.s.pos.z - s.pos.z); if (d < bd && Math.abs(n.s.pos.y - s.pos.y) < 2) { bd = d; best = n } }
     if (best) {
@@ -407,7 +412,7 @@ export class Life extends Mode {
     if (n.kind === 'resident') line = (h < 6 || h > 22 ? '(through the door) ' : '') + line
     g.hud.radio(n.name, line)
   }
-  pay(n, why) { this.money += n; this.earned += n; this.g.hud.note(`${why}: +${money(n)}  (${money(this.money)})`, C.gold2); this.g.sfx.ui('pickup') }
+  pay(n, why) { if (this.g.debug) this.g.p0.log('dbg pay', Math.round(n), why); this.money += n; this.earned += n; this.g.hud.note(`${why}: +${money(n)}  (${money(this.money)})`, C.gold2); this.g.sfx.ui('pickup') }
   // ---- jobs ----
   startJob(kind, npc) {
     const g = this.g, s = g.player.s, J = JOBS[kind]
@@ -428,10 +433,16 @@ export class Life extends Mode {
       for (let i = 0; i < job.stops.length; i++) store.items.push({ kind: 'cargo', id: 'parcel' })
     }
     if (kind === 'taxi') job.stops = []
-    if ((kind === 'bus' || kind === 'delivery') && !job.stops.length) { g.vehicles.remove(v); g.hud.note('No work in this place right now'); return }
+    if (kind === 'fire') {
+      // a house or shop somewhere in the place (not yours), at least 120 m from the station
+      const B = BUILDINGS.filter(b => b.place === place?.id && (b.type === 'house' || b.type === 'shop' || b.type === 'apartment') && b !== this.homeB && Math.hypot(b.x - v.pos.x, b.z - v.pos.z) > 120)
+      const b = B[Math.floor(Math.random() * B.length)]
+      if (b) { const f = this.local(b, 0, b.d / 2 + 4); job.fire = { b, hp: 100, t0: g.time, h: Math.max(3, (b.floors || 1) * 3) }; job.stops = [f] }
+    }
+    if ((kind === 'bus' || kind === 'delivery' || kind === 'fire') && !job.stops.length) { g.vehicles.remove(v); g.hud.note('No work in this place right now'); return }
     this.job = job
     if (kind === 'taxi') this.newFare()
-    g.hud.radio(npc?.name || 'Dispatch', kind === 'bus' ? 'The bus is outside. Five stops: stop by each marker and let the passengers on and off.' : kind === 'delivery' ? `The van is outside with ${job.stops.length} parcels. Take one from the van (Tab beside it) and bring it to the door.` : 'Your taxi is outside. A fare is waiting: follow the marker.')
+    g.hud.radio(npc?.name || 'Dispatch', kind === 'bus' ? 'The bus is outside. Five stops: stop by each marker and let the passengers on and off.' : kind === 'delivery' ? `The van is outside with ${job.stops.length} parcels. Take one from the van (Tab beside it) and bring it to the door.` : kind === 'fire' ? 'Fire reported! The engine is outside: get to the marker, park near the building and hose it down.' : 'Your taxi is outside. A fare is waiting: follow the marker.')
     this.nextStop()
   }
   roadStops(place, n, gap) {
@@ -478,12 +489,14 @@ export class Life extends Mode {
     else if (j.v) j.v.work = false
     this.job = null
     this.beacon(null)
+    g.sfx.stopLoop('jobfire')
     if (!done) g.hud.note('Job ended')
   }
   jobUpdate(dt, s) {
     const j = this.job, g = this.g
     if (!j) return
     if (!j.v.alive) { g.hud.note('The work vehicle is wrecked. Job lost.', C.red); this.endJob(false); return }
+    if (j.kind === 'fire' && j.fire) this.fireUpdate(dt, s, j)
     const t = j.stops[j.i]
     if (!t) return
     const d = Math.hypot(j.v.pos.x - t.x, j.v.pos.z - t.z)
@@ -512,6 +525,38 @@ export class Life extends Mode {
         g.hud.radio(f.name, Math.random() < 0.5 ? 'Keep the change.' : 'Smooth ride. Thank you!')
         this.pay(fare, 'Fare'); j.fare = null
         this.newFare(); this.beacon(j.stops[0])
+      }
+    }
+  }
+  // The burning building: flames and smoke at its front and roof (fewer as the fire weakens), its roar
+  // nearby; on foot within reach of the fire and of the engine, hosing knocks it down.
+  fireUpdate(dt, s, j) {
+    const g = this.g, F = j.fire, b = F.b, k = F.hp / 100
+    F.fxT = (F.fxT || 0) - dt
+    if (F.fxT <= 0 && k > 0) {
+      F.fxT = 0.18
+      const at = this.local(b, (Math.random() - 0.5) * b.w * 0.8, b.d / 2 + 0.3, 0.5 + Math.random() * F.h)
+      g.fx.burn(at.x, at.y, at.z, 0.6 + k * 1.2)
+      if (Math.random() < 0.5) { const r = this.local(b, (Math.random() - 0.5) * b.w * 0.6, (Math.random() - 0.5) * b.d * 0.6, F.h + 0.5); g.fx.burn(r.x, r.y, r.z, 0.8 + k * 1.6) }
+    }
+    const fp = j.stops[0], dFire = Math.hypot(s.pos.x - fp.x, s.pos.z - fp.z)
+    g.sfx.loop('jobfire', 'loop_fire', k > 0 ? Math.max(0, 0.6 * k * (1 - dFire / 120)) : 0)
+    if (F.hosing) {
+      const dEng = Math.hypot(s.pos.x - j.v.pos.x, s.pos.z - j.v.pos.z)
+      if (s.vehicle || dFire > 18 || dEng > 30 || s.speed > 1.2) { F.hosing = false; g.hud.note(dEng > 30 ? 'The hose does not reach: stay near the engine' : 'You stop hosing') }
+      else {
+        F.hp -= dt * 9
+        // the water: a stream of white spray from your hands towards the flames
+        const tx = fp.x - s.pos.x, tz = fp.z - s.pos.z, L = Math.hypot(tx, tz) || 1
+        for (let i = 0; i < 3; i++) g.fx.puff(s.pos.x + tx / L * 0.8, s.pos.y + 1.3, s.pos.z + tz / L * 0.8, { vx: tx / L * 15 + (Math.random() - 0.5) * 1.5, vy: 3.5 + Math.random() * 1.5, vz: tz / L * 15 + (Math.random() - 0.5) * 1.5, s0: 0.2, s1: 1.8, life: 1.0, r: 0.88, g: 0.93, b: 1, a: 0.6, drag: 0.5 })
+        if (Math.random() < dt * 6) g.fx.puff(fp.x + (Math.random() - 0.5) * 4, fp.y + 1 + Math.random() * 3, fp.z + (Math.random() - 0.5) * 4, { vx: 0, vy: 1.5, vz: 0, s0: 1, s1: 4, life: 3, r: 0.9, g: 0.9, b: 0.9, a: 0.45, drag: 0.4 })   // steam
+        if (F.hp <= 0) {
+          F.hosing = false
+          const mins = (g.time - F.t0) / 60, bonus = Math.max(0, Math.round(60 - mins * 12))
+          this.pay(120 + bonus, bonus ? `Fire out (quick work, +${money(bonus)})` : 'Fire out')
+          g.hud.radio('Dispatch', 'Fire is out. Good job. Bring the engine back or ask again for the next call.')
+          j.fire = null; g.sfx.stopLoop('jobfire'); j.i++; this.nextStop()
+        }
       }
     }
   }

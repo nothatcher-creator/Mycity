@@ -122,7 +122,8 @@ export class HUD {
     // minimap: four times a second
     this.miniT = (this.miniT || 0) - dt
     const nav = g.nav()
-    if (this.miniT <= 0 && o.minimap && nav.gps) { this.miniT = 0.25; this.mini.dirty = true }
+    const mh = Math.round(g.camHeading() * 30)
+    if (o.minimap && nav.gps && (this.miniT <= 0 || mh !== this.last.miniHead)) { this.miniT = 0.25; this.last.miniHead = mh; this.mini.dirty = true }
     this.mini.show(o.minimap && nav.gps)
     // the crosshair moves with spread and hit markers
     const spread = this.crossSpread()
@@ -304,9 +305,9 @@ export class HUD {
     c.save()
     c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 2, 0, Math.PI * 2); c.clip()
     c.fillStyle = '#20301c'; c.fillRect(0, 0, W, H)
+    // north up: the map stays still and slides with you; your arrow turns
     const head = g.camHeading()
     c.translate(W / 2, H / 2)
-    c.rotate(-head)
     if (img) {
       const [mx, my] = worldToMap(s.pos.x, s.pos.z, img.width)
       const k = (W / 2) / (range / 12000 * img.width)
@@ -314,7 +315,6 @@ export class HUD {
       c.drawImage(img, -mx, -my)
       c.setTransform(1, 0, 0, 1, 0, 0)
       c.translate(W / 2, H / 2)
-      c.rotate(-head)
     }
     const sc = (W / 2) / range
     // units: friends (green, blue for the squad), known enemies (red), vehicles, objectives
@@ -340,15 +340,19 @@ export class HUD {
       else { c.beginPath(); c.arc(x, y, 3, 0, Math.PI * 2); c.fill() }
     }
     c.restore()
-    // the player in the middle, pointing up (the map turns)
-    c.fillStyle = C.white; c.beginPath(); c.moveTo(W / 2, H / 2 - 7); c.lineTo(W / 2 - 5, H / 2 + 5); c.lineTo(W / 2, H / 2 + 2); c.lineTo(W / 2 + 5, H / 2 + 5); c.fill()
+    // the player in the middle, the arrow pointing the way you face, with a faint cone of view
+    c.save(); c.translate(W / 2, H / 2); c.rotate(head)
+    const cone = c.createRadialGradient(0, 0, 2, 0, 0, W * 0.3); cone.addColorStop(0, 'rgba(255,255,255,0.22)'); cone.addColorStop(1, 'rgba(255,255,255,0)')
+    c.fillStyle = cone; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, W * 0.3, -Math.PI / 2 - 0.45, -Math.PI / 2 + 0.45); c.closePath(); c.fill()
+    c.fillStyle = C.white; c.strokeStyle = 'rgba(0,0,0,0.7)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, -8); c.lineTo(-5.5, 5.5); c.lineTo(0, 2.5); c.lineTo(5.5, 5.5); c.closePath(); c.fill(); c.stroke()
+    c.restore()
     // the bezel: a dark ring with ticks, the north mark in amber
     c.strokeStyle = 'rgba(8,10,7,0.85)'; c.lineWidth = 5; c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 3, 0, Math.PI * 2); c.stroke()
     c.strokeStyle = C.line; c.lineWidth = 1; c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 6, 0, Math.PI * 2); c.stroke()
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 - head; c.strokeStyle = i % 3 ? 'rgba(236,232,216,0.35)' : C.gold; c.lineWidth = i % 3 ? 1 : 2; c.beginPath(); c.moveTo(W / 2 + Math.sin(a) * (W / 2 - 1), H / 2 - Math.cos(a) * (H / 2 - 1)); c.lineTo(W / 2 + Math.sin(a) * (W / 2 - 6), H / 2 - Math.cos(a) * (H / 2 - 6)); c.stroke() }
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; c.strokeStyle = i % 3 ? 'rgba(236,232,216,0.35)' : C.gold; c.lineWidth = i % 3 ? 1 : 2; c.beginPath(); c.moveTo(W / 2 + Math.sin(a) * (W / 2 - 1), H / 2 - Math.cos(a) * (H / 2 - 1)); c.lineTo(W / 2 + Math.sin(a) * (W / 2 - 6), H / 2 - Math.cos(a) * (H / 2 - 6)); c.stroke() }
     chip(c, gridRef(s.pos.x, s.pos.z), W / 2, H - 22, 16, { align: 'center', size: 9.5, fill: 'rgba(8,10,7,0.8)', color: C.text, stroke: C.line })
     text(c, 'GPS', W / 2, H - 27, { size: 8.5, align: 'center', weight: 800, color: 'rgba(139,211,92,0.85)' })
-    const nx = W / 2 + Math.sin(-head) * (W / 2 - 15), ny = H / 2 - Math.cos(-head) * (H / 2 - 15)
+    const nx = W / 2, ny = 15
     c.fillStyle = 'rgba(8,10,7,0.9)'; c.beginPath(); c.arc(nx, ny, 8, 0, Math.PI * 2); c.fill()
     text(c, 'N', nx, ny + 4, { size: 11, align: 'center', color: C.gold2, weight: 700 })
   }

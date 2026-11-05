@@ -86,7 +86,7 @@ All interface is drawn by the game on canvases (`src/ui/`): dark olive glass pan
 corners and amber corner brackets, segmented bars, line icons and the Chakra Petch display face
 (embedded in `src/ui/fonts-data.js`, SIL Open Font License; licence text in `assets/font/OFL.txt`).
 The title screen has numbered modes and a field report (campaign progress, liberated places, players in
-the lot, tips). Desktop: status bottom left, weapon bottom right, compass top centre, minimap top right.
+the lot, tips). Desktop: status bottom left, weapon bottom right, compass top centre, minimap top right (north up: it slides with you and your arrow turns, with a faint cone of view).
 Phones keep 60 px clear for the city's bar; narrow screens get a compact HUD (health and ammo side by
 side at the top, compass and minimap below) and round icon buttons (fire, aim, reload, stance, jump,
 use, grenade, gear) in an arc for the right thumb, with view, map, kit and heal down the right edge.

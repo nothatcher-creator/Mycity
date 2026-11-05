@@ -126,8 +126,13 @@ export class Collision {
       nx = ex * c.ax[0] + ey * c.ay[0] + ez * c.az[0]
       ny = ex * c.ax[1] + ey * c.ay[1] + ez * c.az[1]
       nz = ex * c.ax[2] + ey * c.ay[2] + ez * c.az[2]
-      p.x += nx * depth; p.y += ny * depth; p.z += nz * depth
-      if (ny > 0.6) { out.ground = true; up += ny * depth } else out.wall = true
+      // walkable ground (stairs, ramps, roofs): out straight up, so walking up a slope keeps its pace;
+      // the push back along a slope's normal used to eat most of each step on stairs
+      if (ny > 0.6 && !out.normals) { const lift = Math.min(depth / ny, r); p.y += lift; out.ground = true; up += lift }
+      else {
+        p.x += nx * depth; p.y += ny * depth; p.z += nz * depth
+        if (ny > 0.6) { out.ground = true; up += ny * depth } else out.wall = true
+      }
       if (out.normals) out.normals.push(nx, ny, nz)
     })
     return up

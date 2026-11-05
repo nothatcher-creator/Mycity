@@ -255,6 +255,16 @@ export class Game {
       if (e.code === 'ScrollLock' && this.mode?.dbgVisit) this.mode.dbgVisit()
       if (e.code === 'F2' && this.mode?.dbgVisit) this.mode.dbgVisit('dealer')
       if (e.code === 'Period') this.input.look.dx += 200
+      if (e.code === 'Home' && this.modeId !== 'campaign') {
+        // to the foot of the nth nearest staircase (each press the next), facing up it
+        const L = []; this.collision.query(s.pos.x - 150, s.pos.z - 150, s.pos.x + 150, s.pos.z + 150, c => { if (c.kind === 'stairs') L.push(c) })
+        L.sort((a, b) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(b.x - s.pos.x, b.z - s.pos.z))
+        this.dbgStair = ((this.dbgStair ?? -1) + 1) % Math.max(1, L.length); const c = L[this.dbgStair]
+        if (c) { const sg = c.az[1] > 0 ? 1 : -1, hx = c.az[0] * sg, hz = c.az[2] * sg, n = Math.hypot(hx, hz), bx = c.x - c.az[0] * c.hz * sg, by = c.y - c.az[1] * c.hz * sg, bz = c.z - c.az[2] * c.hz * sg
+          s.pos.set(bx - hx / n * 0.6, by + 0.05, bz - hz / n * 0.6); s.vel.set(0, 0, 0); s.yaw = Math.atan2(hx, hz); this.player.pitch = 0.2
+          this.dbgTop = c.y + c.az[1] * c.hz * sg; this.dbgT0 = this.time; p0.log('dbg stair', L.length, 'at', bx.toFixed(1), by.toFixed(2), bz.toFixed(1), 'top', (c.y + c.az[1] * c.hz * sg).toFixed(2), 'slope', Math.round(Math.asin(Math.abs(c.az[1])) * 57)) }
+      }
+      if (e.code === 'End' && this.modeId !== 'campaign') p0.log('dbg y', s.pos.y.toFixed(2), 'top', (this.dbgTop || 0).toFixed(2), 't', (this.time - (this.dbgT0 || 0)).toFixed(1), 'spd', s.speed.toFixed(1), 'ground', s.onGround, 'xz', s.pos.x.toFixed(1), s.pos.z.toFixed(1))
       if (e.code === 'Slash') { const x = s.pos.x + Math.sin(s.yaw) * 180 + 40, z = s.pos.z + Math.cos(s.yaw) * 180; this.waypoint = { x, z, y: heightAt(x, z) }; p0.log('dbg waypoint') }
       if (e.code === 'Semicolon') { const x = s.pos.x + Math.sin(s.yaw) * 1.2, z = s.pos.z + Math.cos(s.yaw) * 1.2; const o = this.addSoldier({ faction: 'vdf', role: 'rifleman', x, z }); o.die(null, null); p0.log('dbg body', this.loot.length, s.inv.countAmmo(s.w.def)) }
       if (e.code === 'Quote') p0.log('dbg ammo', s.inv.countAmmo(s.w.def), this.loot.map(l => l.items.length).join())

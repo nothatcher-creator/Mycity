@@ -149,6 +149,8 @@ export class Game {
     p0.on('state', (key, value, from) => { this.mode?.onNet?.('state', key, value, from); if (this.menus?.page === 'online') this.menus.panel.dirty = true })
     p0.on('leave', p => this.mode?.onNet?.('leave', p))
     p0.on('join', () => { if (this.menus?.page === 'online') this.menus.panel.dirty = true })
+    // the lot's prize: what came of a win
+    p0.on('reward', r => { if (r?.kind !== 'win') return; if (r.ok) this.hud?.note(`Prize won: ${r.tokens} for ${this.lastWinWhat || 'your win'}!`, C.gold2); else if (r.reason && this.p0.game?.prize) this.hud?.note(`No prize this time: ${r.reason}`, C.dim); if (this.debug) this.p0.log('dbg reward', JSON.stringify(r)) })
     p0.on('update', () => this.hud?.note('A new version of the game is out: re-enter to play it.', C.gold2))
   }
   // A soldier drawn once so his materials compile before play.
@@ -727,6 +729,8 @@ export class Game {
     this.hud.note(say[k] || `Weather: ${k}`, C.dim)
     if (this.debug) this.p0.log('dbg weather drift', now, '->', k)
   }
+  // A real achievement (a town liberated with your own kills, a day survived): the lot's prize rules decide what it pays
+  reportWin(what) { this.lastWinWhat = what; try { this.p0.win?.() } catch {} if (this.debug) this.p0.log('dbg win', what) }
   // A tip shown once ever (kept in the save): the first time you bleed, run dry, look through a scope...
   tip(id, desk, touch = desk) {
     if (this.settings.tips === false) return

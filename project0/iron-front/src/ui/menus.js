@@ -108,8 +108,15 @@ export class Menus {
     rows.forEach(([k, v], i) => { const yy = y + (54 + i * 26) * s; text(c, k, x + 16 * s, yy, { size: 10.5 * s, weight: 700, color: C.dim }); text(c, v, x + 116 * s, yy, { size: 13 * s, weight: 600, color: C.text, max: w - 132 * s }) })
     bar(c, x + 16 * s, y + 160 * s, w - 32 * s, 6 * s, camp.done.length / MISSIONS.length, C.gold, { segments: MISSIONS.length })
     const tips = ['Crouch or lie down in the woods: the enemy needs far longer to spot you.', 'Medics in your squad patch you up when the shooting stops.', 'A rocket stops an APC; a tank needs three.', 'The field radio calls mortars on wherever you look (60 to 900 m).', 'Plate carriers slow 5.56: aim for the head.', 'AT soldiers fire rockets at vehicles from 25 to 350 m: keep moving.']
-    header(c, 'TIP', x + 16 * s, y + 194 * s, w - 32 * s, s)
-    wrap(c, tips[Math.floor((this.t || 0) / 8) % tips.length], x + 16 * s, y + 216 * s, w - 32 * s, 16 * s, { size: 12.5 * s, color: C.text })
+    // a prize on the lot's game: the event in place of the tip
+    const G = g.p0.game
+    if (G?.prize > 0 && !G.paused) {
+      header(c, 'EVENT', x + 16 * s, y + 194 * s, w - 32 * s, s)
+      wrap(c, `${G.winText || 'Win'}: ${G.prize} each${G.winners ? `, first ${G.winners} winners` : ''}${G.perPlayer === 'once' ? ', once per player' : ''}.`, x + 16 * s, y + 216 * s, w - 32 * s, 16 * s, { size: 12.5 * s, color: C.gold2 })
+    } else {
+      header(c, 'TIP', x + 16 * s, y + 194 * s, w - 32 * s, s)
+      wrap(c, tips[Math.floor((this.t || 0) / 8) % tips.length], x + 16 * s, y + 216 * s, w - 32 * s, 16 * s, { size: 12.5 * s, color: C.text })
+    }
   }
   // small option rows: label + choices
   choices(c, p, x, y, w, label, opts, cur, set, s) {

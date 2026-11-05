@@ -221,6 +221,8 @@ export class Survival extends Mode {
     const g = this.g, s = g.player?.s
     if (!s) return
     if (!s.dead) { this.alive += dt * (g.sky.cycle ? 1 : 0) * 1; this.needs(dt, s) }
+    // a whole day alive in one life: the lot's prize (when there is one)
+    if (!s.dead && this.alive >= DAY && !this.dayWon) { this.dayWon = true; g.hud.note('You survived a whole day!', C.gold2); g.reportWin('survived a day') }
     this.infUpdate(dt)
     this.firesUpdate(dt)
     this.crashUpdate(dt, s)

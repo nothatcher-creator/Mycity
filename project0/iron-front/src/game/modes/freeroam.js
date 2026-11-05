@@ -94,6 +94,7 @@ export class FreeRoam extends Mode {
       if (!side) continue
       if (!P.active && d < p.r + 800 && near < cap && !(P.cleared)) {
         P.active = true
+        P.killsAt = this.kills
         const n = Math.max(1, Math.round((GARRISON[p.kind] || 1) * (this.enemyOf(side) ? 1 : 0.5) * (g.settings.quality === 'low' ? 0.7 : 1)))
         for (let i = 0; i < n; i++) {
           const a = Math.random() * Math.PI * 2, r = p.r * (0.15 + Math.random() * 0.45)
@@ -120,6 +121,9 @@ export class FreeRoam extends Mode {
         this.liberated.add(p.id)
         g.hud.note(`${p.name} liberated!`, C.gold2)
         g.sfx.ui('pickup')
+        // the lot's prize (when there is one): only for a liberation you fought for yourself, there, with kills of your own
+        const me = g.player?.s
+        if (me && !me.dead && Math.hypot(me.pos.x - p.x, me.pos.z - p.z) < p.r + 300 && this.kills - (P.killsAt ?? this.kills) >= 3) g.reportWin(`liberated ${p.name}`)
         this.persist()
       }
       // vehicles at the place's bases, pads, airfield and harbour; cars in the streets

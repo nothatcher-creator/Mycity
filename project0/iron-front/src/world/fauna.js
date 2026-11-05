@@ -21,7 +21,7 @@ export class Fauna {
     const max = this.nHerds * 6
     this.max = max
     const mat = new THREE.MeshLambertMaterial()
-    const mk = (g, n) => { const m = new THREE.InstancedMesh(g, mat, n); m.frustumCulled = false; m.count = 0; m.castShadow = quality !== 'low'; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); engine.world.add(m); return m }
+    const mk = (g, n) => { const m = new THREE.InstancedMesh(g, mat, n); m.setColorAt(0, FUR); m.frustumCulled = false; m.count = 0; m.castShadow = quality !== 'low'; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); engine.world.add(m); return m }
     // in each animal's own frame: +z forward, y up from the ground at its feet
     this.body = mk(geo(0.42, 0.5, 1.15), max)                      // centred at the shoulder line
     this.belly = mk(geo(0.36, 0.12, 0.9, 0, -0.24, 0), max)

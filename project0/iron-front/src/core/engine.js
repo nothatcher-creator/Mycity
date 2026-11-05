@@ -55,8 +55,9 @@ export class Engine {
   resize() {
     const w = this.p0.width, h = this.p0.height
     this.width = w; this.height = h
-    const pr = Math.min(this.p0.pixelRatio || 1, 2) * this.quality.pixel * Math.min(1, 1600 / Math.max(w, 1))
-    this.renderer.setPixelRatio(Math.max(0.4, pr))
+    // `relief` (0..1) is set while play keeps hitching: fewer pixels to draw
+    const pr = Math.min(this.p0.pixelRatio || 1, 2) * this.quality.pixel * Math.min(1, 1600 / Math.max(w, 1)) * (1 - 0.35 * (this.relief || 0))
+    this.renderer.setPixelRatio(Math.max(0.3, pr))
     this.renderer.setSize(w, h, false)
     this.camera.aspect = w / h
     this.camera.updateProjectionMatrix()

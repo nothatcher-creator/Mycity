@@ -289,6 +289,13 @@ export class Soldier {
     const acc = this.onGround || this.swimming ? 14 : 2
     this.vel.x += (tx - this.vel.x) * Math.min(1, dt * acc)
     this.vel.z += (tz - this.vel.z) * Math.min(1, dt * acc)
+    // under a parachute: glide the way you face (forward to speed up, back to flare and slow, sideways to drift)
+    if (this.parachute) {
+      const gf = Math.max(1.2, 4.5 + iz * 3), gs = ix * 2.5
+      const px = s * gf - c * gs, pz = c * gf + s * gs
+      this.vel.x += (px - this.vel.x) * Math.min(1, dt * 1.2)
+      this.vel.z += (pz - this.vel.z) * Math.min(1, dt * 1.2)
+    }
     // vaulting over low walls, or a small jump
     if (inp.jump && this.onGround && this.stance === STAND && this.vaultT <= 0) {
       inp.jump = false
@@ -297,6 +304,7 @@ export class Soldier {
     if (this.vaultT > 0) { this.vaultStep(dt); return }
     if (this.swimming) { this.vel.y = (wl - 1.45 - this.pos.y) * 3 }
     else this.vel.y -= 9.81 * dt
+    if (this.parachute) { this.chuteT = (this.chuteT || 0) + dt; this.vel.y = Math.max(this.vel.y, iz < -0.3 ? -3.6 : -5.2); if (this.swimming) this.parachute = false }
     // move and collide
     this.pos.addScaledVector(this.vel, dt)
     this.collide(W)
@@ -307,6 +315,7 @@ export class Soldier {
     if (this.pos.y <= g + 0.03 && this.vel.y <= 0.01) {
       if (!this.onGround && this.fallSpeed < -8 && !this.swimming) this.hurt(Math.random() < 0.5 ? 'legL' : 'legR', (-this.fallSpeed - 8) * 14, 0, null, null, 'fall')
       this.pos.y = g; this.vel.y = 0; this.onGround = true
+      if (this.parachute) { this.parachute = false; this.chuteT = 0 }
       // too steep: slide down
       if (g === land && !this.swimming) { const n = normalAt(this.pos.x, this.pos.z, _n, 1); if (n[1] < 0.62) { this.vel.x += n[0] * 9 * dt; this.vel.z += n[2] * 9 * dt } }
     } else if (this.pos.y > g + 0.25) this.onGround = false

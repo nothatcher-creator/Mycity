@@ -148,7 +148,9 @@ export class CityStream {
     wantN.sort((a, b) => a.d - b.d)
     for (const w of wantN) {
       if (performance.now() - t0 > budgetMs) { nearestMissing = Math.min(nearestMissing, w.d); continue }
+      const tb = performance.now()
       this.near.set(w.k, this.buildNear(w.k, this.nearIdx.get(w.k)))
+      const bt = performance.now() - tb; if (bt > (this.slowTile?.ms || 0)) this.slowTile = { ms: bt, n: this.nearIdx.get(w.k).length }
       this.dirty = true
     }
     for (const [k, t] of this.near) if (!seenN.has(k) && distRect(cx, cz, Math.floor(k / 10000) * NEAR, (k % 10000) * NEAR, NEAR) > R + 60) { this.drop(t); this.near.delete(k); this.dirty = true }

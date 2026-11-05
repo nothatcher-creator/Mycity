@@ -62,7 +62,7 @@ export class MapView {
           if (hit >= 0) marks.splice(hit, 1); else if (marks.length < 9) marks.push({ x: wx, z: wz, n: [1, 2, 3, 4, 5, 6, 7, 8, 9].find(n => !marks.some(m => m.n === n)) }); else this.g.hud.note('Nine markers at most: click one to remove it')
         }
         else if (this.drag.button === 2) this.g.waypoint = null
-        else if (this.mode === 'teleport' && this.g.mode?.admin) { this.mode = 'waypoint'; this.g.mode.admin('teleport', { x: wx, z: wz }); this.g.closeMap() }
+        else if ((this.mode === 'teleport' || this.mode === 'halo') && this.g.mode?.admin) { const halo = this.mode === 'halo'; this.mode = 'waypoint'; this.g.mode.admin('teleport', { x: wx, z: wz, halo }); this.g.closeMap() }
         else if (this.mode === 'squad' && this.g.playerSquad) { this.g.orderSquad('move', { x: wx, z: wz }); this.g.hud.note(`Squad: move to ${gridRef(wx, wz)}`) }
         else this.g.waypoint = { x: wx, z: wz, y: heightAt(wx, wz) }
       }

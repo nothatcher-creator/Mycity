@@ -27,7 +27,7 @@ export class Birds {
     this.body = new THREE.InstancedMesh(new THREE.BoxGeometry(0.09, 0.07, 0.38), mat, this.max)
     this.wl = new THREE.InstancedMesh(wingGeo(), mat, this.max)
     this.wr = new THREE.InstancedMesh(wingGeo(), mat, this.max)
-    for (const m of [this.body, this.wl, this.wr]) { m.frustumCulled = false; m.count = 0; m.castShadow = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); engine.world.add(m) }
+    for (const m of [this.body, this.wl, this.wr]) { m.setColorAt(0, DARK); m.frustumCulled = false; m.count = 0; m.castShadow = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); engine.world.add(m) }
     for (let f = 0; f < nF; f++) {
       const birds = []
       for (let i = 0; i < per; i++) birds.push({ ox: (Math.random() - 0.5) * 16, oy: (Math.random() - 0.5) * 6, oz: (Math.random() - 0.5) * 16, ph: Math.random() * 6.28, rate: 7 + Math.random() * 3, glide: Math.random() * 4, size: 1.1 + Math.random() * 0.5, p: new THREE.Vector3(), prev: new THREE.Vector3(), bank: 0 })

@@ -13,6 +13,7 @@ import { Rain } from '../world/rain.js'
 import { Birds } from '../world/birds.js'
 import { Fauna } from '../world/fauna.js'
 import { Beacons } from '../world/beacons.js'
+import { Chutes } from '../actors/chutes.js'
 import { Collision, raycastTerrain, makeBox } from '../world/collision.js'
 import { buildPlaces, POINTS, BUILDINGS, PROPS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
@@ -92,6 +93,7 @@ export class Game {
     this.birds = new Birds(this.engine, q)
     this.fauna = new Fauna(this.engine, q)
     this.beacons = new Beacons(this.engine)
+    this.chutes = new Chutes(this.engine)
     this.roads = new Roads(this.engine.world, this.collision)
     this.veg = new Vegetation(this.engine.world, this.collision, q)
     this.grass = new Grass(this.engine.world, q)
@@ -194,7 +196,7 @@ export class Game {
   }
   setQuality(q, chosen = false) {
     this.settings.quality = q
-    if (chosen) this.settings.qualityChosen = true
+    if (chosen) { this.settings.qualityChosen = true; this.engine.relief = 0 }
     this.engine.setQuality(q)
     this.terrain.setQuality(q, QUALITY[q].view)
     this.veg.setQuality(q); this.grass.setQuality(q); this.city.setQuality(q); this.sky.setQuality(q)
@@ -295,6 +297,7 @@ export class Game {
       if (e.code === 'NumpadDecimal') { this.sky.setWeather('storm'); p0.log('dbg storm') }
       if (e.code === 'NumpadSubtract' && this.state !== 'menu') { const cd = this.fauna.list.find(d => d.dead && d.meat > 0); if (cd && !this.fauna.carcass(s.pos.x, s.pos.z)) { s.pos.x = cd.x + 1.2; s.pos.z = cd.z; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.05 } else this.fauna.spawnHerd(s.pos.x + Math.sin(s.yaw) * 12, s.pos.z + Math.cos(s.yaw) * 12, true, s.yaw + Math.PI); p0.log('dbg deer', this.fauna.herds.length, this.fauna.list.length, 'dead', this.fauna.list.filter(d => d.dead).length, 'venison', s.inv.count('venison'), 'fleeing', this.fauna.herds.filter(h => h.flee > 0).length) }
       if (e.code === 'NumpadDivide' && this.state !== 'menu') { const K = ['pole', 'busstop', 'bench', 'haybale', 'lighthouse'], i = this.dbgProp = ((this.dbgProp ?? -1) + 1) % K.length, L = PROPS.filter(p => p.kind === K[i] && (K[i] !== 'pole' || (p.to && forestAt(p.x, p.z) < 0.05))), p = L[Math.floor(L.length * 0.37)], back = K[i] === 'lighthouse' ? 45 : K[i] === 'pole' ? 22 : 9, a = p.yaw + (K[i] === 'pole' ? Math.PI / 2 + 0.5 : K[i] === 'busstop' ? 0.3 : Math.PI); s.pos.x = p.x + Math.sin(a) * back; s.pos.z = p.z + Math.cos(a) * back; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.1; s.yaw = Math.atan2(p.x - s.pos.x, p.z - s.pos.z); p0.log('dbg prop', K[i], L.length, Math.round(p.x), Math.round(p.z)) }
+      if (e.code === 'NumpadMultiply' && this.modeId !== 'online' && this.state === 'play') { if (this.mode?.admin) this.mode.admin('teleport', { x: s.pos.x + 200, z: s.pos.z + 200, halo: true }); else { s.pos.y += 260; s.vel.set(0, 0, 0); s.onGround = false; s.parachute = true; s.chuteT = 0 } p0.log('dbg chute', Math.round(s.pos.y), 'squad chutes', this.soldiers.filter(o => o.parachute).length) }
       if (e.code === 'F4') { const T = [{ x: 60, z: 1650, yaw: 0 }, { x: -3000, z: -360, yaw: Math.PI / 2 }, { x: 1010, z: -196, yaw: 1.06 }]; this.dbgTp = ((this.dbgTp ?? -1) + 1) % T.length; const P = T[this.dbgTp]; this.mode.admin('teleport', P); s.yaw = P.yaw; this.player.pitch = 0.02; p0.log('dbg teleported', this.dbgTp) }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
@@ -739,8 +742,25 @@ export class Game {
   frame(dt) {
     this.time += dt
     const t0 = performance.now()
+    this.lastFrameGap = this.lastFrameT ? t0 - this.lastFrameT : 0
     if (this.debug && this.lastFrameT && t0 - this.lastFrameT > 1500) this.p0.log("dbg stall", Math.round(t0 - this.lastFrameT), "ms between frames, state", this.state)
     this.lastFrameT = t0
+    if (this.debug && this.city?.slowTile?.ms > 40) { this.p0.log('dbg slow tile', Math.round(this.city.slowTile.ms), 'ms, items', this.city.slowTile.n); this.city.slowTile = null }
+    // Hitches in play (a frame more than a second after the last): three within half a minute and the graphics
+    // step down (a lower setting, then fewer pixels below Low), so a struggling phone or laptop keeps going
+    // instead of freezing until the city gives up on it. Not during loading or with the game paused.
+    if (this.state === 'play' && !this.starting && this.lastFrameGap > 1000) {
+      const H = this.hitches = (this.hitches || []).filter(t => t0 - t < 30000); H.push(t0)
+      if (H.length >= 3 && t0 - (this.reliefT || 0) > 20000) {
+        this.hitches = []; this.reliefT = t0
+        const q = this.settings.quality
+        if (q !== 'low') { this.setQuality(q === 'high' ? 'medium' : 'low'); this.hud?.note(`The game was struggling: graphics lowered to ${QUALITY[this.settings.quality].name} (Settings to change)`, C.amber) }
+        else if ((this.engine.relief || 0) < 1) { this.engine.relief = Math.min(1, (this.engine.relief || 0) + 0.5); this.engine.resize(); this.hud?.note('The game was struggling: fewer pixels drawn', C.amber) }
+        if (this.debug) this.p0.log('dbg relief', this.settings.quality, this.engine.relief || 0)
+      }
+    }
+    // (debug) a shader compiled during play is a hitch: say which
+    if (this.debug && this.state === 'play') { const P = this.engine.renderer.info.programs || [], n = P.length; if (this.progN != null && n > this.progN) this.p0.log('dbg late programs', n - this.progN, P.slice(this.progN).map(q => q.name + ':' + (q.cacheKey || '').split(',').slice(0, 3).join('/')).join(' | ').slice(0, 900)); this.progN = n }
     this.rebuildGrid()
     if (this.pendingStart && !this.starting && this.menus.page === 'deploying' && !this.menus.panel.dirty) { const p = this.pendingStart; this.startNow(p.modeId, p.opts) }
     if (this.state === 'menu') this.menuFrame(dt)
@@ -766,6 +786,7 @@ export class Game {
     this.rain.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.sfx)
     this.birds.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.dangers, this.time)
     this.beacons.update(dt, cp, this.sky)
+    this.chutes.update(this.state === 'paused' ? 0 : dt, this.state === 'play' ? this.soldiers : [])
     if (this.player && this.state !== 'menu') this.fauna.update(this.state === 'paused' ? 0 : dt, this)
     this.fx.update(this.state === 'paused' ? 0 : dt, cp); T.push(performance.now())
     // soldiers
@@ -852,7 +873,6 @@ export class Game {
     } else { inp.takeLook(); inp.takeWheel(); s.input.fwd = s.input.side = 0; s.input.sprint = false }
     // the simulation
     s.step(dt, this.W)
-    if (s.parachute) { s.vel.y = Math.max(s.vel.y, -5.5); if (s.onGround) s.parachute = false }
     this.ai.update(dt, s.pos)
     this.vehicles.update(dt)
     this.ballistics.update(dt)
@@ -920,6 +940,7 @@ export class Game {
     const s = this.player.s, hud = this.hud, inp = this.input, A = this.actMenu || (this.actMenu = { open: false, sel: 0, t: 0 })
     hud.prompt = ''; hud.actions = null
     if (s.dead) { this.acts = []; A.open = false; return }
+    if (s.parachute) { const alt = Math.max(0, Math.round(s.pos.y - Math.max(heightAt(s.pos.x, s.pos.z), waterLevelAt(s.pos.x, s.pos.z)))); hud.prompt = `Parachute · ${alt} m · ${inp.touch ? 'stick' : 'W faster, S flare, A D drift'}, look to steer`; this.acts = []; A.open = false; return }
     const acts = this.gatherActions(s), live = acts.filter(a => a.fn)
     this.acts = live
     // an action's own key

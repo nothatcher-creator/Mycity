@@ -23,11 +23,11 @@ const angle = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; w
 const gun = (id, mags = 1) => () => { const def = weapon(id); return { weapon: id, mags: Array.from({ length: mags }, () => newMag(def, stats(def, {}))) } }
 const item = (kind, id, count) => () => ({ kind, id, ...(count ? { count } : {}) })
 const LOOT = {
-  home: [[5, item('tool', 'matches')], [10, item('food', 'apple')], [6, item('food', 'sandwich')], [8, item('water', 'water')], [4, item('water', 'soda')], [6, item('med', 'bandage', 2)], [2, item('med', 'morphine')], [2, item('med', 'firstaid')],
+  home: [[3, item('tool', 'map')], [0.4, item('tool', 'gps')], [5, item('tool', 'matches')], [10, item('food', 'apple')], [6, item('food', 'sandwich')], [8, item('water', 'water')], [4, item('water', 'soda')], [6, item('med', 'bandage', 2)], [2, item('med', 'morphine')], [2, item('med', 'firstaid')],
     [3, item('clothing', 'hoodie')], [3, item('clothing', 'jacket')], [2, item('clothing', 'cargopants')], [3, item('clothing', 'daypack')], [2, item('clothing', 'beanie')], [2, item('tool', 'binoculars')], [2, item('water', 'canteen')],
     [2, gun('p17', 2)], [1, gun('vm9', 2)], [1.5, gun('ranch870', 0)], [1, item('ammo', null)], [0.6, gun('fjell', 1)], [1, item('tool', 'jerrycan')]],
-  shop: [[4, item('tool', 'matches')], [12, item('food', 'sandwich')], [10, item('water', 'water')], [8, item('water', 'soda')], [6, item('food', 'ration')], [5, item('food', 'apple')], [4, item('med', 'bandage', 2)], [2, item('water', 'canteen')], [2, item('clothing', 'daypack')], [1, item('tool', 'repairkit')]],
-  military: [[6, gun('brenner', 2)], [5, gun('ks47', 2)], [3, gun('vr4c', 2)], [2, gun('br51', 1)], [1, gun('halberd', 0)], [6, item('med', 'firstaid')], [3, item('med', 'medkit')], [5, item('med', 'bandage', 3)],
+  shop: [[3, item('tool', 'map')], [0.6, item('tool', 'gps')], [4, item('tool', 'matches')], [12, item('food', 'sandwich')], [10, item('water', 'water')], [8, item('water', 'soda')], [6, item('food', 'ration')], [5, item('food', 'apple')], [4, item('med', 'bandage', 2)], [2, item('water', 'canteen')], [2, item('clothing', 'daypack')], [1, item('tool', 'repairkit')]],
+  military: [[2, item('tool', 'map')], [1.5, item('tool', 'gps')], [6, gun('brenner', 2)], [5, gun('ks47', 2)], [3, gun('vr4c', 2)], [2, gun('br51', 1)], [1, gun('halberd', 0)], [6, item('med', 'firstaid')], [3, item('med', 'medkit')], [5, item('med', 'bandage', 3)],
     [4, item('clothing', 'helmet')], [3, item('clothing', 'platecarrier')], [3, item('clothing', 'assaultpack')], [3, item('clothing', 'chestrig')], [4, item('grenade', 'frag')], [2, item('grenade', 'smoke')], [5, item('food', 'ration')], [3, item('water', 'canteen')], [1.2, item('tool', 'nvg')], [4, item('mag', null)]],
 }
 function roll(table) { const tot = table.reduce((n, [w]) => n + w, 0); let r = Math.random() * tot; for (const [w, f] of table) { r -= w; if (r <= 0) return f() } return table[0][1]() }
@@ -52,7 +52,7 @@ export class Survival extends Mode {
     if (resume && save.blood) s.blood = save.blood
     this.dress(s)
     this.update(0, true)
-    g.hud.note(resume ? `Still alive: ${this.days()}` : 'SURVIVAL: you have a pistol and two magazines. Find food, water and a better gun. The infected hear gunshots and running feet. Matches (inventory) light a fire to cook on.', C.gold2)
+    g.hud.note(resume ? `Still alive: ${this.days()}` : 'SURVIVAL: no map and no GPS: find them in houses and shops. You have a pistol and two magazines. Find food, water and a better gun. The infected hear gunshots and running feet. Matches (inventory) light a fire to cook on.', C.gold2)
   }
   // a quiet beach near a village or a town
   coast() {
@@ -178,6 +178,8 @@ export class Survival extends Mode {
     if (!s.dead) { this.alive += dt * (g.sky.cycle ? 1 : 0) * 1; this.needs(dt, s) }
     this.infUpdate(dt)
     this.firesUpdate(dt)
+    if (s.inv.count('map')) g.tip('foundmap', 'You found a map: M opens it. It does not show where you are: read the land, or find a GPS', 'You found a map: MAP opens it. It does not show where you are: find a GPS for that')
+    if (s.inv.count('gps')) g.tip('foundgps', 'You found a GPS: the map and the minimap now show where you are')
     s.unarmed = !s.w
     this.tick -= dt
     if (this.tick > 0 && !first) return
@@ -240,6 +242,8 @@ export class Survival extends Mode {
     }
     return out
   }
+  // DayZ: no map until you find one, and a paper map does not show where you are; a GPS does (and the minimap)
+  navAccess(s) { const inv = s?.inv; return { map: !!(inv && (inv.count('map') || inv.count('gps'))), gps: !!inv?.count('gps') } }
   // matches, from the inventory: a campfire in front of you (not in water, not in a vehicle)
   lightFire(s) {
     const g = this.g
@@ -282,7 +286,7 @@ export class Survival extends Mode {
   }
   dispose() { this.persist(); for (const pl of this.piles) this.g.engine.world.remove(pl.mesh) }
   // ---- HUD ----
-  hudKey() { return [Math.round(this.noise(this.g.player?.s) / 4), this.inf.filter(n => n.chase && !n.s.dead).length, Math.round(this.hunger * 40), Math.round(this.thirst * 40), Math.floor(this.alive / 60), this.kills, Math.floor(this.g.sky.hour * 4), nearestPlace(this.g.player?.s.pos.x || 0, this.g.player?.s.pos.z || 0).place?.id].join() }
+  hudKey() { return [this.g.player?.s.inv.count('map'), this.g.player?.s.inv.count('gps'), Math.round(this.noise(this.g.player?.s) / 4), this.inf.filter(n => n.chase && !n.s.dead).length, Math.round(this.hunger * 40), Math.round(this.thirst * 40), Math.floor(this.alive / 60), this.kills, Math.floor(this.g.sky.hour * 4), nearestPlace(this.g.player?.s.pos.x || 0, this.g.player?.s.pos.z || 0).place?.id].join() }
   drawHud(c, p, k) {
     const g = this.g, s = g.player.s, { place, d } = nearestPlace(s.pos.x, s.pos.z)
     const h = g.sky.hour, hh = String(Math.floor(h)).padStart(2, '0'), mm = String(Math.floor((h % 1) * 60)).padStart(2, '0')
@@ -294,6 +298,8 @@ export class Survival extends Mode {
     // how loud you are, and whether anything is after you
     const nz = this.noise(s), chasing = this.inf.filter(n => n.chase && !n.s.dead).length
     text(c, 'NOISE', 10 * k, y + 8 * k, { size: 10 * k, weight: 700, color: C.dim, shadow: true }); bar(c, 58 * k, y, 120 * k, 8 * k, Math.min(1, nz / 24), nz > 15 ? C.red : nz > 5 ? C.amber : C.green, { segments: 0 }); y += 14 * k
+    const nv = this.navAccess(s)
+    text(c, `MAP ${nv.map ? '✓' : '✗'}   GPS ${nv.gps ? '✓' : '✗'}`, 186 * k, 54 * k + 8 * k, { size: 10 * k, weight: 700, color: nv.map ? C.dim : C.amber, shadow: true })
     if (chasing) text(c, `${chasing} INFECTED AFTER YOU`, 10 * k, y + 9 * k, { size: 10.5 * k, weight: 800, color: C.red, shadow: true })
   }
 }

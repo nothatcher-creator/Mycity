@@ -69,6 +69,8 @@ export const ITEMS = {
   cookedvenison: { name: 'Cooked venison', size: 1, weight: 0.8, kind: 'food', food: 55 },
   cookedfish: { name: 'Cooked fish', size: 1, weight: 0.7, kind: 'food', food: 40 },
   matches: { name: 'Matches', size: 0.2, weight: 0.05, kind: 'tool' },
+  map: { name: 'Map of Varden', size: 0.3, weight: 0.1, kind: 'tool' },
+  gps: { name: 'GPS', size: 0.3, weight: 0.25, kind: 'tool' },
   canteen: { name: 'Canteen', size: 1, weight: 1, kind: 'water', water: 50 },
   binoculars: { name: 'Binoculars', size: 1, weight: 0.8, kind: 'tool', zoom: 7 },
   rangefinder: { name: 'Rangefinder', size: 1, weight: 0.6, kind: 'tool', zoom: 6, range: true },

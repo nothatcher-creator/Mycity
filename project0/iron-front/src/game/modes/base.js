@@ -115,6 +115,9 @@ export class Mode {
   // ---- the player ----
   spawnPoints(place) { return POINTS.filter(p => p.kind === 'spawn' && (!place || p.place === place)) }
   onKill(sol, killer) { if (killer?.isPlayer && sol !== killer) this.kills++; if (sol.isPlayer) this.deaths++ }
+  // What you navigate with: a map (M opens it) and a GPS (shows where you are on it, and the minimap).
+  // Every mode but Survival gives both.
+  navAccess(s) { return { map: true, gps: true } }
   // The dead screen's choices: [{ id, label, sub }]
   respawnOptions() { return [{ id: 'here', label: 'Respawn', sub: 'Back near where you fell' }] }
   respawn(id) {}

@@ -121,8 +121,9 @@ export class HUD {
     if (s.vehicle) { const v = s.vehicle, sw = s.seat?.w; const vk = [Math.round(v.speed * 3.6), Math.round(v.alt), Math.round(v.hp), Math.round(v.fuel), sw ? sw.mag : '', sw?.reloadT > 0, s.seat?.w2?.mag, s.seat?.w2?.lockT > 1.2, v.gearDown, v.flares, v.engine, v.lights].join(); if (vk !== this.last.veh) { this.last.veh = vk; this.vehP.dirty = true } }
     // minimap: four times a second
     this.miniT = (this.miniT || 0) - dt
-    if (this.miniT <= 0 && o.minimap) { this.miniT = 0.25; this.mini.dirty = true }
-    this.mini.show(o.minimap)
+    const nav = g.nav()
+    if (this.miniT <= 0 && o.minimap && nav.gps) { this.miniT = 0.25; this.mini.dirty = true }
+    this.mini.show(o.minimap && nav.gps)
     // the crosshair moves with spread and hit markers
     const spread = this.crossSpread()
     const ck = [Math.round(spread), g.time - this.hitT < 0.3, scoped, s.ads, !!s.vehicle, w?.def.id, g.player.view].join()
@@ -143,7 +144,7 @@ export class HUD {
     if (scoped && g.player.binoculars) this.scope.dirty = true
     else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1), Math.round(g.sky.windNow * 2), Math.round(g.camHeading() * 10)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
     if (this.compact) this.modeP.show(!s.vehicle && this.visible)
-    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role, (g.acts?.length || 0) > 1, this.touchNeeds().join(), s.vehicle && performance.now() - (this.vehT ?? 0) < 6000, !!s.w].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
+    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role, (g.acts?.length || 0) > 1, this.touchNeeds().join(), g.nav().map, s.vehicle && performance.now() - (this.vehT ?? 0) < 6000, !!s.w].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
     this.touch.show(g.input.touch)
   }
   // running out: no spare rounds at all, or the magazine in the gun is the last one and nearly spent
@@ -346,6 +347,7 @@ export class HUD {
     c.strokeStyle = C.line; c.lineWidth = 1; c.beginPath(); c.arc(W / 2, H / 2, W / 2 - 6, 0, Math.PI * 2); c.stroke()
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 - head; c.strokeStyle = i % 3 ? 'rgba(236,232,216,0.35)' : C.gold; c.lineWidth = i % 3 ? 1 : 2; c.beginPath(); c.moveTo(W / 2 + Math.sin(a) * (W / 2 - 1), H / 2 - Math.cos(a) * (H / 2 - 1)); c.lineTo(W / 2 + Math.sin(a) * (W / 2 - 6), H / 2 - Math.cos(a) * (H / 2 - 6)); c.stroke() }
     chip(c, gridRef(s.pos.x, s.pos.z), W / 2, H - 22, 16, { align: 'center', size: 9.5, fill: 'rgba(8,10,7,0.8)', color: C.text, stroke: C.line })
+    text(c, 'GPS', W / 2, H - 27, { size: 8.5, align: 'center', weight: 800, color: 'rgba(139,211,92,0.85)' })
     const nx = W / 2 + Math.sin(-head) * (W / 2 - 15), ny = H / 2 - Math.cos(-head) * (H / 2 - 15)
     c.fillStyle = 'rgba(8,10,7,0.9)'; c.beginPath(); c.arc(nx, ny, 8, 0, Math.PI * 2); c.fill()
     text(c, 'N', nx, ny + 4, { size: 11, align: 'center', color: C.gold2, weight: 700 })
@@ -395,7 +397,7 @@ export class HUD {
   }
   updateMarks() {
     const g = this.g, P = g.player, s = P?.s, e = g.engine
-    const list = this.visible && s && !s.dead && !P.scoped && g.settings.hud?.markers !== false ? g.markers().slice(0, this.marks.length) : []
+    const list = this.visible && s && !s.dead && !P.scoped && g.settings.hud?.markers !== false && g.nav().gps ? g.markers().slice(0, this.marks.length) : []
     const W = e.width, H = e.height, sc = this.s
     this.marks.forEach((p, i) => {
       const m = list[i]
@@ -579,7 +581,7 @@ export class HUD {
       btn('vexit', R - r * 4.4, B + r * 0.2, 'EXIT', 'exit', () => g.input.pressed.add('interact'), r * 0.8)
       btn('vseat', R - r * 4.2, B - r * 2.2, 'SEAT', 'seat', () => g.input.pressed.add('vSeat'), r * 0.8)
       util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
-      util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
+      if (g.nav().map) util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
       if (air) util(2, 'flares', 'FLARE', 'flare', () => g.input.pressed.add('vFlares'))
       const dr = P.s.seat?.role === 'driver' || P.s.seat?.role === 'pilot'
       if (dr) { util(air ? 3 : 2, 'veng', v.engine ? 'ENG ON' : 'ENG OFF', 'bolt', () => g.input.pressed.add('vEngine'), { on: v.engine }); util(air ? 4 : 3, 'vlight', 'LIGHTS', 'eye', () => g.input.pressed.add('vLight'), { on: v.lights }) }
@@ -603,7 +605,7 @@ export class HUD {
     if (nadeKinds > 1) btn('nadenext', R + r * 0.75, B - r * 6.1, '', 'reload', () => g.input.pressed.add('slot4'), r * 0.42)
     if (g.gear?.selected(s)) { btn('gear', R - r * 2.3, B - r * 4.4, 'GEAR', 'gear', () => g.input.pressed.add('gear'), r * 0.8); btn('gearnext', R - r * 3.6, B - r * 5.3, '', 'reload', () => g.input.pressed.add('gearNext'), r * 0.5) }
     util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
-    util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
+    if (g.nav().map) util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
     util(2, 'inv', 'KIT', 'bag', () => g.input.pressed.add('inventory'))
     let ui = 3
     if (canHeal) util(ui++, 'heal', 'HEAL', 'cross', () => g.input.pressed.add('heal'))

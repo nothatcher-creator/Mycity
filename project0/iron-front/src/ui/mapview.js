@@ -1,7 +1,7 @@
 // The full-screen tactical map: zoom with the wheel, drag to pan, click to set a waypoint (or, with a squad,
 // to order a move). Shows the grid, place names, the player, the squad, known enemies, vehicles and
 // objectives, and the grid reference under the pointer.
-import { Panel, C, FONT, text, box } from './ui.js'
+import { Panel, C, FONT, text, box, chip } from './ui.js'
 import { mapImage, worldToMap, mapToWorld, gridRef } from './mapimage.js'
 import { PLACES, HALF, WORLD } from '../world/blueprint.js'
 import { heightAt, roadLines } from '../world/heightfield.js'
@@ -19,9 +19,9 @@ export class MapView {
     this.mode = 'waypoint'
   }
   open() {
-    const s = this.g.player?.s
-    if (s) { this.cx = s.pos.x; this.cz = s.pos.z }
-    this.zoom = 3
+    const s = this.g.player?.s, gps = this.g.nav().gps
+    if (s && gps) { this.cx = s.pos.x; this.cz = s.pos.z } else if (this.cx == null) { this.cx = 0; this.cz = 0 }
+    this.zoom = gps ? 3 : Math.min(this.zoom || 1.5, 1.5)
     this.layout()
     this.panel.show(true)
   }
@@ -151,7 +151,7 @@ export class MapView {
       else if (u.kind === 'vehicle') c.fillRect(x - 5, y - 3, 10, 6)
       else { c.beginPath(); c.arc(x, y, 3.5, 0, Math.PI * 2); c.fill() }
     }
-    const s = this.g.player?.s
+    const gps = this.g.nav().gps, s = gps ? this.g.player?.s : null
     if (s) {
       const [x, y] = this.toScreen(s.pos.x, s.pos.z), h = this.g.camHeading()
       c.save(); c.translate(x, y); c.rotate(h); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 1.5
@@ -160,6 +160,8 @@ export class MapView {
     const wp = this.g.waypoint
     if (wp && s) { const [x, y] = this.toScreen(wp.x, wp.z); text(c, `${Math.round(Math.hypot(wp.x - s.pos.x, wp.z - s.pos.z))} m`, x + 14, y - 10, { size: 12, weight: 800, color: C.gold2, shadow: true }) }
     if (wp) { const [x, y] = this.toScreen(wp.x, wp.z); c.strokeStyle = C.gold2; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 8, 0, Math.PI * 2); c.moveTo(x - 12, y); c.lineTo(x + 12, y); c.moveTo(x, y - 12); c.lineTo(x, y + 12); c.stroke() }
+    // what you navigate with
+    if (this.g.state === 'play') chip(c, gps ? 'GPS: YOUR POSITION SHOWN' : 'PAPER MAP: NO GPS, YOU ARE NOT SHOWN', 12, H - 166, 26, { size: 11, fill: 'rgba(8,10,7,0.75)', stroke: gps ? C.green : C.amber, color: gps ? C.green : C.amber })
     // the side panel: grid reference, legend, controls
     box(c, 12, H - 132, 330, 120)
     if (this.hover) text(c, `${gridRef(this.hover[0], this.hover[1])}   ${Math.round(heightAt(this.hover[0], this.hover[1]))} m`, 24, H - 108, { size: 14, weight: 700 })

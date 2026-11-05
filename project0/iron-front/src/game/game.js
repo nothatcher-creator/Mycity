@@ -303,6 +303,8 @@ export class Game {
       if (e.code === 'NumpadMultiply' && this.modeId !== 'online' && this.state === 'play') { if (this.mode?.admin) this.mode.admin('teleport', { x: s.pos.x + 200, z: s.pos.z + 200, halo: true }); else { s.pos.y += 260; s.vel.set(0, 0, 0); s.onGround = false; s.parachute = true; s.chuteT = 0 } p0.log('dbg chute', Math.round(s.pos.y), 'squad chutes', this.soldiers.filter(o => o.parachute).length) }
       if (e.code === 'Digit0' && this.state === 'play' && !s.dead) { const foe = this.soldiers.filter(o => !o.dead && o !== s && hostile(o.team, s.team)).sort((a, b) => a.pos.distanceTo(s.pos) - b.pos.distanceTo(s.pos))[0]; if (this.life) { this.life.shots = 40; this.life.hits = 13; this.life.kills = 6; this.life.heads = 3; this.life.longest = 214 } s.hurt('head', 300, 1, foe || null, null, 'bullet'); p0.log('dbg killed by', foe?.name, foe ? Math.round(foe.pos.distanceTo(s.pos)) : -1) }
       if (e.code === 'Digit7' && s.vehicle) { const v = s.vehicle; v.vel.set(Math.sin(v.yaw) * 20, 0, Math.cos(v.yaw) * 20); v.speed = 20; p0.log('dbg speed 20') }
+      if (e.code === 'Digit8' && this.state === 'play') { s.inv.add({ kind: 'tool', id: 'map' }); p0.log('dbg map', s.inv.count('map')) }
+      if (e.code === 'Digit6' && this.state === 'play') { s.inv.add({ kind: 'tool', id: 'gps' }); p0.log('dbg gps', s.inv.count('gps')) }
       if (e.code === 'F4') { const T = [{ x: 60, z: 1650, yaw: 0 }, { x: -3000, z: -360, yaw: Math.PI / 2 }, { x: 1010, z: -196, yaw: 1.06 }]; this.dbgTp = ((this.dbgTp ?? -1) + 1) % T.length; const P = T[this.dbgTp]; this.mode.admin('teleport', P); s.yaw = P.yaw; this.player.pitch = 0.02; p0.log('dbg teleported', this.dbgTp) }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
@@ -767,7 +769,9 @@ export class Game {
   }
   discovered() { return POINTS.filter(p => (p.kind === 'secret' || p.kind === 'stash') && this.discoveredSet.has(p.x + ',' + p.z)) }
   camHeading() { const f = _v.set(0, 0, -1).applyQuaternion(this.camQuat); return Math.atan2(f.x, -f.z) }
-  openMap() { this.map.open(); this.p0.input.unlockPointer() }
+  // how you can navigate in this mode right now (Survival: only with a map, and your position only with a GPS)
+  nav() { return this.mode?.navAccess?.(this.player?.s) || { map: true, gps: true } }
+  openMap() { if (this.state === 'play' && !this.nav().map) { this.hud.note('You have no map. Search houses, shops and bases for one.', C.amber); return } this.map.open(); this.p0.input.unlockPointer() }
   closeMap() { this.map.close(); if (this.state === 'play' && !this.input.touch) this.p0.input.lockPointer() }
 
   // ---------- the frame ----------

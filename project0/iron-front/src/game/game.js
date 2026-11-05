@@ -10,6 +10,7 @@ import { Terrain } from '../world/terrain.js'
 import { Sky, WEATHER } from '../world/sky.js'
 import { Water } from '../world/water.js'
 import { Rain } from '../world/rain.js'
+import { Birds } from '../world/birds.js'
 import { Collision, raycastTerrain, makeBox } from '../world/collision.js'
 import { buildPlaces, POINTS, BUILDINGS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
@@ -86,6 +87,7 @@ export class Game {
     this.terrain.setQuality(q, QUALITY[q].view)
     this.water = new Water(this.engine.world, this.engine.scene)
     this.rain = new Rain(this.engine, q)
+    this.birds = new Birds(this.engine, q)
     this.roads = new Roads(this.engine.world, this.collision)
     this.veg = new Vegetation(this.engine.world, this.collision, q)
     this.grass = new Grass(this.engine.world, q)
@@ -254,12 +256,13 @@ export class Game {
       if (e.code === 'BracketRight') { this.sky.hour = (this.sky.hour + 2) % 24; this.sky.cycle = false; p0.log('dbg hour', this.sky.hour.toFixed(1)) }
       if (e.code === 'BracketLeft') { const K = Object.keys(WEATHER), k = K[(K.indexOf(this.sky.weatherKey) + 1) % K.length]; this.sky.setWeather(k); this.sky.w = { ...WEATHER[k] }; p0.log('dbg weather', k) }
       if (e.code === 'Numpad6') { for (const id of ['radio', 'c4', 'mine', 'sandbags', 'ration']) s.inv.add({ kind: id === 'ration' ? 'food' : 'tool', id }); this.player.pitch = -0.012; p0.log('dbg gear', this.gear.owned(s).join(','), 'sel', this.gear.selected(s)) }
-      if (e.code === 'Numpad4') { const L = ['bus', 'sports', 'police', 'tractor', 'scooter', 'van', 'taxi', 'luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1); if (v && !s.vehicle && this.vehicles.enter(s, v)) this.vcontrol.entered(v) }
+      if (e.code === 'Numpad4') { const L = ['firetruck', 'minivan', 'muscle', 'buggy', 'bus', 'sports', 'police', 'tractor', 'scooter', 'van', 'taxi', 'luvm', 'techgl', 'ambulance', 'spaa', 'armedheli']; this.dbgV = ((this.dbgV ?? -1) + 1) % L.length; const v = this.mode?.admin?.('vehicle', L[this.dbgV]); p0.log('dbg spawned', L[this.dbgV], !!v, v ? Math.round(v.pos.distanceTo(s.pos)) : -1); if (v && !s.vehicle && this.vehicles.enter(s, v)) this.vcontrol.entered(v) }
       if (e.code === 'Numpad3') { s.blood = 40; s.bleed = 0.2; s.stamina = 0.08; p0.log('dbg wounded', s.blood) }
       if (e.code === 'Numpad9') for (const [m, b] of this.ai.brains) if (!m.dead && m !== s) p0.log('dbg ai', m.team, m.name, m.role, Math.round(m.pos.x), Math.round(m.pos.z), Math.round(m.blood), b.state, 'target', b.target?.name || '-', 'spot', (b.spot.get(s) || 0).toFixed(2), 'slot', m.slot, 'd', Math.round(m.pos.distanceTo(s.pos)), 'yaw', m.yaw.toFixed(1), 'react', b.reactT.toFixed(1), 'cover', !!b.cover, 'peek', b.peeking, 'seen', (this.ai.time - b.lastSeen).toFixed(1), 'gtime', (this.time - b.lastSeen).toFixed(1), 'rk', b.dbgR || '-', 'spd', m.speed.toFixed(1), 'st', m.stance, 'mv', b.move ? Math.round(b.move.distanceTo(m.pos)) : -1, 'path', b.path ? b.path.length : -1, 'stuck', b.stuckT.toFixed(1), 'fwd', m.input.fwd.toFixed(2), 'spr', m.input.sprint, 'pause', (b.pause || 0).toFixed(1))
       if (e.code === 'ScrollLock' && this.mode?.dbgVisit) this.mode.dbgVisit()
       if (e.code === 'F2' && this.mode?.dbgVisit) this.mode.dbgVisit('dealer')
       if (e.code === 'Period') this.input.look.dx += 200
+      if (e.code === 'F10') { const F = this.birds.flocks[0]; if (F) { F.cx = s.pos.x + Math.sin(s.yaw) * 45; F.cz = s.pos.z + Math.cos(s.yaw) * 45; F.alt = 18; F.r = 20; F.flee = 0 } this.input.look.dy -= 120; p0.log('dbg birds', this.birds.shown, this.birds.flocks.map(f => f.flee > 0 ? 'flee' : Math.round(Math.hypot(f.cx - s.pos.x, f.cz - s.pos.z))).join(','), 'night', this.sky.night.toFixed(2)) }
       if (e.code === 'Home' && this.modeId !== 'campaign') {
         // to the foot of the nth nearest staircase (each press the next), facing up it
         const L = []; this.collision.query(s.pos.x - 150, s.pos.z - 150, s.pos.x + 150, s.pos.z + 150, c => { if (c.kind === 'stairs') L.push(c) })
@@ -755,6 +758,7 @@ export class Game {
     if (this.debug && this.sky.flashT > 0.3 && !this.dbgFlash) { this.dbgFlash = true; this.p0.log('dbg lightning, hemi', this.sky.hemi.intensity.toFixed(2), 'thunder in', this.sky.thunder.toFixed(1)) } else if (!(this.sky.flashT > 0.3)) this.dbgFlash = false
     this.water.update(dt, cp, this.sky)
     this.rain.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.sfx)
+    this.birds.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.dangers, this.time)
     this.fx.update(this.state === 'paused' ? 0 : dt, cp); T.push(performance.now())
     // soldiers
     const fpPlayer = this.player && this.player.view === 'fp' && !this.player.s.dead

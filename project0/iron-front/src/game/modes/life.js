@@ -32,7 +32,7 @@ export const SHOPS = {
   clothes: { name: 'Clothes shop', hours: [9, 19], greet: 'New season, old stock. Have a look.', clothing: { tshirt: 12, shirt: 25, hoodie: 30, jacket: 90, suit: 140, workjacket: 35, jeans: 30, chinos: 35, shorts: 15, workpants: 40, beanie: 10, sunglasses: 20, sneakers: 45, daypack: 40, assaultpack: 75 } },
   hardware: { name: 'Hardware & outdoor', hours: [8, 18], greet: 'If it is broken, I have something for it.', items: { repairkit: 55, jerrycan: 30, binoculars: 70, fishingrod: 40, canteen: 12 }, buys: ['fish'] },
   fuel: { name: 'Fuel station', greet: 'Pump is working again. Cash only.', items: { jerrycan: 32, water: 3, soda: 4, sandwich: 7, coffee: 3 }, refuel: true },
-  dealer: { name: 'Car dealer', hours: [9, 18], greet: 'Every one of these survived the war. Mostly.', cars: { scooter: 350, hatch: 900, quad: 800, motorbike: 1100, sedan: 1600, pickup: 2200, van: 2600, sports: 9500 } },
+  dealer: { name: 'Car dealer', hours: [9, 18], greet: 'Every one of these survived the war. Mostly.', cars: { scooter: 350, hatch: 900, quad: 800, motorbike: 1100, buggy: 1400, sedan: 1600, minivan: 2000, pickup: 2200, van: 2600, muscle: 6500, sports: 9500 } },
 }
 const SHOP_KINDS = ['grocer', 'cafe', 'clothes', 'chemist', 'hardware']
 const LINES = {
@@ -270,7 +270,7 @@ export class Life extends Mode {
     const step = Math.max(1, Math.floor(inside.length / 6)), route = []
     for (let k = 0; k < inside.length; k += step) route.push(new THREE.Vector3(inside[k][0], inside[k][2] ?? heightAt(inside[k][0], inside[k][1]), inside[k][1]))
     for (let k = route.length - 2; k > 0; k--) route.push(route[k].clone())
-    const type = ['sedan', 'hatch', 'taxi', 'van', 'pickup'][(i + p.r) % 5 | 0]
+    const type = ['sedan', 'hatch', 'taxi', 'van', 'pickup', 'minivan', 'muscle'][(i + p.r) % 7 | 0]
     const v = this.park(type, route[0].x, route[0].z, 0, { search: 10 })
     if (!v) return
     v.speedLimit = 11
@@ -615,7 +615,8 @@ export class Life extends Mode {
     const tabs = U.kind === 'home' ? [['home', 'HOME'], ['stash', 'STASH']] : [['buy', 'BUY'], ['sell', 'SELL'], ['work', 'ASK FOR WORK']]
     let x = 24 * k
     for (const [id, label] of tabs) { p.button(c, 'tab' + id, x, 74 * k, 150 * k, 32 * k, label, () => { U.tab = id; U.panel.dirty = true }, { align: 'center', selected: U.tab === id, font: FONT(12.5 * k, 700) }); x += 158 * k }
-    const colW = Math.min(W - 48 * k, 560 * k), x0 = 24 * k, rowH = 34 * k
+    const nCars = U.tab === 'buy' && U.kind !== 'home' ? Object.keys(SHOPS[U.shop]?.cars || {}).length : 0
+    const colW = Math.min(W - 48 * k, 560 * k), x0 = 24 * k, rowH = nCars ? Math.max(26 * k, Math.min(34 * k, (H - 136 * k) / nCars)) : 34 * k
     let y = 120 * k
     const row = (id, label, sub, price, fn, o = {}) => {
       if (y + rowH > H - 8 * k) return

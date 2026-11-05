@@ -294,6 +294,7 @@ export class HUD {
     const rim = W / 2 - 9
     const items = g.radar()
     if (g.waypoint) items.push({ x: g.waypoint.x, z: g.waypoint.z, color: C.gold2, kind: 'waypoint' })
+    for (const m of g.mapMarks || []) items.push({ x: m.x, z: m.z, color: '#ff9f43', kind: 'unit' })
     for (const u of items) {
       let x = (u.x - s.pos.x) * sc, y = (u.z - s.pos.z) * sc
       const r = Math.hypot(x, y)

@@ -22,9 +22,9 @@ const GARRISON = { city: 3, airport: 3, military: 3, town: 2, village: 1, indust
 const MIL_VEH = { vdf: ['jeep', 'truck', 'apc', 'luvm', 'mbt', 'ambulance', 'ammotruck', 'spaa'], nlf: ['technical', 'truck', 'ifv', 'techgl', 'mbt', 'technical', 'spaa'], cef: ['mrap', 'truck', 'ifv', 'luvm', 'mbt', 'ambulance', 'ammotruck'], res: ['technical', 'pickup', 'techgl', 'quad', 'dirtbike'] }
 const HELI = { vdf: ['transportheli', 'attackheli', 'armedheli', 'scoutheli'], nlf: ['transportheli', 'attackheli'], cef: ['armedheli', 'attackheli', 'scoutheli', 'transportheli'], res: ['scoutheli'] }
 const PLANE = ['fighter', 'groundattack', 'civilplane', 'transportplane']
-const BOAT = ['motorboat', 'rhib', 'patrolboat', 'motorboat']
+const BOAT = ['motorboat', 'rhib', 'patrolboat', 'speedboat']
 // what is parked in the streets: buses, taxis and a police car in the cities, tractors in the villages
-export const CIVIL = { city: ['bus', 'sedan', 'taxi', 'police', 'van', 'hatch', 'sports', 'scooter'], town: ['sedan', 'van', 'hatch', 'pickup', 'police', 'scooter'], village: ['pickup', 'tractor', 'hatch'] }
+export const CIVIL = { city: ['bus', 'sedan', 'taxi', 'police', 'van', 'hatch', 'sports', 'minivan', 'firetruck', 'muscle', 'scooter'], town: ['sedan', 'van', 'minivan', 'hatch', 'pickup', 'police', 'muscle', 'scooter'], village: ['pickup', 'tractor', 'hatch', 'buggy', 'minivan'] }
 
 export class FreeRoam extends Mode {
   get name() { return 'Free Roam' }

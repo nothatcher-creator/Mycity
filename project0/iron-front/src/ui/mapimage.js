@@ -35,7 +35,10 @@ export async function buildMapImage(size = 1024, pause = null) {
         col = h < 3 ? LC.sand : forestAt(x, z, h) > 0.5 ? [0.32, 0.48, 0.28] : fieldAt(x, z) ? [0.78, 0.74, 0.5] : [0.62, 0.72, 0.48]
         if (h > 600) col = [0.68, 0.66, 0.62]
         // contour lines every 50 m
-        if (Math.floor(h / 50) !== Math.floor(bilinear(base, x + WORLD / size, z) / 50)) col = [col[0] * 0.8, col[1] * 0.8, col[2] * 0.75]
+        // (every 250 m a darker index contour)
+        const hn = bilinear(base, x + WORLD / size, z), hs = bilinear(base, x, z + WORLD / size)
+        if (Math.floor(h / 250) !== Math.floor(hn / 250) || Math.floor(h / 250) !== Math.floor(hs / 250)) col = [col[0] * 0.6, col[1] * 0.58, col[2] * 0.52]
+        else if (Math.floor(h / 50) !== Math.floor(hn / 50) || Math.floor(h / 50) !== Math.floor(hs / 50)) col = [col[0] * 0.8, col[1] * 0.8, col[2] * 0.75]
         col = [col[0] * shade, col[1] * shade, col[2] * shade]
       }
       d[k] = Math.min(255, col[0] * 255); d[k + 1] = Math.min(255, col[1] * 255); d[k + 2] = Math.min(255, col[2] * 255); d[k + 3] = 255

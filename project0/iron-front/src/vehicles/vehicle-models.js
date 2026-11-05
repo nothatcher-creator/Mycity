@@ -128,6 +128,13 @@ export function buildVehicle(def, paint, mat) {
       for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) wheel(x * (W / 2 - 0.13), 0.33, z * (L / 2 - 0.85), 0.33, 0.27, z > 0)
       hull(0, 0.65, 0, W / 2, 0.45, L / 2)
       out.lights.push([0.6, 0.66, L / 2], [-0.6, 0.66, L / 2]); out.exhaust.push([0.3, 0.3, -L / 2], [-0.3, 0.3, -L / 2])
+      if (m.muscle) {
+        // a raised bonnet with a scoop, racing stripes over the top, a square tail and a chrome bumper
+        body.box(0.5, 0.12, 0.6, C.black, 0, 0.99, L / 2 - 0.95); body.box(0.44, 0.08, 0.04, C.dark, 0, 1.03, L / 2 - 0.66)
+        for (const s of [-1, 1]) { body.box(0.16, 0.02, L * 0.98, C.white, s * 0.14, 0.725, 0); body.box(0.16, 0.02, L * 0.14, C.white, s * 0.14, 1.145, -0.4) }
+        body.box(W + 0.04, 0.1, 0.12, C.metal, 0, 0.36, L / 2 + 0.04); body.box(W + 0.04, 0.1, 0.12, C.metal, 0, 0.36, -L / 2 - 0.04)
+        body.box(W - 0.2, 0.08, 0.28, C.black, 0, 1.08, -L / 2 + 0.2)
+      }
       break
     }
     case 'van': {
@@ -156,6 +163,66 @@ export function buildVehicle(def, paint, mat) {
       for (const z of [L / 2 - 1.9, -L / 2 + 2.3]) for (const x of [1, -1]) wheel(x * (W / 2 - 0.25), 0.5, z, 0.5, 0.35, z > 0)
       hull(0, 1.75, 0, W / 2, 1.15, L / 2)
       out.lights.push([0.9, 1.05, L / 2], [-0.9, 1.05, L / 2]); out.exhaust.push([0.9, 0.4, -L / 2])
+      break
+    }
+    case 'minivan': {
+      // a tall one-box family car: sloping nose, long glasshouse, sliding door rails
+      body.box(W, 0.7, L, P, 0, 0.8, 0)
+      body.wedge(W - 0.06, 0.62, 1.1, C.glass, 0, 1.46, L / 2 - 1.25, 0.6, 0)
+      body.box(W - 0.06, 0.62, L - 1.9, C.glass, 0, 1.46, -0.35)
+      for (let z = -L / 2 + 0.6; z < L / 2 - 1.4; z += 1.05) body.box(W + 0.01, 0.62, 0.12, P, 0, 1.46, z)
+      body.box(W - 0.06, 0.08, L - 1.6, P, 0, 1.8, -0.2)
+      body.box(W - 0.1, 0.6, 0.04, C.glass, 0, 1.46, -L / 2 + 0.01)
+      for (const s of [-1, 1]) { body.box(0.03, 0.04, 1.5, C.dark, s * (W / 2 + 0.01), 1.18, -0.6); body.box(0.25, 0.12, 0.05, C.light, s * (W / 2 - 0.25), 0.95, L / 2 + 0.02); body.box(0.14, 0.32, 0.05, C.red, s * (W / 2 - 0.1), 1.0, -L / 2 - 0.02) }
+      body.box(W * 0.9, 0.2, 0.08, C.dark, 0, 0.55, L / 2 + 0.02); body.box(W * 0.9, 0.2, 0.08, C.dark, 0, 0.55, -L / 2 - 0.02)
+      for (const s of [-1, 1]) body.box(0.06, 0.05, L - 1.8, C.dark, s * 0.6, 1.86, -0.3)
+      for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) wheel(x * (W / 2 - 0.13), 0.35, z * (L / 2 - 0.85), 0.35, 0.23, z > 0)
+      hull(0, 1.05, 0, W / 2, 0.8, L / 2)
+      out.lights.push([0.7, 0.95, L / 2], [-0.7, 0.95, L / 2]); out.exhaust.push([0.5, 0.35, -L / 2])
+      break
+    }
+    case 'firetruck': {
+      // cab up front, a locker body with roller doors behind, a ladder on top, light bar and white stripe
+      const cabL = 2.3, bodyL = L - cabL - 0.15
+      body.box(W, 1.2, cabL, P, 0, 1.25, L / 2 - cabL / 2)
+      // the upper cab is glass between pillars under a roof, so the crew can see out
+      const cz = L / 2 - cabL / 2 - 0.15, cl = cabL - 0.3
+      body.box(W, 0.14, cl, P, 0, 2.8, cz)
+      body.box(W - 0.1, 0.86, 0.05, C.glass, 0, 2.3, L / 2 - 0.32)
+      for (const s of [-1, 1]) { body.box(0.04, 0.86, cl - 0.2, C.glass, s * (W / 2 - 0.02), 2.3, cz); for (const z of [L / 2 - 0.32, cz - cl / 2 + 0.06]) body.box(0.12, 0.9, 0.12, P, s * (W / 2 - 0.06), 2.3, z) }
+      body.box(W, 0.86, 0.12, P, 0, 2.3, cz - cl / 2 + 0.06)
+      body.box(W, 1.95, bodyL, P, 0, 1.68, -L / 2 + bodyL / 2)
+      for (const s of [-1, 1]) {
+        for (let i = 0; i < 3; i++) body.box(0.03, 1.3, bodyL / 3 - 0.15, C.metal, s * (W / 2 + 0.01), 1.75, -L / 2 + bodyL / 6 + i * bodyL / 3)
+        body.box(0.035, 0.14, L - 0.2, C.white, s * (W / 2 + 0.02), 0.85, 0)
+      }
+      body.box(W * 0.95, 0.35, 0.12, C.metal, 0, 0.7, L / 2 + 0.06)
+      for (const s of [-1, 1]) { body.box(0.3, 0.16, 0.05, C.light, s * (W / 2 - 0.3), 1.0, L / 2 + 0.03); body.box(0.2, 0.35, 0.05, C.red, s * (W / 2 - 0.2), 1.3, -L / 2 - 0.03) }
+      // the ladder: two rails with rungs, on a turntable at the back
+      body.cyl(0.45, 0.25, C.metal, 0, 2.78, -L / 2 + 0.9, 'y', 12)
+      for (const s of [-1, 1]) body.box(0.08, 0.14, bodyL + 0.8, C.metal, s * 0.35, 2.95, -L / 2 + bodyL / 2 + 0.6)
+      for (let z = -L / 2 + 0.5; z < -L / 2 + bodyL + 1.0; z += 0.45) body.box(0.62, 0.05, 0.05, C.metal, 0, 2.95, z)
+      body.box(1.4, 0.14, 0.3, C.dark, 0, 2.92, L / 2 - 0.5)
+      out.beacon = [[0.45, 2.98, L / 2 - 0.5, 0xff2a1a], [-0.45, 2.98, L / 2 - 0.5, 0xff2a1a]]
+      for (const z of [L / 2 - 1.3, -L / 2 + 1.6]) for (const x of [1, -1]) wheel(x * (W / 2 - 0.25), 0.52, z, 0.52, 0.36, z > 0)
+      hull(0, 1.75, 0, W / 2, 1.2, L / 2)
+      out.lights.push([0.9, 1.0, L / 2], [-0.9, 1.0, L / 2]); out.exhaust.push([-0.9, 0.4, -L / 2])
+      break
+    }
+    case 'buggy': {
+      // a low tub, an open tube frame with a roll cage, big soft tyres
+      body.box(1.1, 0.3, 2.4, P, 0, 0.6, 0)
+      body.wedge(1.1, 0.26, 0.7, P, 0, 0.78, 1.1, 0.8, 0)
+      body.box(0.95, 0.35, 0.7, C.dark, 0, 0.85, -1.1)
+      for (const s of [-1, 1]) body.box(0.42, 0.08, 0.5, C.black, s * 0.3, 0.8, -0.2)
+      for (const s of [-1, 1]) body.box(0.4, 0.5, 0.08, C.black, s * 0.3, 1.05, -0.48)
+      const tube = (x0, y0, z0, x1, y1, z1) => { const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, len = Math.hypot(dx, dy, dz); body.box(0.06, 0.06, len, C.dark, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, -Math.atan2(dy, Math.hypot(dx, dz)), Math.atan2(dx, dz), 0) }
+      for (const s of [-1, 1]) { tube(s * 0.55, 0.7, -0.75, s * 0.5, 1.6, -0.6); tube(s * 0.55, 0.7, 0.45, s * 0.48, 1.55, 0.2); tube(s * 0.5, 1.6, -0.6, s * 0.48, 1.55, 0.2); tube(s * 0.55, 0.75, 0.45, s * 0.4, 0.85, 1.35) }
+      tube(-0.5, 1.6, -0.6, 0.5, 1.6, -0.6); tube(-0.48, 1.55, 0.2, 0.48, 1.55, 0.2); tube(-0.4, 0.85, 1.35, 0.4, 0.85, 1.35)
+      body.box(0.6, 0.12, 0.08, C.light, 0, 1.62, 0.22)
+      for (const [x, z] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) wheel(x * 0.78, 0.38, z * 1.12, 0.38, 0.32, z > 0)
+      hull(0, 0.85, 0, 0.85, 0.6, 1.6)
+      out.lights.push([0.18, 1.62, 0.25], [-0.18, 1.62, 0.25]); out.exhaust.push([0.3, 0.5, -1.5])
       break
     }
     case 'tractor': {
@@ -338,7 +405,12 @@ export function buildVehicle(def, paint, mat) {
       body.wedge(W, rhib ? 0.6 : big ? 3 : 1.2, L * 0.25, hc, 0, big ? 1.5 : 0.6, L * 0.42, 0.85, 0)
       if (rhib) for (const s of [-1, 1]) body.cyl(0.32, L * 0.85, C.orange, s * (W / 2 - 0.2), 0.75, 0, 'z', 8)
       if (pb || big) { body.box(W * 0.6, big ? 2.5 : 1.6, L * 0.25, C.white, 0, big ? 4.2 : 2.0, big ? 2 : 0.2); body.box(W * 0.62, 0.4, L * 0.05, C.glass, 0, big ? 5.0 : 2.5, big ? 2 + L * 0.12 : 0.2 + L * 0.12); body.box(0.15, big ? 4 : 2.5, 0.15, C.dark, 0, big ? 7 : 3.6, big ? 0 : -0.5) }
-      if (m.body === 'motorboat') { body.wedge(W * 0.8, 0.6, 1.2, C.glass, 0, 1.4, 0.4, 0.5, 0); body.box(W - 0.3, 0.1, 2.5, C.white, 0, 1.2, -1.3) }
+      if (m.body === 'motorboat' && m.speed) {
+        // low raked screen, a coloured sheer stripe, seats in the open cockpit and an outboard on the transom
+        body.wedge(W * 0.85, 0.42, 0.9, C.glass, 0, 1.38, 0.55, 0.7, 0)
+        for (const s of [-1, 1]) { body.box(0.03, 0.18, L * 0.92, C.navy, s * (W / 2 + 0.01), 1.0, 0); body.box(0.6, 0.35, 0.6, C.tan, s * 0.45, 1.33, -0.45); body.box(0.6, 0.3, 0.6, C.tan, s * 0.5, 1.3, -1.75) }
+        body.box(0.45, 0.9, 0.4, C.dark, 0, 1.0, -L / 2 - 0.15); body.box(0.12, 0.6, 0.12, C.metal, 0, 0.35, -L / 2 - 0.2)
+      } else if (m.body === 'motorboat') { body.wedge(W * 0.8, 0.6, 1.2, C.glass, 0, 1.4, 0.4, 0.5, 0); body.box(W - 0.3, 0.1, 2.5, C.white, 0, 1.2, -1.3) }
       if (big) { turret.box(2.2, 1.0, 2.6, P, 0, 3.6, 11); gun.cyl(0.09, 2.6, C.dark, 0, 3.8, 13.2); out.gunPivot = [0, 3.8, 11.4] }
       hull(0, big ? 2 : 0.8, 0, W / 2, big ? 2 : 0.8, L / 2)
       out.exhaust.push([0, 0.4, -L / 2])

@@ -191,6 +191,8 @@ export class Soldier {
     this.lastHitT = this.time; this.lastHitDir = dir ? dir.clone() : null
     this.suppression = Math.min(1, this.suppression + 0.4)
     if (src) this.lastAttacker = src
+    // what hurt last (the death screen tells the story from it)
+    this.lastHurt = { kind, part, t: this.time, dmg: d, from: src?.pos ? { x: src.pos.x, z: src.pos.z } : null }
     if (this.blood <= 0 || (part === 'head' && d > 60)) this.die(src, dir)
     else if (this.blood < 18 && !this.down && this.allowDown) { this.down = true; this.downT = 0 }
     return d
@@ -245,8 +247,8 @@ export class Soldier {
     this.recoil.pitch *= Math.max(0, 1 - dt * 9); this.recoil.yaw *= Math.max(0, 1 - dt * 9)
     // body
     if (this.dead) { this.deadT += dt; this.speed = 0; return }
-    if (this.bleed > 0) { this.blood -= this.bleed * dt; this.bleed = Math.max(0, this.bleed - dt * 0.01); if (this.blood <= 0) this.die(this.lastAttacker, null) }
-    if (this.down) { this.downT += dt; this.stance = PRONE; if (this.downT > 90 && this.allowDown) this.die(this.lastAttacker, null) }
+    if (this.bleed > 0) { this.blood -= this.bleed * dt; this.bleed = Math.max(0, this.bleed - dt * 0.01); if (this.blood <= 0) { this.deathCause = 'bleed'; this.die(this.lastAttacker, null) } }
+    if (this.down) { this.downT += dt; this.stance = PRONE; if (this.downT > 90 && this.allowDown) { this.deathCause = 'down'; this.die(this.lastAttacker, null) } }
     if (this.vehicle) { this.speed = 0; this.stanceT += (0 - this.stanceT) * Math.min(1, dt * 6); return }
     const inp = this.input
     if (this.down) { inp.fwd = 0; inp.side = 0; inp.sprint = false }

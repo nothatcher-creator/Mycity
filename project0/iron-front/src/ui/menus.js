@@ -17,6 +17,7 @@ import { BATTLES, ARENAS } from '../game/modes/battle.js'
 import { MISSIONS, CHAPTER, drawBriefing } from '../game/modes/campaign.js'
 import { ONLINE_KINDS, ONLINE_PLACES, serverList } from '../game/modes/online.js'
 import { drawArsenal, openArsenal } from './arsenal.js'
+import { deathTags, lifeStats } from '../game/deathtags.js'
 
 export class Menus {
   constructor(game) {
@@ -124,13 +125,13 @@ export class Menus {
     const fr = this.g.save.data.freeroam
     const items = [
       fr ? { id: 'cont', label: 'CONTINUE FREE ROAM', sub: `${FACTIONS[fr.faction]?.short || ''} · ${(fr.liberated || []).length} places liberated`, fn: () => this.g.start('freeroam', { resume: true, squad: this.setup.squad }) } : null,
-      { id: 'camp', label: 'CAMPAIGN', sub: MODE_INFO[2].desc, fn: () => this.open('campaign', true) },
-      { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO[0].desc, fn: () => this.open('freeroam', true) },
-      { id: 'battle', label: 'BATTLE', sub: MODE_INFO[1].desc, fn: () => this.open('battle', true) },
+      { id: 'camp', label: 'CAMPAIGN', sub: MODE_INFO.find(m => m.id === 'campaign').desc, fn: () => this.open('campaign', true) },
+      { id: 'fr', label: 'FREE ROAM', sub: MODE_INFO.find(m => m.id === 'freeroam').desc, fn: () => this.open('freeroam', true) },
+      { id: 'battle', label: 'BATTLE', sub: MODE_INFO.find(m => m.id === 'battle').desc, fn: () => this.open('battle', true) },
       { id: 'online', label: 'MULTIPLAYER', sub: `Server browser · ${(this.g.p0.room?.players || []).length} in this lot now · ${serverList(this.g.p0.room).length} server${serverList(this.g.p0.room).length === 1 ? '' : 's'}`, fn: () => this.open('online', true) },
       { id: 'survival', label: 'SURVIVAL', sub: this.g.save.data.survival ? `Continue · alive ${Math.floor((this.g.save.data.survival.alive || 0) / 1440)} days ${Math.floor(((this.g.save.data.survival.alive || 0) % 1440) / 60)} h` : 'After the outbreak: scavenge, eat, drink, avoid the infected. One life.', fn: () => this.g.start('survival', { resume: !!this.g.save.data.survival }) },
       { id: 'arsenal', label: 'ARSENAL', sub: 'Every weapon, attachment and item: make and save loadouts', fn: () => openArsenal(this) },
-      { id: 'life', label: 'LIFE', sub: this.g.save.data.life ? `Continue · $${this.g.save.data.life.money ?? 0} in your wallet` : MODE_INFO[4].desc, fn: () => this.g.start('life', { resume: !!this.g.save.data.life }) },
+      { id: 'life', label: 'LIFE', sub: this.g.save.data.life ? `Continue · $${this.g.save.data.life.money ?? 0} in your wallet` : MODE_INFO.find(m => m.id === 'life').desc, fn: () => this.g.start('life', { resume: !!this.g.save.data.life }) },
       null,
       { id: 'settings', label: 'SETTINGS', fn: () => this.open('settings', true) },
       { id: 'controls', label: 'CONTROLS', fn: () => this.open('controls', true) },
@@ -506,12 +507,48 @@ export class Menus {
   }
   page_dead(c, p, W, H, s) {
     const g = this.g, pl = g.player?.s, x = W / 2
-    text(c, 'KILLED IN ACTION', x, H * 0.28, { size: 40 * s, weight: 900, align: 'center', color: C.red, shadow: true })
+    // a dark red wash over the scene, heavier at the edges, and a band behind the title
+    const gr = c.createRadialGradient(x, H * 0.45, Math.min(W, H) * 0.15, x, H * 0.45, Math.max(W, H) * 0.75)
+    gr.addColorStop(0, 'rgba(40,8,5,0.32)'); gr.addColorStop(1, 'rgba(14,3,2,0.82)')
+    c.fillStyle = gr; c.fillRect(0, 0, W, H)
+    let y = Math.max(96 * s, H * 0.2)
+    const band = c.createLinearGradient(0, 0, W, 0)
+    band.addColorStop(0, 'rgba(160,30,20,0)'); band.addColorStop(0.5, 'rgba(160,30,20,0.35)'); band.addColorStop(1, 'rgba(160,30,20,0)')
+    c.fillStyle = band; c.fillRect(0, y - 40 * s, W, 62 * s)
+    const title = g.modeId === 'survival' ? 'YOU DIED' : g.modeId === 'life' ? 'YOU DIED' : 'KILLED IN ACTION'
+    text(c, title, x, y, { size: Math.min(44 * s, W / 11), weight: 900, align: 'center', color: '#ff6a55', shadow: true })
     const k = pl?.killer
-    text(c, k && k !== pl ? `by ${k.name}${k.faction ? ' (' + FACTIONS[k.faction].short + ')' : ''}${k.vehicle ? ' in a ' + k.vehicle.def.name : k.w?.def ? ' with ' + k.w.def.name : ''}${k.pos && pl ? ', ' + Math.round(k.pos.distanceTo(pl.pos)) + ' m' : ''}` : 'You died.', x, H * 0.28 + 34 * s, { size: 16 * s, align: 'center', shadow: true })
+    const by = k && k !== pl ? `by ${k.name}${k.faction && FACTIONS[k.faction] ? ' (' + FACTIONS[k.faction].short + ')' : ''}${k.vehicle ? ' in a ' + k.vehicle.def.name : k.w?.def ? ' with ' + k.w.def.name : ''}${k.pos && pl ? ', ' + Math.round(k.pos.distanceTo(pl.pos)) + ' m away' : ''}` : k === pl ? 'by your own hand' : ''
+    if (by) text(c, by, x, y + 30 * s, { size: 15 * s, align: 'center', color: C.text, shadow: true, max: W - 30 * s })
+    y += (by ? 52 : 34) * s
+    // the tags: how it ended, in chips that wrap
+    const tags = pl ? deathTags(g, pl, g.life) : [], ch = 26 * s, gap = 8 * s
+    c.font = FONT(12 * s, 800)
+    const widths = tags.map(t => c.measureText(t.text).width + ch * 0.9)
+    const rows = [[]]; let rw = 0
+    tags.forEach((t, i) => { if (rw + widths[i] > W - 40 * s && rows[rows.length - 1].length) { rows.push([]); rw = 0 } rows[rows.length - 1].push(i); rw += widths[i] + gap })
+    for (const r of rows) {
+      const tw = r.reduce((n, i) => n + widths[i] + gap, -gap); let cx = x - tw / 2
+      for (const i of r) { const T = tags[i]; chip(c, T.text, cx, y, ch, { size: 12 * s, fill: 'rgba(10,6,4,0.7)', stroke: T.color, color: T.color }); cx += widths[i] + gap }
+      y += ch + 8 * s
+    }
+    // this life in numbers
+    const st = lifeStats(g, g.life)
+    if (st.length) {
+      const per = W < 560 * s ? 3 : st.length, cw = Math.min(132 * s, (W - 40 * s) / per), chh = 50 * s
+      const rowsN = Math.ceil(st.length / per)
+      y += 8 * s
+      st.forEach(([label, val], i) => {
+        const r = Math.floor(i / per), inRow = Math.min(per, st.length - r * per), cx = x - inRow * cw / 2 + (i % per) * cw
+        box(c, cx + 3 * s, y + r * (chh + 6 * s), cw - 6 * s, chh)
+        text(c, label, cx + cw / 2, y + r * (chh + 6 * s) + 17 * s, { size: 9.5 * s, weight: 800, align: 'center', color: C.dim })
+        text(c, val, cx + cw / 2, y + r * (chh + 6 * s) + 39 * s, { size: 17 * s, weight: 800, align: 'center', color: C.white })
+      })
+      y += rowsN * (chh + 6 * s) + 14 * s
+    }
     const opts = g.mode?.respawnOptions() || []
     const w = Math.min(420 * s, W - 40 * s)
-    this.column(c, p, x - w / 2, H * 0.4, w, [...opts.map(o => ({ id: 'r' + o.id, label: o.label.toUpperCase(), sub: o.sub, fn: () => g.mode.respawn(o.id) })), null, { id: 'quit', label: 'QUIT TO MENU', fn: () => g.quitToMenu() }], s)
+    this.column(c, p, x - w / 2, y, w, [...opts.map(o => ({ id: 'r' + o.id, label: o.label.toUpperCase(), sub: o.sub, fn: () => g.mode.respawn(o.id) })), null, { id: 'quit', label: 'QUIT TO MENU', fn: () => g.quitToMenu() }], s)
   }
   page_squad(c, p, W, H, s) {
     const g = this.g, q = g.playerSquad

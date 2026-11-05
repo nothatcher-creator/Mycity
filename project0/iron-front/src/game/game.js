@@ -14,6 +14,7 @@ import { Birds } from '../world/birds.js'
 import { Fauna } from '../world/fauna.js'
 import { Beacons } from '../world/beacons.js'
 import { Chutes } from '../actors/chutes.js'
+import { newLife, killTag } from './deathtags.js'
 import { Collision, raycastTerrain, makeBox } from '../world/collision.js'
 import { buildPlaces, POINTS, BUILDINGS, PROPS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
@@ -300,6 +301,7 @@ export class Game {
       if (e.code === 'NumpadSubtract' && this.state !== 'menu') { const cd = this.fauna.list.find(d => d.dead && d.meat > 0); if (cd && !this.fauna.carcass(s.pos.x, s.pos.z)) { s.pos.x = cd.x + 1.2; s.pos.z = cd.z; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.05 } else this.fauna.spawnHerd(s.pos.x + Math.sin(s.yaw) * 12, s.pos.z + Math.cos(s.yaw) * 12, true, s.yaw + Math.PI); p0.log('dbg deer', this.fauna.herds.length, this.fauna.list.length, 'dead', this.fauna.list.filter(d => d.dead).length, 'venison', s.inv.count('venison'), 'cooked', s.inv.count('cookedvenison'), 'fires', (this.mode?.fires || []).length, 'fleeing', this.fauna.herds.filter(h => h.flee > 0).length) }
       if (e.code === 'NumpadDivide' && this.state !== 'menu') { const K = ['pole', 'busstop', 'bench', 'haybale', 'lighthouse'], i = this.dbgProp = ((this.dbgProp ?? -1) + 1) % K.length, L = PROPS.filter(p => p.kind === K[i] && (K[i] !== 'pole' || (p.to && forestAt(p.x, p.z) < 0.05))), p = L[Math.floor(L.length * 0.37)], back = K[i] === 'lighthouse' ? 45 : K[i] === 'pole' ? 22 : 9, a = p.yaw + (K[i] === 'pole' ? Math.PI / 2 + 0.5 : K[i] === 'busstop' ? 0.3 : Math.PI); s.pos.x = p.x + Math.sin(a) * back; s.pos.z = p.z + Math.cos(a) * back; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.1; s.yaw = Math.atan2(p.x - s.pos.x, p.z - s.pos.z); p0.log('dbg prop', K[i], L.length, Math.round(p.x), Math.round(p.z)) }
       if (e.code === 'NumpadMultiply' && this.modeId !== 'online' && this.state === 'play') { if (this.mode?.admin) this.mode.admin('teleport', { x: s.pos.x + 200, z: s.pos.z + 200, halo: true }); else { s.pos.y += 260; s.vel.set(0, 0, 0); s.onGround = false; s.parachute = true; s.chuteT = 0 } p0.log('dbg chute', Math.round(s.pos.y), 'squad chutes', this.soldiers.filter(o => o.parachute).length) }
+      if (e.code === 'Digit0' && this.state === 'play' && !s.dead) { const foe = this.soldiers.filter(o => !o.dead && o !== s && hostile(o.team, s.team)).sort((a, b) => a.pos.distanceTo(s.pos) - b.pos.distanceTo(s.pos))[0]; if (this.life) { this.life.shots = 40; this.life.hits = 13; this.life.kills = 6; this.life.heads = 3; this.life.longest = 214 } s.hurt('head', 300, 1, foe || null, null, 'bullet'); p0.log('dbg killed by', foe?.name, foe ? Math.round(foe.pos.distanceTo(s.pos)) : -1) }
       if (e.code === 'F4') { const T = [{ x: 60, z: 1650, yaw: 0 }, { x: -3000, z: -360, yaw: Math.PI / 2 }, { x: 1010, z: -196, yaw: 1.06 }]; this.dbgTp = ((this.dbgTp ?? -1) + 1) % T.length; const P = T[this.dbgTp]; this.mode.admin('teleport', P); s.yaw = P.yaw; this.player.pitch = 0.02; p0.log('dbg teleported', this.dbgTp) }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
@@ -494,6 +496,7 @@ export class Game {
     s.allowDown = !!o.allowDown
     this.player = new Player(this, s)
     this.player.view = this.settings.view || 'fp'
+    this.life = newLife(this)
     this.preload(s.pos.x, s.pos.z)
     s.pos.y = Math.max(heightAt(s.pos.x, s.pos.z), this.collision.floorAt(s.pos.x, s.pos.y + 1, s.pos.z, 1.5, 3))
     this.deadHandled = false
@@ -539,6 +542,7 @@ export class Game {
     if (target && s.isPlayer) this.hud.note('Missile locked')
     this.ballistics.fire({ origin: sh.origin, dir: sh.dir, v: sh.v, ammo: sh.ammo, owner: s, tracer: sh.tracer, suppressed: sh.suppressed, target })
     this.mode?.onShot?.(s, sh)
+    if (s.isPlayer && this.life) this.life.shots++
     this.noteDanger(sh.origin.x, sh.origin.z)
     const a = AMMO[sh.ammo]
     const fp = s.isPlayer && this.player.view === 'fp'
@@ -673,7 +677,12 @@ export class Game {
   }
   onDeath(sol, killer) {
     this.mode?.onKill?.(sol, killer)
-    if (killer?.isPlayer && sol !== killer) { this.hud.kill(`${hostile(killer.team, sol.team) ? 'You killed' : 'FRIENDLY FIRE: you killed'} ${sol.name}`); this.save.data.kills = (this.save.data.kills || 0) + 1 }
+    if (killer?.isPlayer && sol !== killer) {
+      const tag = killTag(sol, killer), foe = hostile(killer.team, sol.team) || sol.infected
+      this.hud.kill(`${foe ? 'You killed' : 'FRIENDLY FIRE: you killed'} ${sol.name}${tag ? ' · ' + tag : ''}`); this.save.data.kills = (this.save.data.kills || 0) + 1
+      this.hud.toast(foe ? `${sol.infected ? 'INFECTED' : 'ENEMY'} KILLED${tag ? '  ·  ' + tag : ''}` : `FRIENDLY FIRE${tag ? '  ·  ' + tag : ''}`, foe ? C.gold2 : C.red)
+      if (this.life && foe) { this.life.kills++; if (sol.lastHurt?.part === 'head' && sol.lastHurt.kind === 'bullet') this.life.heads++; const d = Math.hypot(sol.pos.x - killer.pos.x, sol.pos.z - killer.pos.z); if (sol.lastHurt?.kind === 'bullet') this.life.longest = Math.max(this.life.longest, d) }
+    }
     else if (sol.isPlayer) this.hud.kill(`You were killed${killer && killer !== sol ? ' by ' + killer.name : ''}`)
     else if (this.player && sol.team === this.player.s.team && sol.pos.distanceTo(this.player.s.pos) < 200) this.hud.kill(`${sol.name} is down`)
     if (sol.vehicle) this.vehicles.exit(sol, true)
@@ -683,7 +692,7 @@ export class Game {
     }
   }
   onHit(shooter, victim, part, dmg) {
-    if (shooter?.isPlayer && victim !== shooter) this.hud.hit(victim.dead)
+    if (shooter?.isPlayer && victim !== shooter) { this.hud.hit(victim.dead); if (this.life && part !== 'blast') this.life.hits++ }
     if (victim.isPlayer) { const d = shooter ? Math.atan2(shooter.pos.x - victim.pos.x, -(shooter.pos.z - victim.pos.z)) : 0; this.hud.damage(d); this.sfx.ui('hurt') }
     const b = victim.brain
     if (b && shooter && hostile(victim.team, shooter.team)) {
@@ -875,6 +884,8 @@ export class Game {
     } else { inp.takeLook(); inp.takeWheel(); s.input.fwd = s.input.side = 0; s.input.sprint = false }
     // the simulation
     s.step(dt, this.W)
+    // this life's distance (not teleports) and when it ended
+    { const L = this.life; if (L) { if (s.dead) { if (L.end == null) L.end = this.time } else if (L.last) { const d = Math.hypot(s.pos.x - L.last.x, s.pos.z - L.last.z); if (d < 30) L.dist += d; L.last.x = s.pos.x; L.last.z = s.pos.z } } }
     this.ai.update(dt, s.pos)
     this.vehicles.update(dt)
     this.ballistics.update(dt)

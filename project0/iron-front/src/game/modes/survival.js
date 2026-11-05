@@ -218,7 +218,7 @@ export class Survival extends Mode {
     const low = Math.min(this.hunger, this.thirst)
     if (low < 0.15) s.stamina = Math.min(s.stamina, 0.25 + low * 3)
     if (low <= 0) s.blood = Math.max(0, s.blood - dt * 0.35)
-    if (s.blood <= 0 && !s.dead) s.die(null, null)
+    if (s.blood <= 0 && !s.dead) { s.deathCause = this.hunger <= this.thirst ? 'starve' : 'thirst'; s.die(null, null) }
     this.warnT -= dt
     if (this.warnT <= 0 && low < 0.2) { this.warnT = 60; g.hud.note(this.hunger < this.thirst ? 'You are starving: eat something' : 'You are parched: drink something', C.amber) }
   }

@@ -89,6 +89,8 @@ export class HUD {
     for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.dirty = true
   }
   show(v) { this.visible = v; if (!v) { for (const p of this.marks || []) p.show(false); this.actP?.show(false) } for (const p of [this.compass, this.status, this.weapon, this.mini, this.feed, this.cross, this.center, this.modeP, this.vehP, this.scope, this.vign, this.touch]) p.show(v) }
+  // a line under the crosshair for a moment (a kill and how)
+  toast(t, color = C.gold2) { this.toastMsg = { text: t, color, t: this.g.time }; this.center.dirty = true }
   note(t, color = C.text) { this.messages.push({ text: t, t: this.g.time, color }); if (this.messages.length > 7) this.messages.shift(); this.feed.dirty = true }
   radio(who, t) { this.note(`${who}: ${t}`, C.gold2); this.g.sfx?.ui('radio') }
   kill(t) { this.kills.push({ text: t, t: this.g.time }); if (this.kills.length > 5) this.kills.shift(); this.feed.dirty = true }
@@ -129,11 +131,13 @@ export class HUD {
     // messages fade
     if (this.messages.length && g.time - this.messages[0].t > (g.input.touch ? 5 : 9)) { this.messages.shift(); this.feed.dirty = true }
     if (this.kills.length && g.time - this.kills[0].t > (g.input.touch ? 5 : 7)) { this.kills.shift(); this.feed.dirty = true }
-    const pk = this.prompt + '|' + (g.mode?.centerText?.() || '')
+    const tm = this.toastMsg, tOn = tm && g.time - tm.t < 2.2
+    const pk = this.prompt + '|' + (g.mode?.centerText?.() || '') + '|' + (tOn ? tm.text + Math.round((g.time - tm.t) * 6) : '')
     if (pk !== this.last.prompt) { this.last.prompt = pk; this.center.dirty = true }
     const mk = g.mode?.hudKey?.() ?? ''
     if (mk !== this.last.mode) { this.last.mode = mk; this.modeP.dirty = true }
-    const vk = [Math.round(s.suppression * 20), this.dmgDirs.length, Math.round((g.flashT || 0) * 10), g.player.nvg, s.down, Math.round(s.blood / 10)].join()
+    const hitAge = s.time - (s.lastHitT ?? -99), pulse = s.blood < 35 && !s.dead ? Math.round(Math.sin(g.time * 5.5) * 4) : 0
+    const vk = [Math.round(s.suppression * 20), this.dmgDirs.length, Math.round((g.flashT || 0) * 10), g.player.nvg, s.down, Math.round(s.blood / 10), hitAge < 0.6 ? Math.round(hitAge * 12) : -1, pulse].join()
     if (vk !== this.last.vign) { this.last.vign = vk; this.vign.dirty = true }
     this.dmgDirs = this.dmgDirs.filter(d => g.time - d.t < 1.5)
     if (scoped && g.player.binoculars) this.scope.dirty = true
@@ -432,6 +436,8 @@ export class HUD {
       if (key) chip(c, key, x + 10 * sc, 6 * sc, 20 * sc, { size: 11 * sc, fill: 'rgba(224,165,38,0.4)', color: C.white })
       text(c, label, x + 16 * sc + kw, 21 * sc, { size: 14 * sc, weight: 700, color: C.gold2 })
     }
+    const tm = this.toastMsg, age = tm ? this.g.time - tm.t : 99
+    if (age < 2.2) { c.globalAlpha = Math.min(1, (2.2 - age) * 2, age * 8); text(c, tm.text, W / 2, 52 * sc, { size: 14 * sc, align: 'center', weight: 900, color: tm.color, shadow: true }); c.globalAlpha = 1 }
     const t = this.g.mode?.centerText?.()
     if (t) text(c, t, W / 2, 74 * sc, { size: 24 * sc, align: 'center', weight: 700, color: C.white, shadow: true })
   }
@@ -505,6 +511,12 @@ export class HUD {
   drawVignette(c, p) {
     const g = this.g, s = g.player.s, W = p.w, H = p.h
     const sup = s.suppression
+    // always: a soft darkening at the edges (a lens, not a screen)
+    { const v = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.42, W / 2, H / 2, Math.max(W, H) * 0.72); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(6,8,4,0.32)'); c.fillStyle = v; c.fillRect(0, 0, W, H) }
+    // just hit: the edges flash red; badly hurt: they pulse with the heartbeat
+    const hitAge = s.time - (s.lastHitT ?? -99)
+    const red = Math.max(hitAge < 0.5 ? (0.5 - hitAge) * 1.1 : 0, s.blood < 35 && !s.dead ? 0.22 + 0.16 * Math.sin(g.time * 5.5) : 0)
+    if (red > 0.01) { const v = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.68); v.addColorStop(0, 'rgba(120,0,0,0)'); v.addColorStop(1, `rgba(140,8,4,${Math.min(0.7, red)})`); c.fillStyle = v; c.fillRect(0, 0, W, H) }
     // suppression and low health darken the edges
     const a = Math.min(0.75, sup * 0.6 + (s.blood < 40 ? (40 - s.blood) / 60 : 0))
     if (a > 0.02) {

@@ -56,8 +56,8 @@ export class HUD {
       const ms = 104 * s
       this.mini.place(W - ms - 8, safe + 58 * s, ms, ms)
       this.compass.place(8, safe + 58 * s, W - ms - 24, 28 * s)
-      this.modeP.place(8, safe + 92 * s, W - ms - 24, 120 * s)
-      this.feed.place(8, H * 0.36, W - 16, 150 * s)
+      this.modeP.place(8, safe + 58 * s, W - ms - 24, 120 * s)
+      this.feed.place(8, H * 0.36, W - 16, 70 * s)
       this.vehP.place(8, safe + 58 * s, W - ms - 24, 92 * s)
     } else if (touch) {
       const s = this.s = Math.max(0.8, Math.min(1.2, Math.min(W / 1000, H / 560)))
@@ -66,8 +66,8 @@ export class HUD {
       this.status.place(14, safe + 4, 260 * s, 98 * s)
       this.weapon.place(14, safe + 10 + 98 * s, 260 * s, 98 * s)
       this.compass.place(W / 2 - Math.min(200 * s, W * 0.22), safe + 4, Math.min(400 * s, W * 0.44), 32 * s)
-      this.modeP.place(W / 2 - 150 * s, safe + 40 * s, 300 * s, 120 * s)
-      this.feed.place(W - 320 * s - 14, ms + 22, 320 * s, 130 * s)
+      this.modeP.place(W / 2 - 150 * s, safe + 4, 300 * s, 120 * s)
+      this.feed.place(W - 320 * s - 14, ms + 22, 320 * s, 70 * s)
       this.vehP.place(14, safe + 10 + 98 * s, Math.min(400 * s, W * 0.45), 92 * s)
     } else {
       const s = this.s = Math.min(1.25, Math.max(0.5, Math.min(W / 1280, H / 720) * 1.05))
@@ -107,14 +107,15 @@ export class HUD {
     // the compass redraws when the heading moves a degree
     const head = Math.round(((g.camHeading() * 180 / Math.PI) % 360 + 360) % 360)
     if (head !== this.last.head) { this.last.head = head; this.compass.dirty = true }
-    this.compass.show(o.compass)
+    this.compass.show(o.compass && !g.input.touch)
     const key = [Math.round(s.blood), Math.round(s.stamina * 50), s.stance, Math.round(s.bleed * 100), Object.values(s.parts).map(Math.round).join(), s.down, s.fedT > 0, s.legHurt].join()
     if (key !== this.last.status) { this.last.status = key; this.status.dirty = true }
     const w = s.w
     const wk = w ? [w.def.id, w.rec.mag, w.rec.chamber, s.mode, Math.round(w.reloadT * 10), g.player.zero, s.inv.countAmmo(w.def), s.inv.count('frag'), s.inv.count('smoke'), g.player.zoom, s.bipod, g.gear?.label(s), s.inv.count('bandage') + s.inv.count('firstaid') + s.inv.count('medkit'), w.reloadT > 0 ? Math.round(w.reloadT * 10) : 0].join() : 'none'
     if (wk !== this.last.weapon) { this.last.weapon = wk; this.weapon.dirty = true }
-    this.weapon.show(!s.vehicle && o.weapon)
+    this.weapon.show(!s.vehicle && o.weapon && !(g.input.touch && !w))
     this.vehP.show(!!s.vehicle)
+    if (!!s.vehicle !== this.inVeh) { this.inVeh = !!s.vehicle; if (s.vehicle) this.vehT = performance.now() }
     if (s.vehicle) { const v = s.vehicle, sw = s.seat?.w; const vk = [Math.round(v.speed * 3.6), Math.round(v.alt), Math.round(v.hp), Math.round(v.fuel), sw ? sw.mag : '', sw?.reloadT > 0, s.seat?.w2?.mag, s.seat?.w2?.lockT > 1.2, v.gearDown, v.flares, v.engine, v.lights].join(); if (vk !== this.last.veh) { this.last.veh = vk; this.vehP.dirty = true } }
     // minimap: four times a second
     this.miniT = (this.miniT || 0) - dt
@@ -126,8 +127,8 @@ export class HUD {
     if (ck !== this.last.cross) { this.last.cross = ck; this.cross.dirty = true }
     this.cross.show(o.crosshair || s.ads)
     // messages fade
-    if (this.messages.length && g.time - this.messages[0].t > 9) { this.messages.shift(); this.feed.dirty = true }
-    if (this.kills.length && g.time - this.kills[0].t > 7) { this.kills.shift(); this.feed.dirty = true }
+    if (this.messages.length && g.time - this.messages[0].t > (g.input.touch ? 5 : 9)) { this.messages.shift(); this.feed.dirty = true }
+    if (this.kills.length && g.time - this.kills[0].t > (g.input.touch ? 5 : 7)) { this.kills.shift(); this.feed.dirty = true }
     const pk = this.prompt + '|' + (g.mode?.centerText?.() || '')
     if (pk !== this.last.prompt) { this.last.prompt = pk; this.center.dirty = true }
     const mk = g.mode?.hudKey?.() ?? ''
@@ -138,8 +139,17 @@ export class HUD {
     if (scoped && g.player.binoculars) this.scope.dirty = true
     else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
     if (this.compact) this.modeP.show(!s.vehicle && this.visible)
-    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role, (g.acts?.length || 0) > 1].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
+    if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role, (g.acts?.length || 0) > 1, this.touchNeeds().join(), s.vehicle && performance.now() - (this.vehT ?? 0) < 6000, !!s.w].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
     this.touch.show(g.input.touch)
+  }
+  // what a touch screen needs buttons for right now: grenades carried (and of how many kinds), hurt with
+  // something to treat it, night (or night vision already on)
+  touchNeeds() {
+    const g = this.g, P = g.player, s = P.s, inv = s.inv
+    const kinds = ['frag', 'smoke', 'flash'].filter(k => inv.count(k) > 0).length
+    const med = inv.count('bandage') + inv.count('firstaid') + inv.count('medkit') + inv.count('splint') + inv.count('morphine') > 0
+    const hurt = s.blood < 99 || s.bleed > 0.05 || s.legHurt
+    return [kinds, med && hurt, P.nvg || (g.sky?.night ?? 0) > 0.35]
   }
   crossSpread() {
     const s = this.g.player.s
@@ -327,14 +337,15 @@ export class HUD {
   drawFeed(c, p) {
     const W = p.w, sc = this.s
     let y = 4 * sc
-    for (const k of this.kills) {
+    const few = this.g.input.touch, kills = few ? this.kills.slice(-2) : this.kills, msgs = few ? this.messages.slice(-2) : this.messages
+    for (const k of kills) {
       c.font = FONT(12 * sc, 700); const tw = c.measureText(k.text).width
       chamfer(c, W - tw - 22 * sc, y, tw + 18 * sc, 20 * sc, 5 * sc); c.fillStyle = 'rgba(8,10,7,0.66)'; c.fill()
       c.fillStyle = C.red; c.fillRect(W - 3 * sc, y + 3 * sc, 2 * sc, 14 * sc)
       text(c, k.text, W - 10 * sc, y + 14.5 * sc, { size: 12 * sc, align: 'right', color: C.white, weight: 700 }); y += 23 * sc
     }
     y += 4 * sc
-    for (const m of this.messages) {
+    for (const m of msgs) {
       c.font = FONT(12 * sc, 600); const tw = Math.min(W - 16 * sc, c.measureText(m.text).width)
       c.fillStyle = 'rgba(8,10,7,0.5)'; c.fillRect(W - tw - 18 * sc, y, tw + 18 * sc, 19 * sc)
       c.fillStyle = m.color === C.text ? C.line : m.color; c.fillRect(W - 2 * sc, y, 2 * sc, 19 * sc)
@@ -539,24 +550,30 @@ export class HUD {
       const dr = P.s.seat?.role === 'driver' || P.s.seat?.role === 'pilot'
       if (dr) { util(air ? 3 : 2, 'veng', v.engine ? 'ENG ON' : 'ENG OFF', 'bolt', () => g.input.pressed.add('vEngine'), { on: v.engine }); util(air ? 4 : 3, 'vlight', 'LIGHTS', 'eye', () => g.input.pressed.add('vLight'), { on: v.lights }) }
       util(dr ? (air ? 5 : 4) : 2, 'vkit', 'KIT', 'bag', () => g.input.pressed.add('inventory'))
-      text(c, air ? 'Left thumb: fly  ·  right thumb: aim' : 'Left thumb: drive  ·  right thumb: look and aim', W / 2, H * 0.46, { size: 12, align: 'center', color: 'rgba(236,232,216,0.6)', weight: 600 })
+      if (performance.now() - (this.vehT ?? 0) < 6000) text(c, air ? 'Left thumb: fly  ·  right thumb: aim' : 'Left thumb: drive  ·  right thumb: look and aim', W / 2, H * 0.46, { size: 12, align: 'center', color: 'rgba(236,232,216,0.6)', weight: 600 })
       return
     }
-    btn('fire', R, B - r * 0.4, 'FIRE', 'fire', () => { P.touchFire = true }, r * 1.25, { main: true, ring: 'rgba(255,90,69,0.7)' })   // held until the finger lifts
-    btn('aim', R - r * 2.6, B + r * 0.2, 'AIM', 'aim', () => { P.touchAds = !P.touchAds }, r, { on: P.touchAds })
-    btn('reload', R - r * 0.2, B - r * 3, 'RELOAD', 'reload', () => g.input.pressed.add('reload'), r, { on: s.reloading })
+    if (s.w) {
+      btn('fire', R, B - r * 0.4, 'FIRE', 'fire', () => { P.touchFire = true }, r * 1.25, { main: true, ring: 'rgba(255,90,69,0.7)' })   // held until the finger lifts
+      btn('aim', R - r * 2.6, B + r * 0.2, 'AIM', 'aim', () => { P.touchAds = !P.touchAds }, r, { on: P.touchAds })
+      btn('reload', R - r * 0.2, B - r * 3, 'RELOAD', 'reload', () => g.input.pressed.add('reload'), r, { on: s.reloading })
+    } else btn('punch', R, B - r * 0.4, 'PUNCH', 'hand', () => g.input.pressed.add('melee'), r * 1.25, { main: true })   // no gun in hand: no aim or reload, the big button punches
     btn('stance', R - r * 2.5, B - r * 2.2, ['STAND', 'CROUCH', 'PRONE'][s.stance], ['stand', 'crouch', 'prone'][s.stance], () => g.input.pressed.add(s.stance === 0 ? 'crouch' : 'prone'))
     btn('jump', R - r * 4.6, B + r * 0.2, 'JUMP', 'jump', () => g.input.pressed.add('jump'), r * 0.8)
     btn('use', R - r * 4.2, B - r * 2.2, 'USE', 'hand', () => g.input.pressed.add('interact'), r * 0.8)
     if ((g.acts?.length || 0) > 1) btn('acts', R - r * 4.2, B - r * 3.75, '•••', 'menu', () => { if (g.actMenu?.open) g.actMenu.open = false; else g.actionWheel(1) }, r * 0.55)
-    btn('nade', R - r * 0.2, B - r * 5.2, { frag: 'FRAG', smoke: 'SMOKE', flash: 'FLASH' }[P.nade] || 'NADE', 'grenade', () => g.input.pressed.add('grenade'), r * 0.8)
-    btn('nadenext', R + r * 0.75, B - r * 6.1, '', 'reload', () => g.input.pressed.add('slot4'), r * 0.42)
+    // on a phone only what applies now: grenades if you carry any (the kind switch for two kinds or more),
+    // HEAL when hurt with something to treat it, NV at night
+    const [nadeKinds, canHeal, night] = this.touchNeeds()
+    if (nadeKinds) btn('nade', R - r * 0.2, B - r * 5.2, { frag: 'FRAG', smoke: 'SMOKE', flash: 'FLASH' }[P.nade] || 'NADE', 'grenade', () => g.input.pressed.add('grenade'), r * 0.8)
+    if (nadeKinds > 1) btn('nadenext', R + r * 0.75, B - r * 6.1, '', 'reload', () => g.input.pressed.add('slot4'), r * 0.42)
     if (g.gear?.selected(s)) { btn('gear', R - r * 2.3, B - r * 4.4, 'GEAR', 'gear', () => g.input.pressed.add('gear'), r * 0.8); btn('gearnext', R - r * 3.6, B - r * 5.3, '', 'reload', () => g.input.pressed.add('gearNext'), r * 0.5) }
     util(0, 'view', 'VIEW', 'view', () => g.input.pressed.add('view'))
     util(1, 'map', 'MAP', 'map', () => g.input.pressed.add('map'))
     util(2, 'inv', 'KIT', 'bag', () => g.input.pressed.add('inventory'))
-    util(3, 'heal', 'HEAL', 'cross', () => g.input.pressed.add('heal'))
-    util(4, 'nvg', 'NV', 'eye', () => g.input.pressed.add('nvg'), { on: P.nvg })
+    let ui = 3
+    if (canHeal) util(ui++, 'heal', 'HEAL', 'cross', () => g.input.pressed.add('heal'))
+    if (night) util(ui++, 'nvg', 'NV', 'eye', () => g.input.pressed.add('nvg'), { on: P.nvg })
     // the hint, for the first half minute
     if ((g.mode?.t ?? 99) < 30) text(c, g.settings.stickTurns ? 'Left thumb: move and turn  ·  right thumb: look' : 'Left thumb: move  ·  right thumb: look and shoot', W / 2, H * 0.46, { size: 12, align: 'center', color: 'rgba(236,232,216,0.7)', weight: 600 })
   }

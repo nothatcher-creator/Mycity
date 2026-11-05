@@ -56,7 +56,7 @@ and drag to aim while shooting. Each finger keeps its own job, so lifting one ne
 (`src/core/touch.js`: events carry no finger id, but each one's dx/dy runs from that finger's last
 position, which tells them apart). A setting makes the stick turn you instead of strafing; aim assist
 pulls the view onto a visible enemy within about 5° while aiming or firing (a setting turns it off).
-Buttons for fire (hold), aim, reload, stance, jump, use, grenade (the small button beside it picks the kind), gear, view, map, kit, heal, night vision (NV) and the menu; in a vehicle also ENG, LIGHTS and KIT.
+Buttons for fire (hold), aim, reload, stance, jump, use, grenade (the small button beside it picks the kind), gear, view, map, kit, heal, night vision (NV) and the menu; in a vehicle also ENG, LIGHTS and KIT. To keep the small screen clear, a phone shows only what applies at the moment (a computer keeps everything): the grenade button only while you carry grenades (its kind switch only with two kinds or more), HEAL only when hurt with something to treat it, NV only at night, FIRE/AIM/RELOAD only with a gun in hand (unarmed, the big button punches), no compass strip (the minimap turns with you and marks north), no empty weapon panel, the two newest messages for five seconds, and the driving hint for the first few seconds in a vehicle.
 (Before, the city's stick and the game were in different frames, and the browser sends every finger of a
 gesture to the frame the first touched, so the game never saw a second finger.)
 

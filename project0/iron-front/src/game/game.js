@@ -302,6 +302,7 @@ export class Game {
       if (e.code === 'NumpadDivide' && this.state !== 'menu') { const K = ['pole', 'busstop', 'bench', 'haybale', 'lighthouse'], i = this.dbgProp = ((this.dbgProp ?? -1) + 1) % K.length, L = PROPS.filter(p => p.kind === K[i] && (K[i] !== 'pole' || (p.to && forestAt(p.x, p.z) < 0.05))), p = L[Math.floor(L.length * 0.37)], back = K[i] === 'lighthouse' ? 45 : K[i] === 'pole' ? 22 : 9, a = p.yaw + (K[i] === 'pole' ? Math.PI / 2 + 0.5 : K[i] === 'busstop' ? 0.3 : Math.PI); s.pos.x = p.x + Math.sin(a) * back; s.pos.z = p.z + Math.cos(a) * back; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.1; s.yaw = Math.atan2(p.x - s.pos.x, p.z - s.pos.z); p0.log('dbg prop', K[i], L.length, Math.round(p.x), Math.round(p.z)) }
       if (e.code === 'NumpadMultiply' && this.modeId !== 'online' && this.state === 'play') { if (this.mode?.admin) this.mode.admin('teleport', { x: s.pos.x + 200, z: s.pos.z + 200, halo: true }); else { s.pos.y += 260; s.vel.set(0, 0, 0); s.onGround = false; s.parachute = true; s.chuteT = 0 } p0.log('dbg chute', Math.round(s.pos.y), 'squad chutes', this.soldiers.filter(o => o.parachute).length) }
       if (e.code === 'Digit0' && this.state === 'play' && !s.dead) { const foe = this.soldiers.filter(o => !o.dead && o !== s && hostile(o.team, s.team)).sort((a, b) => a.pos.distanceTo(s.pos) - b.pos.distanceTo(s.pos))[0]; if (this.life) { this.life.shots = 40; this.life.hits = 13; this.life.kills = 6; this.life.heads = 3; this.life.longest = 214 } s.hurt('head', 300, 1, foe || null, null, 'bullet'); p0.log('dbg killed by', foe?.name, foe ? Math.round(foe.pos.distanceTo(s.pos)) : -1) }
+      if (e.code === 'Digit7' && !s.vehicle && this.mode?.crashSite) { const site = this.mode.crashSite(s); if (site) { this.mode.crashT = 9999; s.pos.set(site.x + 120, heightAt(site.x + 120, site.z), site.z); s.yaw = -Math.PI / 2; this.player.pitch = 0.12; this.preload(s.pos.x, s.pos.z) } p0.log('dbg crash', !!site) }
       if (e.code === 'Digit7' && s.vehicle) { const v = s.vehicle; v.vel.set(Math.sin(v.yaw) * 20, 0, Math.cos(v.yaw) * 20); v.speed = 20; p0.log('dbg speed 20') }
       if (e.code === 'Digit8' && this.state === 'play') { s.inv.add({ kind: 'tool', id: 'map' }); p0.log('dbg map', s.inv.count('map')) }
       if (e.code === 'Digit6' && this.state === 'play') { s.inv.add({ kind: 'tool', id: 'gps' }); p0.log('dbg gps', s.inv.count('gps')) }
@@ -552,6 +553,12 @@ export class Game {
     const m = fp ? this.player.camPos.clone().addScaledVector(sh.dir, 0.9).add(_v.set(0, -0.08, 0)) : sh.origin.clone().addScaledVector(sh.dir, 0.7)
     if (s.fireCount % (a.pellets ? 1 : 1) === 0) this.fx.muzzle(m.x, m.y, m.z, sh.dir.x, sh.dir.y, sh.dir.z, a.mass > 20 ? 1.8 : a.pellets ? 1.4 : 1, sh.suppressed)
     this.sfx.shot(sh.weapon, sh.origin, sh.suppressed, s)
+    // a spent case flicks out to the right (rifles, pistols, machine guns; not rockets), for shooters near you
+    if (!a.rocket && !a.explosive && s.w?.def.cat !== 'launcher' && this.camPos.distanceToSquared(sh.origin) < 1600) {
+      const L = Math.hypot(sh.dir.x, sh.dir.z) || 1, rx = -sh.dir.z / L, rz = sh.dir.x / L
+      const e = fp ? this.player.camPos.clone().addScaledVector(sh.dir, 0.45).add(_v.set(rx * 0.12, -0.12, rz * 0.12)) : sh.origin.clone().addScaledVector(sh.dir, -0.55)
+      this.fx.puff(e.x, e.y, e.z, { vx: rx * (2.5 + Math.random()) + sh.dir.x * 0.3, vy: 1.6 + Math.random() * 1.2, vz: rz * (2.5 + Math.random()) + sh.dir.z * 0.3, size: a.mass > 15 ? 0.05 : 0.035, life: 0.8, r: 0.85, g: 0.66, b: 0.28, a: 1, grav: 9.8, spin: 14 })
+    }
     this.ai.heard(sh.origin.x, sh.origin.y, sh.origin.z, sh.suppressed ? 60 : a.mass > 20 ? 900 : 450, s)
     if (a.rocket || a.explosive) this.fx.puff(sh.origin.x, sh.origin.y, sh.origin.z, { s0: 1, s1: 3, life: 2, r: 0.8, g: 0.8, b: 0.78, a: 0.6, drag: 1.5 })
   }
@@ -703,6 +710,21 @@ export class Game {
       if (!b.target) { b.target = shooter; b.targetPos.copy(shooter.pos); b.lastSeen = this.time - 2 }
       b.squad.share(shooter, shooter.pos, this.time - 1)
     }
+  }
+  // In the open-ended modes the weather changes by itself every 6 to 14 minutes, to a likely neighbour (clear
+  // clouds over, clouds bring rain or clear, rain can build to a storm and eases back); the sky eases in.
+  weatherDrift(dt) {
+    if (!['freeroam', 'survival', 'life'].includes(this.modeId)) return
+    this.wxT = (this.wxT ?? 360 + Math.random() * 480) - dt
+    if (this.wxT > 0) return
+    this.wxT = 360 + Math.random() * 480
+    const NEXT = { clear: ['clear', 'overcast', 'overcast'], overcast: ['clear', 'clear', 'rain', 'fog', 'overcast'], fog: ['clear', 'overcast'], rain: ['overcast', 'rain', 'storm'], storm: ['rain', 'rain'] }
+    const now = this.sky.weatherKey, L = NEXT[now] || ['clear'], k = L[Math.floor(Math.random() * L.length)]
+    if (k === now) return
+    this.sky.setWeather(k)
+    const say = { clear: 'The sky is clearing', overcast: 'Clouds are rolling in', fog: 'Fog is coming down', rain: now === 'storm' ? 'The storm is easing to rain' : 'It is starting to rain', storm: 'A storm is building' }
+    this.hud.note(say[k] || `Weather: ${k}`, C.dim)
+    if (this.debug) this.p0.log('dbg weather drift', now, '->', k)
   }
   // A tip shown once ever (kept in the save): the first time you bleed, run dry, look through a scope...
   tip(id, desk, touch = desk) {
@@ -909,6 +931,7 @@ export class Game {
     } else { inp.takeLook(); inp.takeWheel(); s.input.fwd = s.input.side = 0; s.input.sprint = false }
     // the simulation
     s.step(dt, this.W)
+    this.weatherDrift(dt)
     this.tipT = (this.tipT || 0) - dt; if (this.tipT <= 0 && !s.dead) { this.tipT = 0.5; this.tips(s) }
     // this life's distance (not teleports) and when it ended
     { const L = this.life; if (L) { if (s.dead) { if (L.end == null) L.end = this.time } else if (L.last) { const d = Math.hypot(s.pos.x - L.last.x, s.pos.z - L.last.z); if (d < 30) L.dist += d; L.last.x = s.pos.x; L.last.z = s.pos.z } } }

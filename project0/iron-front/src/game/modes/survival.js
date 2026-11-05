@@ -135,6 +135,63 @@ export class Survival extends Mode {
       s.step(dt, g.W)
     }
   }
+  // ---- helicopter crash sites: now and then one comes down within a kilometre, burning; a column of smoke
+  // shows where; military supplies lie by it, and a few infected were drawn to the noise ----
+  crashSite(s) {
+    const g = this.g
+    for (let k = 0; k < 20; k++) {
+      const a = Math.random() * Math.PI * 2, d = 450 + Math.random() * 550
+      const p = this.findGround(s.pos.x + Math.sin(a) * d, s.pos.z + Math.cos(a) * d, 60)
+      if (!p) continue
+      const [x, z] = p, y = heightAt(x, z), yaw = Math.random() * 6.28
+      // the wreck: a broken fuselage nose-down, the tail boom apart, a bent blade
+      const m = this.wreckMat || (this.wreckMat = new THREE.MeshLambertMaterial({ color: 0x2c3024 }))
+      const grp = new THREE.Group(), box = (w, h, l, px, py, pz, rx = 0, ry = 0, rz = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), m); b.position.set(px, py, pz); b.rotation.set(rx, ry, rz); grp.add(b) }
+      box(2.6, 2.2, 7.5, 0, 1.0, 0, 0.18, 0, 0.35); box(0.6, 0.7, 5, 1.2, 0.5, -6.5, 0, 0.7, 0.2); box(0.25, 0.08, 7, -1.5, 2.6, 1, 0.3, 1.1, 0.4); box(1.4, 1.6, 0.4, 2.6, 0.7, -9.2, 0, 0.7, 0)
+      grp.position.set(x, y, z); grp.rotation.y = yaw; g.engine.world.add(grp)
+      const site = { x, y, z, mesh: grp, t: 1500, fx: 0, piles: [] }
+      for (let i = 0; i < 2; i++) { const pl = this.makePile(x + (i ? 3.5 : -3.5), y + 0.15, z + 2.5, LOOT.military, 'Crash site supplies', 3); pl.keep = true; site.piles.push(pl) }
+      for (let i = 0; i < 3; i++) this.spawnInfected(x + (Math.random() - 0.5) * 30, z + (Math.random() - 0.5) * 30, null)
+      ;(this.sites || (this.sites = [])).push(site)
+      const b = Math.atan2(x - s.pos.x, -(z - s.pos.z)) * 180 / Math.PI, dir = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(((b % 360) + 360) % 360 / 45) % 8]
+      g.hud.note(`A helicopter came down to the ${dir}, about ${Math.round(Math.hypot(x - s.pos.x, z - s.pos.z) / 100) * 100} m away: follow the smoke`, C.amber)
+      g.tip('crash', 'Crash sites hold military supplies, but the noise draws the infected. The smoke lasts about 25 minutes')
+      return site
+    }
+    return null
+  }
+  crashUpdate(dt, s) {
+    const g = this.g
+    this.crashT = (this.crashT ?? 300 + Math.random() * 300) - dt
+    if (this.crashT <= 0) { this.crashT = 900 + Math.random() * 600; this.crashSite(s) }
+    for (const site of this.sites || []) {
+      site.t -= dt; site.fx -= dt
+      // the smoke column (fire low down while it is fresh), seen from afar
+      if (site.fx <= 0 && Math.hypot(site.x - s.pos.x, site.z - s.pos.z) < 2600) {
+        site.fx = 0.22
+        g.fx.puff(site.x + (Math.random() - 0.5) * 2, site.y + 2, site.z + (Math.random() - 0.5) * 2, { vx: 0.6, vy: 4 + Math.random() * 2, vz: 0.4, s0: 2.5, s1: 12, life: 14, r: 0.14, g: 0.14, b: 0.14, a: 0.65, drag: 0.15, fadeIn: 0.1 })
+        if (site.t > 900) g.fx.burn(site.x + (Math.random() - 0.5) * 3, site.y + 0.8, site.z + (Math.random() - 0.5) * 3, 1.4)
+      }
+    }
+    for (const site of [...(this.sites || [])]) if (site.t <= 0) { g.engine.world.remove(site.mesh); for (const pl of site.piles) pl.keep = false; this.sites.splice(this.sites.indexOf(site), 1) }
+  }
+  // A pile of things to search: `count` rolls on the table (1-3 if not given)
+  makePile(x, y, z, table, name, count) {
+    const g = this.g
+    const items = [], fake = new Inventory()
+    for (let j = 0; j < (count ?? 1 + Math.floor(Math.random() * 3)); j++) {
+      const it = roll(table)
+      if (it.weapon) { const def = weapon(it.weapon), slot = def.slot; if (!fake.weapons[slot]) { fake.weapons[slot] = { id: def.id, att: {}, mag: Math.floor(def.mag * Math.random()), chamber: 0 }; items.push(...it.mags); if (def.tube) items.push({ kind: 'ammo', ammo: def.ammo, count: 4 + Math.floor(Math.random() * 8) }) } }
+      else if (it.kind === 'ammo') items.push({ kind: 'ammo', ammo: '12g', count: 5 + Math.floor(Math.random() * 6) })
+      else if (it.kind === 'mag') { const def = weapon(pick(['brenner', 'ks47', 'vr4c'])); items.push(newMag(def, stats(def, {}))) }
+      else items.push(it)
+    }
+    const pile = { x, y, z, items, name, body: { inv: fake }, t: g.time, pile: true }
+    pile.mesh = new THREE.Mesh(this.boxGeo || (this.boxGeo = new THREE.BoxGeometry(0.55, 0.32, 0.4)), this.boxMat || (this.boxMat = new THREE.MeshLambertMaterial({ color: 0x7a6040 })))
+    pile.mesh.position.set(x, y, z); pile.mesh.rotation.y = Math.random() * 3; g.engine.world.add(pile.mesh)
+    g.loot.push(pile); this.piles.push(pile)
+    return pile
+  }
   // ---- supplies in the buildings ----
   stock(px, pz) {
     const g = this.g
@@ -149,24 +206,12 @@ export class Survival extends Mode {
       for (let k = 0; k < n; k++) {
         const c = Math.cos(b.yaw), s = Math.sin(b.yaw), lx = (Math.random() - 0.5) * (b.w - 3), lz = (Math.random() - 0.5) * (b.d - 3)
         const x = b.x + lx * c + lz * s, z = b.z - lx * s + lz * c, y = (b.y ?? heightAt(x, z)) + 0.15
-        const table = mil ? LOOT.military : shop ? LOOT.shop : LOOT.home
-        const items = [], fake = new Inventory()
-        for (let j = 0; j < 1 + Math.floor(Math.random() * 3); j++) {
-          const it = roll(table)
-          if (it.weapon) { const def = weapon(it.weapon), slot = def.slot; if (!fake.weapons[slot]) { fake.weapons[slot] = { id: def.id, att: {}, mag: Math.floor(def.mag * Math.random()), chamber: 0 }; items.push(...it.mags); if (def.tube) items.push({ kind: 'ammo', ammo: def.ammo, count: 4 + Math.floor(Math.random() * 8) }) } }
-          else if (it.kind === 'ammo') items.push({ kind: 'ammo', ammo: '12g', count: 5 + Math.floor(Math.random() * 6) })
-          else if (it.kind === 'mag') { const def = weapon(pick(['brenner', 'ks47', 'vr4c'])); items.push(newMag(def, stats(def, {}))) }
-          else items.push(it)
-        }
-        const pile = { x, y, z, items, name: mil ? 'Military supplies' : shop ? 'Shop shelves' : 'Household things', body: { inv: fake }, t: g.time, pile: true }
-        pile.mesh = new THREE.Mesh(this.boxGeo || (this.boxGeo = new THREE.BoxGeometry(0.55, 0.32, 0.4)), this.boxMat || (this.boxMat = new THREE.MeshLambertMaterial({ color: 0x7a6040 })))
-        pile.mesh.position.set(x, y, z); pile.mesh.rotation.y = Math.random() * 3; g.engine.world.add(pile.mesh)
-        g.loot.push(pile); this.piles.push(pile)
+        this.makePile(x, y, z, mil ? LOOT.military : shop ? LOOT.shop : LOOT.home, mil ? 'Military supplies' : shop ? 'Shop shelves' : 'Household things')
       }
     }
     // emptied or far-off piles go
     for (const pl of [...this.piles]) {
-      const far = Math.hypot(pl.x - px, pl.z - pz) > 260, empty = !pl.items.length && !Object.values(pl.body.inv.weapons).some(Boolean)
+      const far = !pl.keep && Math.hypot(pl.x - px, pl.z - pz) > 260, empty = !pl.items.length && !Object.values(pl.body.inv.weapons).some(Boolean)
       if (far || empty) { g.engine.world.remove(pl.mesh); this.piles.splice(this.piles.indexOf(pl), 1); const i = g.loot.indexOf(pl); if (i >= 0) g.loot.splice(i, 1) }
     }
   }
@@ -178,6 +223,7 @@ export class Survival extends Mode {
     if (!s.dead) { this.alive += dt * (g.sky.cycle ? 1 : 0) * 1; this.needs(dt, s) }
     this.infUpdate(dt)
     this.firesUpdate(dt)
+    this.crashUpdate(dt, s)
     if (s.inv.count('map')) g.tip('foundmap', 'You found a map: M opens it. It does not show where you are: read the land, or find a GPS', 'You found a map: MAP opens it. It does not show where you are: find a GPS for that')
     if (s.inv.count('gps')) g.tip('foundgps', 'You found a GPS: the map and the minimap now show where you are')
     s.unarmed = !s.w
@@ -284,7 +330,7 @@ export class Survival extends Mode {
     g.save.data.survival = { x: Math.round(s.pos.x), z: Math.round(s.pos.z), yaw: +s.yaw.toFixed(2), hour: +g.sky.hour.toFixed(2), weather: g.sky.weatherKey, inv: s.inv.toJSON(), hunger: +this.hunger.toFixed(3), thirst: +this.thirst.toFixed(3), blood: Math.round(s.blood), alive: Math.round(this.alive), kills: this.kills }
     g.save.store()
   }
-  dispose() { this.persist(); for (const pl of this.piles) this.g.engine.world.remove(pl.mesh) }
+  dispose() { this.persist(); for (const pl of this.piles) this.g.engine.world.remove(pl.mesh); for (const site of this.sites || []) this.g.engine.world.remove(site.mesh) }
   // ---- HUD ----
   hudKey() { return [this.g.player?.s.inv.count('map'), this.g.player?.s.inv.count('gps'), Math.round(this.noise(this.g.player?.s) / 4), this.inf.filter(n => n.chase && !n.s.dead).length, Math.round(this.hunger * 40), Math.round(this.thirst * 40), Math.floor(this.alive / 60), this.kills, Math.floor(this.g.sky.hour * 4), nearestPlace(this.g.player?.s.pos.x || 0, this.g.player?.s.pos.z || 0).place?.id].join() }
   drawHud(c, p, k) {

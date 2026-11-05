@@ -402,6 +402,7 @@ export class Menus {
     tog('Compass', st.hud.compass, v => { st.hud.compass = v })
     tog('Minimap', st.hud.minimap, v => { st.hud.minimap = v })
     tog('Waypoint and objective markers', st.hud.markers !== false, v => { st.hud.markers = v })
+    tog('Tips the first time something happens', st.tips !== false, v => { st.tips = v })
     tog('Weapon panel', st.hud.weapon, v => { st.hud.weapon = v })
     tog('Crosshair', st.hud.crosshair, v => { st.hud.crosshair = v })
     y += 8 * s

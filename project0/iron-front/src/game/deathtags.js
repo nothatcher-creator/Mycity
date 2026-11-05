@@ -29,7 +29,7 @@ export function deathTags(game, s, life) {
     if (h.kind === 'bullet' && h.part === 'head') add('HEADSHOT', RED)
     if (h.kind === 'blast') add(k?.vehicle ? 'SHELLED' : 'BLOWN UP', RED)
     if (h.kind === 'fire') add('BURNED', RED)
-    if (h.kind === 'fall') add('FELL TO YOUR DEATH', AMBER)
+    if (h.kind === 'fall') add(s.bailed != null && s.time - s.bailed < 3 ? 'BAILED OUT AT SPEED' : 'FELL TO YOUR DEATH', AMBER)
     if (h.kind === 'vehicle') add(k && k !== s ? 'ROADKILL' : 'CRUSHED', AMBER)
     if (h.kind === 'melee') add(k?.infected ? 'MAULED BY THE INFECTED' : 'BEATEN TO DEATH', RED)
     if (h.kind === 'bullet' && dist > 250) add(`SNIPED · ${Math.round(dist)} M`, RED)

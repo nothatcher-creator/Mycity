@@ -302,6 +302,7 @@ export class Game {
       if (e.code === 'NumpadDivide' && this.state !== 'menu') { const K = ['pole', 'busstop', 'bench', 'haybale', 'lighthouse'], i = this.dbgProp = ((this.dbgProp ?? -1) + 1) % K.length, L = PROPS.filter(p => p.kind === K[i] && (K[i] !== 'pole' || (p.to && forestAt(p.x, p.z) < 0.05))), p = L[Math.floor(L.length * 0.37)], back = K[i] === 'lighthouse' ? 45 : K[i] === 'pole' ? 22 : 9, a = p.yaw + (K[i] === 'pole' ? Math.PI / 2 + 0.5 : K[i] === 'busstop' ? 0.3 : Math.PI); s.pos.x = p.x + Math.sin(a) * back; s.pos.z = p.z + Math.cos(a) * back; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.1; s.yaw = Math.atan2(p.x - s.pos.x, p.z - s.pos.z); p0.log('dbg prop', K[i], L.length, Math.round(p.x), Math.round(p.z)) }
       if (e.code === 'NumpadMultiply' && this.modeId !== 'online' && this.state === 'play') { if (this.mode?.admin) this.mode.admin('teleport', { x: s.pos.x + 200, z: s.pos.z + 200, halo: true }); else { s.pos.y += 260; s.vel.set(0, 0, 0); s.onGround = false; s.parachute = true; s.chuteT = 0 } p0.log('dbg chute', Math.round(s.pos.y), 'squad chutes', this.soldiers.filter(o => o.parachute).length) }
       if (e.code === 'Digit0' && this.state === 'play' && !s.dead) { const foe = this.soldiers.filter(o => !o.dead && o !== s && hostile(o.team, s.team)).sort((a, b) => a.pos.distanceTo(s.pos) - b.pos.distanceTo(s.pos))[0]; if (this.life) { this.life.shots = 40; this.life.hits = 13; this.life.kills = 6; this.life.heads = 3; this.life.longest = 214 } s.hurt('head', 300, 1, foe || null, null, 'bullet'); p0.log('dbg killed by', foe?.name, foe ? Math.round(foe.pos.distanceTo(s.pos)) : -1) }
+      if (e.code === 'Digit7' && s.vehicle) { const v = s.vehicle; v.vel.set(Math.sin(v.yaw) * 20, 0, Math.cos(v.yaw) * 20); v.speed = 20; p0.log('dbg speed 20') }
       if (e.code === 'F4') { const T = [{ x: 60, z: 1650, yaw: 0 }, { x: -3000, z: -360, yaw: Math.PI / 2 }, { x: 1010, z: -196, yaw: 1.06 }]; this.dbgTp = ((this.dbgTp ?? -1) + 1) % T.length; const P = T[this.dbgTp]; this.mode.admin('teleport', P); s.yaw = P.yaw; this.player.pitch = 0.02; p0.log('dbg teleported', this.dbgTp) }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
@@ -599,7 +600,7 @@ export class Game {
       if (c.kind === 'glass') this.city.breakGlass(c)
       else if (c.kind === 'explosive' && Math.hypot(c.x - x, c.z - z) < r * 0.6) { c.alive = false; setTimeout(() => this.explode(c.x, c.y, c.z, { radius: 8, dmg: 150, heat: 200 }, src, null, true), 300) }
     })
-    if (this.player && !this.player.s.dead) { const pd = this.player.camPos.distanceTo(_v.set(x, y, z)); if (pd < r * 6) { const k = 1.2 * (1 - pd / (r * 6)), shake = () => { if (this.player) this.player.camShake = Math.max(this.player.camShake || 0, k) }; if (pd > 25) setTimeout(shake, pd / 343 * 1000); else shake() } }
+    if (this.player && !this.player.s.dead) { const pd = this.player.camPos.distanceTo(_v.set(x, y, z)); if (pd < r * 6) { const k = 1.2 * (1 - pd / (r * 6)), shake = () => { if (this.player) this.player.camShake = Math.max(this.player.camShake || 0, k); if (pd < r * 2.5) { this.sfx.deafen(1 - pd / (r * 2.5)); if (pd < r * 1.5) this.tip('deaf', 'Your ears are ringing from the blast: it passes in a few seconds') } }; if (pd > 25) setTimeout(shake, pd / 343 * 1000); else shake() } }
   }
   // Grenades: thrown along `dir` at `speed` m/s, bounce off the land and walls, then frag, smoke or flash.
   throwGrenade(s, type, dir, speed = 16) {
@@ -700,6 +701,26 @@ export class Game {
       if (!b.target) { b.target = shooter; b.targetPos.copy(shooter.pos); b.lastSeen = this.time - 2 }
       b.squad.share(shooter, shooter.pos, this.time - 1)
     }
+  }
+  // A tip shown once ever (kept in the save): the first time you bleed, run dry, look through a scope...
+  tip(id, desk, touch = desk) {
+    if (this.settings.tips === false) return
+    const seen = this.save.data.tips || (this.save.data.tips = [])
+    if (seen.includes(id)) return
+    seen.push(id); this.save.store()
+    this.hud.note(`TIP: ${this.input.touch ? touch : desk}`, C.gold2)
+  }
+  // what is happening to you that a tip could help with (checked twice a second)
+  tips(s) {
+    const w = s.w, P = this.player
+    if (s.bleed > 0.05) this.tip('bleed', 'You are bleeding: H puts a bandage on it before you lose too much blood', 'You are bleeding: tap HEAL to bandage it')
+    if (s.legHurt) this.tip('leg', 'Your leg is hurt and slows you: H uses a splint if you carry one', 'Your leg is hurt: HEAL uses a splint if you carry one')
+    if (w && !w.def.disposable && !s.inv.countAmmo(w.def)) this.tip('ammo', 'No spare ammo: F at a body searches it, R there takes every magazine that fits', 'No spare ammo: search bodies (USE), or take their magazines from the ••• list')
+    if (s.ads && P.optic?.scope) this.tip('scope', 'Scope: Page Up and Page Down set the zeroing, hold Shift to hold your breath; mind the wind shown under the reticle', 'Scope: the wind under the reticle pushes long shots aside')
+    if (s.vehicle && (s.seat?.role === 'driver' || s.seat?.role === 'pilot')) this.tip('drive', 'Driving: E engine, L lights, V first person, Tab the storage, F gets out (at speed it hurts)', 'Driving: ENG, LIGHTS and KIT are on the right; getting out at speed hurts')
+    if ((this.sky.night ?? 0) > 0.6 && !s.vehicle) this.tip('night', 'Night: N night vision if you carry goggles, L the flashlight (which gives you away)', 'Night: NV turns on night vision if you carry goggles')
+    if (s.suppression > 0.6) this.tip('suppressed', 'You are pinned down: get low (Z) or behind cover until the fire stops; your aim shakes meanwhile', 'You are pinned down: get low or behind cover until the fire stops')
+    if (s.stamina < 0.15 && !s.vehicle) this.tip('stamina', 'Out of breath: walk a moment (or crouch) and your stamina returns; carrying less helps', 'Out of breath: slow down and your stamina returns')
   }
   onNearMiss(p, d, x, y, z) { if (p.vel.lengthSq() > 343 * 343) this.sfx.crack(x, y, z) }
   onVehicleDestroyed(v, src) { this.mode?.onVehicleDestroyed?.(v, src); if (src?.isPlayer) this.hud.kill(`You destroyed a ${v.def.name}`) }
@@ -884,6 +905,7 @@ export class Game {
     } else { inp.takeLook(); inp.takeWheel(); s.input.fwd = s.input.side = 0; s.input.sprint = false }
     // the simulation
     s.step(dt, this.W)
+    this.tipT = (this.tipT || 0) - dt; if (this.tipT <= 0 && !s.dead) { this.tipT = 0.5; this.tips(s) }
     // this life's distance (not teleports) and when it ended
     { const L = this.life; if (L) { if (s.dead) { if (L.end == null) L.end = this.time } else if (L.last) { const d = Math.hypot(s.pos.x - L.last.x, s.pos.z - L.last.z); if (d < 30) L.dist += d; L.last.x = s.pos.x; L.last.z = s.pos.z } } }
     this.ai.update(dt, s.pos)

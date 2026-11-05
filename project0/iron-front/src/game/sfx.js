@@ -19,7 +19,9 @@ export class SFX {
     this.count = 0; this.window = 0
     this.loops = {}             // name -> { id, vol, file }
   }
-  get volume() { return this.g.settings.volume ?? 1 }
+  // a close blast leaves your ears ringing: everything muffled for a few seconds
+  get volume() { return (this.g.settings.volume ?? 1) * (1 - (this.deaf || 0)) }
+  deafen(k) { this.deaf = Math.max(this.deaf || 0, Math.min(0.85, k)) }
   unlock() { if (!this.on) { this.on = true; this.loop('wind', 'loop_wind', 0.18) } }
   play(name, vol = 1, rate = 1) {
     if (!this.on || !SET.has(name) || vol * this.volume < 0.01 || !this.p0.sound) return null
@@ -66,6 +68,23 @@ export class SFX {
   dry() { this.play('dry', 0.5) }
   horn(v) { const p = this.at(v.pos.x, v.pos.y, v.pos.z, 60); this.play('horn', p.v) }
   ui(kind) { this.play(kind === 'click' ? 'ui_click' : 'ui_' + kind, 0.7) }
+  // Footsteps: yours, and of anyone on foot within 30 m (an enemy creeping up can be heard); quiet crouched,
+  // none prone, louder running. Each soldier's stride sets its rhythm.
+  footsteps(dt) {
+    const g = this.g, P = g.player?.s
+    if (!this.on || !P || !g.soldiersNear) return
+    let n = 0
+    for (const s of g.soldiersNear(P.pos.x, P.pos.z, 30)) {
+      if (s.dead || s.vehicle || !s.onGround || s.swimming || s.stance === 2 || s.speed < 0.6 || s.ladder) { s.stepT = 0; continue }
+      if (s !== P && ++n > 6) continue
+      s.stepT = (s.stepT || 0) - dt * s.speed
+      if (s.stepT > 0) continue
+      s.stepT = s.speed > 4 ? 1.5 : 1.25          // metres a stride
+      const loud = (s.speed > 4 ? 1 : 0.6) * (s.stance === 1 ? 0.35 : 1)
+      const v = s === P ? 0.16 * loud : this.at(s.pos.x, s.pos.y, s.pos.z, 7).v * 0.55 * loud
+      this.play('step', v, 0.85 + Math.random() * 0.3)
+    }
+  }
   // A looping sound at a level (restarted when the level moves by more than a third).
   loop(key, file, vol) {
     const L = this.loops[key]
@@ -80,6 +99,8 @@ export class SFX {
   stopLoop(key) { const L = this.loops[key]; if (L?.id != null) try { this.p0.sound.stop(L.id) } catch {} delete this.loops[key] }
   update(dt) {
     this.window += dt; if (this.window > 1) { this.window = 0; this.count = 0 }
+    if (this.deaf) this.deaf = Math.max(0, this.deaf - dt * 0.2)
+    this.footsteps(dt)
     // the vehicle the player is in (or the loudest one near)
     const s = this.g.player?.s
     const v = s?.vehicle

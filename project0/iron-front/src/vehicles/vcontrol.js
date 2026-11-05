@@ -19,7 +19,19 @@ export class VehicleControl {
     const v = sol.vehicle, seat = sol.seat, g = this.game
     const look = input.takeLook(this.zoom > 1 ? 1 / this.zoom : 1)
     const wheel = input.takeWheel()
-    if (input.hit('interact')) { g.vehicles.exit(sol); g.player.view = g.player.lastView || 'fp'; return }
+    if (input.hit('interact')) {
+      // jumping out of something moving on land hurts, the more the faster (aircraft high up give a parachute)
+      const sp = Math.abs(v.speed || 0), land = v.kind === 'car' || v.kind === 'tracked' || v.kind === 'bike' || ((v.kind === 'heli' || v.kind === 'plane') && (v.alt ?? 99) <= 20)
+      g.vehicles.exit(sol); g.player.view = g.player.lastView || 'fp'
+      if (land && sp > 7 && !sol.parachute && !sol.vehicle) {
+        const dmg = (sp - 7) * 4
+        sol.bailed = sol.time
+        sol.hurt(Math.random() < 0.5 ? 'legL' : 'legR', dmg, 0, null, null, 'fall'); if (sp > 14) sol.hurt('torso', dmg * 0.5, 0, null, null, 'fall')
+        g.player.camShake = Math.max(g.player.camShake || 0, 1)
+        g.hud.note(`You jumped out at ${Math.round(sp * 3.6)} km/h`, C.amber)
+      }
+      return
+    }
     if (input.hit('vSeat')) { const s = g.vehicles.changeSeat(sol); if (s) g.hud.note(`Seat: ${s.role}`) }
     if (input.hit('view')) this.firstPerson = !this.firstPerson
     if (input.hit('vLight')) { v.lights = !v.lights; g.hud.note(v.lights ? 'Lights on' : 'Lights off') }

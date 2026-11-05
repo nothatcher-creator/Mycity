@@ -113,6 +113,10 @@ quads over the 3D view.
   crouching or prone target slow it further; deep in the trees contact can be broken.
 - **Destruction**: tank shells, rockets, missiles and bombs knock wall sections out of buildings (`citystream.js`), and glass breaks.
 - **Sound travels at 343 m/s** (`src/game/sfx.js`): a distant shot, explosion or impact is heard after it is seen (a gun 700 m away about two seconds late), and a blast's shock reaches your camera when its sound does. Only a supersonic bullet cracks as it passes you.
+- **Footsteps** (`src/game/sfx.js`): yours and those of anyone on foot within 30 m, so a soldier creeping up can be heard; quieter crouched, silent prone, louder running.
+- **Blasts** close by leave your ears ringing: every sound muffled for a few seconds.
+- **Jumping out of a moving vehicle** hurts, by speed (about 25 km/h and up; 72 km/h leaves you badly hurt, 100 km/h kills); aircraft high up give a parachute instead.
+- **Tips** the first time something happens to you (bleeding, a hurt leg, no spare ammo, a scope, driving, night, pinned down, out of breath, ringing ears), once each and kept in the save; a setting turns them off.
 - **Wind** (`src/world/sky.js`): each weather has its own strength, gusting, from a direction that drifts slowly; bullets fly through the moving air (drag on the speed relative to the wind), so a crosswind pushes long shots aside. A magnified scope shows the wind across your line of sight (WIND 4.2 m/s →, with head or tail wind); rain falls with it.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
   thickness, ricochets and near-miss suppression (`ballistics.js`); 70 hand-held weapons and 13 mounted

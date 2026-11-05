@@ -1,0 +1,8 @@
+{
+  "materials": {
+    "Glow": { "surface": "glow.glsl", "vertex": "glowv.glsl", "glow": 1.8 },
+    "Sign": { "surface": "sign.glsl", "glow": 1.1 },
+    "Body": { "glow": 0 },
+    "Map": { "glow": 0 }
+  }
+}

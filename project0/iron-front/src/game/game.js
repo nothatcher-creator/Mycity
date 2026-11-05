@@ -5,14 +5,16 @@
 import * as THREE from 'three'
 import { Engine, QUALITY } from '../core/engine.js'
 import { Input } from '../core/input.js'
-import { initHeightfieldAsync, heightAt, normalAt, waterLevel as waterLevelAt } from '../world/heightfield.js'
+import { initHeightfieldAsync, heightAt, normalAt, waterLevel as waterLevelAt, forestAt } from '../world/heightfield.js'
 import { Terrain } from '../world/terrain.js'
 import { Sky, WEATHER } from '../world/sky.js'
 import { Water } from '../world/water.js'
 import { Rain } from '../world/rain.js'
 import { Birds } from '../world/birds.js'
+import { Fauna } from '../world/fauna.js'
+import { Beacons } from '../world/beacons.js'
 import { Collision, raycastTerrain, makeBox } from '../world/collision.js'
-import { buildPlaces, POINTS, BUILDINGS } from '../world/places.js'
+import { buildPlaces, POINTS, BUILDINGS, PROPS } from '../world/places.js'
 import { Roads } from '../world/roads.js'
 import { Vegetation } from '../world/vegetation.js'
 import { Grass } from '../world/grass.js'
@@ -88,6 +90,8 @@ export class Game {
     this.water = new Water(this.engine.world, this.engine.scene)
     this.rain = new Rain(this.engine, q)
     this.birds = new Birds(this.engine, q)
+    this.fauna = new Fauna(this.engine, q)
+    this.beacons = new Beacons(this.engine)
     this.roads = new Roads(this.engine.world, this.collision)
     this.veg = new Vegetation(this.engine.world, this.collision, q)
     this.grass = new Grass(this.engine.world, q)
@@ -262,7 +266,7 @@ export class Game {
       if (e.code === 'ScrollLock' && this.mode?.dbgVisit) this.mode.dbgVisit()
       if (e.code === 'F2' && this.mode?.dbgVisit) this.mode.dbgVisit('dealer')
       if (e.code === 'Period') this.input.look.dx += 200
-      if (e.code === 'F10') { const F = this.birds.flocks[0]; if (F) { F.cx = s.pos.x + Math.sin(s.yaw) * 45; F.cz = s.pos.z + Math.cos(s.yaw) * 45; F.alt = 18; F.r = 20; F.flee = 0 } this.input.look.dy -= 120; p0.log('dbg birds', this.birds.shown, this.birds.flocks.map(f => f.flee > 0 ? 'flee' : Math.round(Math.hypot(f.cx - s.pos.x, f.cz - s.pos.z))).join(','), 'night', this.sky.night.toFixed(2)) }
+      if (e.code === 'F10') { const F = this.birds.flocks[0]; if (F) { F.cx = s.pos.x + Math.sin(s.yaw) * 45; F.cz = s.pos.z + Math.cos(s.yaw) * 45; F.alt = 18; F.r = 20; F.flee = 0 } this.input.look.dy -= 120; this.fauna.spawnHerd(s.pos.x + Math.sin(s.yaw) * 60, s.pos.z + Math.cos(s.yaw) * 60, true); p0.log('dbg deer', this.fauna.herds.length, this.fauna.list.length, this.fauna.list.filter(d => d.dead).length); p0.log('dbg birds', this.birds.shown, this.birds.flocks.map(f => f.flee > 0 ? 'flee' : Math.round(Math.hypot(f.cx - s.pos.x, f.cz - s.pos.z))).join(','), 'night', this.sky.night.toFixed(2)) }
       if (e.code === 'Home' && this.modeId !== 'campaign') {
         // to the foot of the nth nearest staircase (each press the next), facing up it
         const L = []; this.collision.query(s.pos.x - 150, s.pos.z - 150, s.pos.x + 150, s.pos.z + 150, c => { if (c.kind === 'stairs') L.push(c) })
@@ -289,6 +293,8 @@ export class Game {
       if (e.code === 'Numpad9') p0.log('dbg look yaw', s.yaw.toFixed(2), 'free', this.player.freeLook.yaw.toFixed(2), this.player.freeLooking, 'walk', !!this.player.walking); p0.log('dbg state stam', s.stamina.toFixed(2), 'spr', s.sprint, s.winded, 'spd', s.speed.toFixed(1), 'blood', Math.round(s.blood), 'bleed', s.bleed.toFixed(2), 'y', s.pos.y.toFixed(2), 'ladder', !!s.ladder, 'ground', s.onGround, 'fwd', s.input.fwd, 'vy', s.vel.y.toFixed(2), 'xz', s.pos.x.toFixed(1), s.pos.z.toFixed(1), 'yaw', s.yaw.toFixed(2), 'ammo', s.w?.rec.mag, 'fingers', this.touchCtl.fingers.map(f => f.role + (f.hold ? ':' + f.hold : '')).join('|'), 'stick', this.input.stick ? this.input.stick.x.toFixed(2) + ',' + this.input.stick.y.toFixed(2) : '-')
       if (e.code === 'Numpad7') { const L = [...this.W.ladders].sort((a, b) => Math.hypot(a.x - s.pos.x, a.z - s.pos.z) - Math.hypot(b.x - s.pos.x, b.z - s.pos.z))[0]; if (L) { const bx = L.x - Math.sin(L.yaw) * 0.8, bz = L.z - Math.cos(L.yaw) * 0.8; s.pos.set(bx, L.y0, bz); s.yaw = L.yaw; p0.log('dbg ladder', this.W.ladders.length, JSON.stringify({ x: L.x.toFixed(1), z: L.z.toFixed(1), y0: L.y0.toFixed(1), y1: L.y1.toFixed(1), yaw: L.yaw.toFixed(2) })) } else p0.log('dbg no ladders', this.W.ladders.length) }
       if (e.code === 'NumpadDecimal') { this.sky.setWeather('storm'); p0.log('dbg storm') }
+      if (e.code === 'NumpadSubtract' && this.state !== 'menu') { const cd = this.fauna.list.find(d => d.dead && d.meat > 0); if (cd && !this.fauna.carcass(s.pos.x, s.pos.z)) { s.pos.x = cd.x + 1.2; s.pos.z = cd.z; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.05 } else this.fauna.spawnHerd(s.pos.x + Math.sin(s.yaw) * 12, s.pos.z + Math.cos(s.yaw) * 12, true, s.yaw + Math.PI); p0.log('dbg deer', this.fauna.herds.length, this.fauna.list.length, 'dead', this.fauna.list.filter(d => d.dead).length, 'venison', s.inv.count('venison'), 'fleeing', this.fauna.herds.filter(h => h.flee > 0).length) }
+      if (e.code === 'NumpadDivide' && this.state !== 'menu') { const K = ['pole', 'busstop', 'bench', 'haybale', 'lighthouse'], i = this.dbgProp = ((this.dbgProp ?? -1) + 1) % K.length, L = PROPS.filter(p => p.kind === K[i] && (K[i] !== 'pole' || (p.to && forestAt(p.x, p.z) < 0.05))), p = L[Math.floor(L.length * 0.37)], back = K[i] === 'lighthouse' ? 45 : K[i] === 'pole' ? 22 : 9, a = p.yaw + (K[i] === 'pole' ? Math.PI / 2 + 0.5 : K[i] === 'busstop' ? 0.3 : Math.PI); s.pos.x = p.x + Math.sin(a) * back; s.pos.z = p.z + Math.cos(a) * back; s.pos.y = heightAt(s.pos.x, s.pos.z) + 0.1; s.yaw = Math.atan2(p.x - s.pos.x, p.z - s.pos.z); p0.log('dbg prop', K[i], L.length, Math.round(p.x), Math.round(p.z)) }
       if (e.code === 'F4') { const T = [{ x: 60, z: 1650, yaw: 0 }, { x: -3000, z: -360, yaw: Math.PI / 2 }, { x: 1010, z: -196, yaw: 1.06 }]; this.dbgTp = ((this.dbgTp ?? -1) + 1) % T.length; const P = T[this.dbgTp]; this.mode.admin('teleport', P); s.yaw = P.yaw; this.player.pitch = 0.02; p0.log('dbg teleported', this.dbgTp) }
       if (e.code === 'F2') { const v = s.vehicle; p0.log('dbg veh', v ? JSON.stringify({ t: v.type, sp: v.speed.toFixed(2), thr: v.throttle, eng: v.engine, ground: v.onGround, y: v.pos.y.toFixed(2), alt: v.alt?.toFixed(1), rpm: v.rpm?.toFixed(2), hp: v.hp.toFixed(0), fuel: v.fuel.toFixed(0), pitch: v.pitch.toFixed(2), roll: v.roll.toFixed(2), aim: [this.vcontrol.aim.yaw.toFixed(2), this.vcontrol.aim.pitch.toFixed(2)], vyaw: v.yaw.toFixed(2), locked: p0.input.pointer.locked, ctl: v.ctl }) : 'none') }
     })
@@ -759,6 +765,8 @@ export class Game {
     this.water.update(dt, cp, this.sky)
     this.rain.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.sfx)
     this.birds.update(this.state === 'paused' ? 0 : dt, cp, this.sky, this.dangers, this.time)
+    this.beacons.update(dt, cp, this.sky)
+    if (this.player && this.state !== 'menu') this.fauna.update(this.state === 'paused' ? 0 : dt, this)
     this.fx.update(this.state === 'paused' ? 0 : dt, cp); T.push(performance.now())
     // soldiers
     const fpPlayer = this.player && this.player.view === 'fp' && !this.player.s.dead
@@ -902,6 +910,8 @@ export class Game {
     const bodyFirst = body && (!v || Math.hypot(body.x - s.pos.x, body.z - s.pos.z) < Math.hypot(v.pos.x - s.pos.x, v.pos.z - s.pos.z) - Math.max(v.def.size[0], v.def.size[2]) / 2 + 0.5)
     out.push(...(bodyFirst ? [...bodyActs, ...vActs] : [...vActs, ...bodyActs]))
     for (const tv of this.vehicles.list) if (tv.supply && tv.alive && tv.pos.distanceTo(s.pos) < 9) { out.push({ label: `${tv.supply === 'ammo' ? 'Rearm' : tv.supply === 'medical' ? 'Heal' : 'Resupply'} at the ${tv.def.name}`, fn: () => this.resupply(s, tv.supply) }); break }
+    const deer = this.fauna?.carcass(s.pos.x, s.pos.z)
+    if (deer && !s.vehicle) out.push({ label: `Take venison (${deer.meat} left)`, fn: () => { if (s.inv.add({ kind: 'food', id: 'venison' })) { deer.meat--; this.hud.note('Venison taken'); this.sfx.ui('pickup') } else this.hud.note('No room for the venison') } })
     const ladder = this.W.ladders.find(L => Math.hypot(L.x - s.pos.x, L.z - s.pos.z) < 1.5 && s.pos.y < L.y1 - 0.5 && s.pos.y > L.y0 - 1)
     if (ladder && !s.ladder) out.push({ label: 'Climb the ladder: walk into it (W)', fn: null })
     return out

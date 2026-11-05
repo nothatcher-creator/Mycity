@@ -106,6 +106,63 @@ export const PROP_TYPES = {
     k.box(-1.6, 0.3, 2.5, 0.8, 0.3, 0.6, PAL.dark, { mat: 'metal' })
     k.spot(2, 0.1, 1, 'loot'); k.spot(-2, 0.1, -1, 'cover')
   },
+  // A wooden power pole with a crossarm and three insulators; p.to (in the pole's own frame) is the next
+  // pole along the line, and the wires run there from the crossarm, sagging a little in the middle.
+  pole(k, p) {
+    k.box(0, 4.5, 0, 0.13, 4.5, 0.13, PAL.woodDark, { mat: 'wood', kind: 'prop' })
+    k.box(0, 8.4, 0, 1.15, 0.08, 0.1, PAL.woodDark, { collide: false })
+    for (const x of [-1, 0, 1]) k.box(x, 8.6, 0, 0.05, 0.13, 0.05, [0.55, 0.62, 0.55], { collide: false })
+    if (!p.to) return
+    const [lx, ly, lz] = p.to, yaw = Math.atan2(lx, lz)
+    for (const x of [-1, 0, 1]) {
+      // two straight halves that dip 0.6 m at the middle
+      const ax = x, ay = 8.72, bx = lx + x * Math.cos(yaw), bz = lz - x * Math.sin(yaw), by = 8.72 + ly
+      const mx = (ax + bx) / 2, my = (ay + by) / 2 - 0.6, mz = bz / 2
+      for (const [x0, y0, z0, x1, y1, z1] of [[ax, ay, 0, mx, my, mz], [mx, my, mz, bx, by, bz]]) {
+        const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, hl = Math.hypot(dx, dz)
+        k.box((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, 0.015, 0.015, Math.hypot(hl, dy) / 2, PAL.dark, { collide: false, yaw: Math.atan2(dx, dz), pitch: -Math.atan2(dy, hl) })
+      }
+    }
+  },
+  bench(k) {
+    k.box(0, 0.45, 0, 0.9, 0.04, 0.22, PAL.wood, { mat: 'wood', kind: 'prop' })
+    k.box(0, 0.75, -0.2, 0.9, 0.14, 0.03, PAL.wood, { collide: false })
+    for (const x of [-0.75, 0.75]) k.box(x, 0.22, 0, 0.04, 0.22, 0.2, PAL.dark, { collide: false })
+  },
+  bin(k) {
+    k.box(0, 0.45, 0, 0.25, 0.45, 0.25, [0.22, 0.36, 0.26], { mat: 'sheetmetal', kind: 'prop' })
+    k.box(0, 0.92, 0, 0.27, 0.03, 0.27, PAL.dark, { collide: false })
+  },
+  // A bus stop: a roof on two posts, a glass back and a bench, and the sign on its pole
+  busstop(k) {
+    k.box(0, 2.45, 0, 1.6, 0.06, 0.8, PAL.metal, { mat: 'sheetmetal', kind: 'prop' })
+    for (const x of [-1.5, 1.5]) k.box(x, 1.2, -0.65, 0.05, 1.2, 0.05, PAL.metal, { mat: 'metal', kind: 'prop' })
+    k.box(0, 1.3, -0.7, 1.45, 0.9, 0.02, [0.6, 0.72, 0.78], { mat: 'glass', kind: 'prop' })
+    k.box(0, 0.45, -0.4, 1.2, 0.04, 0.2, PAL.wood, { collide: false })
+    k.box(2.1, 1.3, 0.3, 0.04, 1.3, 0.04, PAL.metal, { mat: 'metal', kind: 'prop' })
+    k.box(2.1, 2.55, 0.3, 0.3, 0.3, 0.03, PAL.yellow, { collide: false })
+    k.box(2.1, 2.55, 0.335, 0.18, 0.18, 0.005, [0.15, 0.25, 0.5], { collide: false })
+    k.spot(0, 0.1, 1.2, 'cover')
+  },
+  // Round hay bales left in a field, a few together (two turned boxes make each round)
+  haybale(k, p) {
+    const r = rng(p.x * 7 + p.z * 3), n = 2 + Math.floor(r() * 4)
+    for (let i = 0; i < n; i++) {
+      const x = (r() - 0.5) * 9, z = (r() - 0.5) * 9, yaw = r() * 3
+      for (const pitch of [0, Math.PI / 4]) k.box(x, 0.75, z, 0.65, 0.62, 0.62, [0.8, 0.68, 0.38], { mat: 'wood', kind: 'prop', yaw, pitch, collide: pitch === 0 })
+      k.box(x, 0.75, z, 0.66, 0.2, 0.2, [0.7, 0.58, 0.3], { collide: false, yaw: yaw + Math.PI / 2, pitch: 0 })
+    }
+    k.spot(0, 0.1, 0, 'cover')
+  },
+  // A lighthouse on the shore: a white tower with red bands, a gallery and the lamp room on top
+  lighthouse(k) {
+    for (let i = 0; i < 6; i++) { const y = i * 4 + 2, r = 2.6 - i * 0.22; k.box(0, y, 0, r, 2, r, i % 2 ? PAL.red : PAL.white, { mat: 'concrete', kind: 'wall', yaw: 0 }); k.box(0, y, 0, r, 2, r, i % 2 ? PAL.red : PAL.white, { collide: false, yaw: Math.PI / 4 }) }
+    k.box(0, 24.2, 0, 2.1, 0.2, 2.1, PAL.dark, { mat: 'metal', kind: 'floor' })
+    k.box(0, 25.6, 0, 1.1, 1.2, 1.1, [0.85, 0.9, 0.7], { mat: 'glass', kind: 'prop' })
+    k.box(0, 27.1, 0, 1.25, 0.3, 1.25, PAL.red, { collide: false })
+    k.box(0, 1.1, 2.62, 0.6, 1.1, 0.05, PAL.woodDark, { collide: false })
+    k.lights.push({ x: k.tx(0, 0), y: k.oy + 25.6, z: k.tz(0, 0), color: [1, 0.95, 0.75], lamp: true })
+  },
   pier(k, p) {
     const hw = p.w / 2, hd = p.d / 2
     k.box(0, -0.4, 0, hw, 0.4, hd, PAL.concrete, { mat: 'concrete', kind: 'floor' })

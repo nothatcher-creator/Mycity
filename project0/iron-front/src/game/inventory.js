@@ -65,6 +65,7 @@ export const ITEMS = {
   phone: { name: 'Phone', size: 0.5, weight: 0.2, kind: 'tool' },
   fishingrod: { name: 'Fishing rod', size: 3, weight: 1.2, kind: 'tool' },
   fish: { name: 'Fresh fish', size: 1, weight: 0.8, kind: 'food', food: 25 },
+  venison: { name: 'Venison', size: 1, weight: 1.0, kind: 'food', food: 35 },
   canteen: { name: 'Canteen', size: 1, weight: 1, kind: 'water', water: 50 },
   binoculars: { name: 'Binoculars', size: 1, weight: 0.8, kind: 'tool', zoom: 7 },
   rangefinder: { name: 'Rangefinder', size: 1, weight: 0.6, kind: 'tool', zoom: 6, range: true },

@@ -26,7 +26,7 @@ const PANTS_COLOR = { jeans: [0.2, 0.27, 0.45], chinos: [0.6, 0.52, 0.38], short
 
 // The counters. price in dollars; a shop buys back what it sells at 40%.
 export const SHOPS = {
-  grocer: { name: 'General store', hours: [7, 21], greet: 'Fresh bread came in this morning.', items: { sandwich: 6, apple: 2, water: 3, soda: 4, hotmeal: 14, ration: 9, canteen: 12 }, buys: ['fish'] },
+  grocer: { name: 'General store', hours: [7, 21], greet: 'Fresh bread came in this morning.', items: { sandwich: 6, apple: 2, water: 3, soda: 4, hotmeal: 14, ration: 9, canteen: 12 }, buys: ['fish', 'venison'] },
   cafe: { name: 'Café', hours: [7, 23], greet: 'Coffee? It is the only thing that kept us going through the war.', items: { coffee: 3, sandwich: 6, hotmeal: 12, soda: 4, water: 3 } },
   chemist: { name: 'Chemist', hours: [8, 20], greet: 'Take care of yourself out there.', items: { bandage: 4, firstaid: 22, morphine: 12, splint: 10, medkit: 75 } },
   clothes: { name: 'Clothes shop', hours: [9, 19], greet: 'New season, old stock. Have a look.', clothing: { tshirt: 12, shirt: 25, hoodie: 30, jacket: 90, suit: 140, workjacket: 35, jeans: 30, chinos: 35, shorts: 15, workpants: 40, beanie: 10, sunglasses: 20, sneakers: 45, daypack: 40, assaultpack: 75 } },

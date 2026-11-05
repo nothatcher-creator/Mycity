@@ -8,7 +8,7 @@ import { TYPES, shell } from './buildings.js'
 import { PROP_TYPES } from './props.js'
 
 const NEAR = 96, FAR = 384
-const SHELL_PROPS = new Set(['chimney', 'wagon', 'rockpile', 'cave', 'crash', 'hesco', 'helipad', 'plaza', 'monument', 'aagun', 'logs'])
+const SHELL_PROPS = new Set(['chimney', 'wagon', 'rockpile', 'cave', 'crash', 'hesco', 'helipad', 'plaza', 'monument', 'aagun', 'logs', 'pole', 'lighthouse'])
 
 export class CityStream {
   constructor(world, collision, quality) {

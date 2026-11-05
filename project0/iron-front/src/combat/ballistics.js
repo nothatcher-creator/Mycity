@@ -137,6 +137,8 @@ export class Ballistics {
       const r = this.hitSoldier(s, ox, oy, oz, dx, dy, dz, best)
       if (r) { best = r.t; kind = 'soldier'; obj = s; part = r.part }
     }
+    // deer
+    if (G_.fauna) { const r = G_.fauna.raycast(ox, oy, oz, dx, dy, dz, best); if (r) { best = r.t; kind = 'animal'; obj = r.deer; part = null } }
     // near misses: suppress anyone the bullet passes close to
     if (!p.a.explosive || p.rocket) this.suppress(p, ox, oy, oz, dx, dy, dz, best, G_)
     const hx = ox + dx * best, hy = oy + dy * best, hz = oz + dz * best
@@ -165,6 +167,12 @@ export class Ballistics {
       const col = surf === 'sand' ? [0.85, 0.78, 0.55] : surf === 'rock' ? [0.6, 0.58, 0.55] : surf === 'asphalt' ? [0.35, 0.35, 0.36] : [0.45, 0.36, 0.25]
       G_.fx.impact(hx, hy, hz, n[0], n[1], n[2], surf === 'rock' || surf === 'asphalt' ? 'chips' : 'dirt', col)
       G_.sfx?.impact(surf, hx, hy, hz)
+      return
+    }
+    if (kind === 'animal') {
+      p.alive = false; p.pos.set(hx, hy, hz)
+      G_.fauna.kill(obj, ox, oz)
+      G_.fx.impact(hx, hy, hz, -dx, -dy, -dz, 'hit')
       return
     }
     if (kind === 'soldier') {

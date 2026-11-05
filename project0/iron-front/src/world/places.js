@@ -3,7 +3,7 @@
 // airfield's runway to the road network, and levels a pad under each building.
 import { rng } from '../core/noise.js'
 import { PLACES, place, HALF } from './blueprint.js'
-import { heightAt, waterLevel, roadAt, addRoad, addPad, roadLines, normalAt, forestAt } from './heightfield.js'
+import { heightAt, waterLevel, roadAt, addRoad, addPad, roadLines, normalAt, forestAt, fieldAt } from './heightfield.js'
 
 export const BUILDINGS = []          // { type, x, y, z, yaw, w, d, floors, h, seed, style, place, ... }
 export const PROPS = []              // { kind, x, y, z, yaw, ... } small things: barrels, sandbags, wrecks, lamps
@@ -353,6 +353,15 @@ function roadside() {
     for (let i = 5; i < l.pts.length - 5; i++) {
       const [x, z] = l.pts[i], [nx, nz] = l.pts[i + 1], a = Math.atan2(nx - x, nz - z)
       if (l.kind === 'street' && i % 5 === 0) prop('lamp', x + Math.cos(a) * (l.w / 2 + 1), z - Math.sin(a) * (l.w / 2 + 1), a)
+      if (l.kind === 'street' && i % 7 === 3) {
+        // the other pavement: a bench or a bin, turned to the street
+        const d = l.w / 2 + 1.5, bx = x - Math.cos(a) * d, bz = z + Math.sin(a) * d, rr = roadAt(bx, bz)
+        if (!(rr && rr.d < rr.w / 2 + 0.3) && !isBuilt(bx, bz, 0.5)) prop(r() < 0.55 ? 'bench' : 'bin', bx, bz, a + Math.PI / 2)
+      }
+      if (l.kind === 'street' && i % 40 === 22 && r() < 0.6) {
+        const d = l.w / 2 + 2.4, bx = x + Math.cos(a) * d, bz = z - Math.sin(a) * d, rr = roadAt(bx, bz)
+        if (!(rr && rr.d < rr.w / 2 + 0.5) && !isBuilt(bx, bz, 1)) prop('busstop', bx, bz, a - Math.PI / 2)
+      }
       if (l.kind === 'street' && r() < 0.06) prop('car', x + Math.cos(a) * (l.w / 2 - 1.3), z - Math.sin(a) * (l.w / 2 - 1.3), a, { color: Math.floor(r() * 6) })
       if (l.kind !== 'street' && r() < 0.004) prop('wreck', x + Math.cos(a) * (l.w / 2 + 3), z - Math.sin(a) * (l.w / 2 + 3), a + r() - 0.5)
     }
@@ -362,6 +371,65 @@ function roadside() {
     for (const s of [-1, 1]) prop('barrier', x + Math.cos(a) * 3 * s, z - Math.sin(a) * 3 * s, a)
     prop('sandbagnest', x + Math.cos(a) * 9, z - Math.sin(a) * 9, a)
     point('checkpoint', x, z, { yaw: a })
+  }
+}
+
+// Power lines: wooden poles about every 48 m beside the country roads and highways, wired pole to pole;
+// a line breaks at bridges, water, buildings and other roads, and starts again after.
+function powerLines() {
+  for (const l of roadLines) {
+    if (l.kind !== 'road' && l.kind !== 'highway') continue
+    let prev = null
+    for (let i = 3; i < l.pts.length - 3; i += 6) {
+      const [x, z, , bridge] = l.pts[i], [nx, nz] = l.pts[i + 1], a = Math.atan2(nx - x, nz - z)
+      const d = l.w / 2 + 5, px = x + Math.cos(a) * d, pz = z - Math.sin(a) * d
+      const rr = roadAt(px, pz), h = heightAt(px, pz)
+      const ok = !bridge && waterLevel(px, pz) < h - 0.3 && !(rr && rr.d < rr.w / 2 + 1.5) && !isBuilt(px, pz, 1.5)
+      if (!ok) { prev = null; continue }
+      const p = prop('pole', px, pz, a)
+      if (prev && Math.hypot(px - prev.x, pz - prev.z) < 70) {
+        // the next pole in the previous one's own frame
+        const DX = px - prev.x, DZ = pz - prev.z, c = Math.cos(prev.yaw), s = Math.sin(prev.yaw)
+        prev.to = [DX * c - DZ * s, p.y - prev.y, DX * s + DZ * c]
+      }
+      prev = p
+    }
+  }
+}
+// Round hay bales in the fields round the villages and towns
+function hayBales() {
+  const r = rng(733)
+  for (const P of PLACES) {
+    if (P.kind !== 'village' && P.kind !== 'town') continue
+    for (let k = 0; k < 60; k++) {
+      const ang = r() * Math.PI * 2, dist = P.r * (1 + r() * 2.2), x = P.x + Math.cos(ang) * dist, z = P.z + Math.sin(ang) * dist
+      if (fieldAt(x, z) === 0 || r() < 0.6) continue
+      const rr = roadAt(x, z)
+      if ((rr && rr.d < rr.w / 2 + 8) || isBuilt(x, z, 6) || forestAt(x, z) > 0.3 || waterLevel(x, z) > heightAt(x, z) - 0.5 || normalAt(x, z)[1] < 0.93) continue
+      prop('haybale', x, z, r() * 3)
+    }
+  }
+}
+// Lighthouses on the coast near the harbour city and the fishing town: the first shore found walking out
+// from the place, set back a little onto the land.
+function lighthouses() {
+  for (const [id, dirs] of [['anselm', [3.6, 3.2, 4.0, 2.8]], ['halvik', [1.6, 1.2, 2.0, 0.8]]]) {
+    const P = place(id)
+    if (!P) continue
+    for (const ang of dirs) {
+      const dx = Math.cos(ang), dz = Math.sin(ang)
+      let found = null
+      for (let s = P.r * 0.6; s < P.r + 1600; s += 10) {
+        const x = P.x + dx * s, z = P.z + dz * s
+        if (waterLevel(x, z) > heightAt(x, z)) { found = s; break }
+      }
+      if (!found) continue
+      const x = P.x + dx * (found - 18), z = P.z + dz * (found - 18)
+      if (isBuilt(x, z, 4) || roadAt(x, z)?.d < 6) continue
+      prop('lighthouse', x, z, ang)
+      POINTS.push({ kind: 'lighthouse', x, y: heightAt(x, z), z, place: id })
+      break
+    }
   }
 }
 
@@ -376,6 +444,7 @@ export function buildPlaces(progress = () => {}) {
   airbase()
   industry()
   roadside()
+  powerLines(); hayBales(); lighthouses()
   progress(1)
   built = true
 }

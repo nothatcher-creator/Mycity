@@ -141,7 +141,7 @@ export class HUD {
     if (vk !== this.last.vign) { this.last.vign = vk; this.vign.dirty = true }
     this.dmgDirs = this.dmgDirs.filter(d => g.time - d.t < 1.5)
     if (scoped && g.player.binoculars) this.scope.dirty = true
-    else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
+    else if (scoped) { const zk = [g.player.zoom, g.player.zero, Math.round(g.rangeAt * 1), Math.round(g.sky.windNow * 2), Math.round(g.camHeading() * 10)].join(); if (zk !== this.last.scope) { this.last.scope = zk; this.scope.dirty = true } }
     if (this.compact) this.modeP.show(!s.vehicle && this.visible)
     if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role, (g.acts?.length || 0) > 1, this.touchNeeds().join(), s.vehicle && performance.now() - (this.vehT ?? 0) < 6000, !!s.w].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
     this.touch.show(g.input.touch)
@@ -475,17 +475,23 @@ export class HUD {
   drawScope(c, p) {
     const g = this.g, W = p.w, H = p.h
     const r = Math.min(W, H) * 0.46, cx = W / 2, cy = H / 2
-    // black all round the lens
-    c.fillStyle = '#000'
-    c.beginPath(); c.rect(0, 0, W, H); c.arc(cx, cy, r, 0, Math.PI * 2, true); c.fill()
     if (g.player.binoculars) {
-      c.beginPath(); c.rect(0, 0, W, H); c.arc(cx - r * 0.55, cy, r * 0.75, 0, Math.PI * 2, true); c.arc(cx + r * 0.55, cy, r * 0.75, 0, Math.PI * 2, true); c.fill()
+      // black, with the two overlapping lenses cut out of it (each its own sub-path, so no wedges join them)
+      c.fillStyle = '#000'; c.fillRect(0, 0, W, H)
+      c.globalCompositeOperation = 'destination-out'
+      c.beginPath(); c.arc(cx - r * 0.55, cy, r * 0.75, 0, Math.PI * 2); c.moveTo(cx + r * 0.55 + r * 0.75, cy); c.arc(cx + r * 0.55, cy, r * 0.75, 0, Math.PI * 2); c.fill()
+      c.globalCompositeOperation = 'source-over'
+      // a soft dark rim inside each lens
+      for (const sx of [-1, 1]) { const v = c.createRadialGradient(cx + sx * r * 0.55, cy, r * 0.64, cx + sx * r * 0.55, cy, r * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.45)'); c.fillStyle = v; c.beginPath(); c.arc(cx + sx * r * 0.55, cy, r * 0.75, 0, Math.PI * 2); c.fill() }
       c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1
       for (let i = -5; i <= 5; i++) { c.beginPath(); c.moveTo(cx + i * 18, cy - (i % 5 ? 4 : 8)); c.lineTo(cx + i * 18, cy + (i % 5 ? 4 : 8)); c.stroke() }
       const rng = g.player.s.inv.count('rangefinder') ? `RANGE ${g.rangeAt ? Math.round(g.rangeAt) + ' m' : '---'}` : ''
       text(c, `${Math.round(((g.camHeading() * 180 / Math.PI) % 360 + 360) % 360)}°  ${rng}`, cx, cy + r * 0.6, { size: 16, align: 'center', color: '#ffdd88', weight: 700 })
       return
     }
+    // black all round the lens
+    c.fillStyle = '#000'
+    c.beginPath(); c.rect(0, 0, W, H); c.arc(cx, cy, r, 0, Math.PI * 2, true); c.fill()
     // the reticle: a mil grid with hold-over marks
     const o = g.player.optic
     c.strokeStyle = 'rgba(0,0,0,0.9)'; c.lineWidth = 1.5
@@ -507,6 +513,10 @@ export class HUD {
     if (o.night) { c.fillStyle = 'rgba(40,255,80,0.12)'; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill() }
     text(c, `${g.player.zoom}x   ZERO ${g.player.zero} m${g.rangeAt ? '   ' + Math.round(g.rangeAt) + ' m' : ''}`, cx, cy + r + 24 > H ? H - 14 : cy + r * 0.85, { size: 13, align: 'center', color: '#ffdd88', weight: 700 })
     if (g.player.holding) text(c, 'HOLDING BREATH', cx, cy - r * 0.8, { size: 12, align: 'center', color: '#bfe8ff' })
+    // the wind across the line of sight: which way it pushes the bullet, and how hard
+    { const w = g.sky.windVec(), f = g.player.aimDirection(), L = Math.hypot(f.x, f.z) || 1, fx = f.x / L, fz = f.z / L
+      const side = w.x * -fz + w.z * fx, head = w.x * fx + w.z * fz
+      if (Math.hypot(w.x, w.z) > 0.3) text(c, `WIND ${Math.abs(side).toFixed(1)} m/s ${side > 0.2 ? '→' : side < -0.2 ? '←' : ''}${Math.abs(head) > 0.5 ? (head > 0 ? '  tail' : '  head') : ''}`, cx, Math.min(H - 34, cy + r * 0.85 + 20), { size: 12, align: 'center', color: '#ffdd88', weight: 700 }) }
   }
   drawVignette(c, p) {
     const g = this.g, s = g.player.s, W = p.w, H = p.h

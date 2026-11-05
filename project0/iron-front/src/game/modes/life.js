@@ -125,7 +125,7 @@ export class Life extends Mode {
     g.preload(t.x, t.z)
     g.p0.log('dbg job', j.kind, 'stop', j.i, 'of', j.stops.length, 'riders', (j.riders || []).length, 'fare', !!j.fare, 'money', Math.round(this.money))
   }
-  dispose() { this.persist(); this.closeUI(); for (const m of this.beacons || []) this.g.engine.world.remove(m) }
+  dispose() { this.persist(); this.g.sfx.stopLoop('jobfire'); this.closeUI(); for (const m of this.beacons || []) this.g.engine.world.remove(m) }
   // a point in a building's own frame (x along its width, z to its front), on its floor
   local(b, lx, lz, dy = 0) {
     const c = Math.cos(b.yaw), s = Math.sin(b.yaw)

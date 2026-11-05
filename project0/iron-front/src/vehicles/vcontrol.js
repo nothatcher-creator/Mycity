@@ -183,7 +183,7 @@ export class VehicleControl {
     // headlights on by themselves when you take the wheel in the dark
     const g = this.game, seat = g.player?.s.seat
     if ((seat?.role === 'driver' || seat?.role === 'pilot') && (g.sky?.night ?? 0) > 0.45 && !v.lights) { v.lights = true; g.hud.note('Headlights on (L)') }
-    if (g.debug) g.p0.log('dbg entered', v.def.id, 'lights', v.lights, 'night', (g.sky?.night ?? 0).toFixed(2))
+    if (g.debug) g.p0.log('dbg entered', v.def.name, 'lights', v.lights, 'night', (g.sky?.night ?? 0).toFixed(2))
     this.orbit.yaw = 0; this.orbit.pitch = 0.18; this.aim.yaw = v.yaw; this.aim.pitch = v.pitch; this.zoom = 1; this.camPos.set(0, 0, 0); this.firstPerson = (this.game.player?.lastView || this.game.player?.view) === 'fp'; v.engineOff = false }
   // A dashboard and a steering wheel (or an instrument panel) drawn with the first-person weapon's camera, so
   // the driver's first-person view has something to hold.

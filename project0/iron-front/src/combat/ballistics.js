@@ -24,6 +24,7 @@ const BOXES = {
   prone: [['head', -0.13, 0.13, 0.05, 0.35, 0.55, 0.82], ['torso', -0.22, 0.22, 0.0, 0.32, -0.1, 0.56], ['armR', -0.38, -0.2, 0, 0.3, 0.2, 0.75], ['armL', 0.2, 0.38, 0, 0.3, 0.2, 0.75], ['legR', -0.22, 0, 0, 0.28, -1.05, -0.1], ['legL', 0, 0.22, 0, 0.28, -1.05, -0.1]],
 }
 
+const _wind = { x: 0, z: 0 }
 export class Ballistics {
   constructor(game) {
     this.game = game
@@ -95,10 +96,11 @@ export class Ballistics {
       if (Math.random() < 0.7) G_.fx.puff(p.pos.x, p.pos.y, p.pos.z, { s0: 0.3, s1: 1.6, life: 1.8, r: 0.85, g: 0.85, b: 0.85, a: 0.5, drag: 1 })
       G_.fx.flash(p.pos.x, p.pos.y, p.pos.z, { size: 0.5, life: 0.05, r: 1, g: 0.7, b: 0.3 })
     } else {
-      // gravity and drag: dv = g dt - k |v| v dt
-      const sp = v.length()
+      // gravity and drag through the moving air: dv = g dt - k |v - w| (v - w) dt (a crosswind pushes it aside)
+      const W = G_.sky?.windVec ? G_.sky.windVec(_wind) : _wind
+      const rx = v.x - W.x, rz = v.z - W.z, sp = Math.hypot(rx, v.y, rz)
       const k = p.drag * sp * dt
-      v.x -= v.x * k; v.z -= v.z * k; v.y -= v.y * k + G * dt
+      v.x -= rx * k; v.z -= rz * k; v.y -= v.y * k + G * dt
     }
     const len = v.length() * dt
     if (len <= 0) { p.alive = false; return }

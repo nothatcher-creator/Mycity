@@ -599,7 +599,7 @@ export class Game {
       if (c.kind === 'glass') this.city.breakGlass(c)
       else if (c.kind === 'explosive' && Math.hypot(c.x - x, c.z - z) < r * 0.6) { c.alive = false; setTimeout(() => this.explode(c.x, c.y, c.z, { radius: 8, dmg: 150, heat: 200 }, src, null, true), 300) }
     })
-    if (this.player && !this.player.s.dead) { const pd = this.player.camPos.distanceTo(_v.set(x, y, z)); if (pd < r * 6) this.player.camShake = Math.max(this.player.camShake, 1.2 * (1 - pd / (r * 6))) }
+    if (this.player && !this.player.s.dead) { const pd = this.player.camPos.distanceTo(_v.set(x, y, z)); if (pd < r * 6) { const k = 1.2 * (1 - pd / (r * 6)), shake = () => { if (this.player) this.player.camShake = Math.max(this.player.camShake || 0, k) }; if (pd > 25) setTimeout(shake, pd / 343 * 1000); else shake() } }
   }
   // Grenades: thrown along `dir` at `speed` m/s, bounce off the land and walls, then frag, smoke or flash.
   throwGrenade(s, type, dir, speed = 16) {
@@ -701,7 +701,7 @@ export class Game {
       b.squad.share(shooter, shooter.pos, this.time - 1)
     }
   }
-  onNearMiss(p, d, x, y, z) { this.sfx.crack(x, y, z) }
+  onNearMiss(p, d, x, y, z) { if (p.vel.lengthSq() > 343 * 343) this.sfx.crack(x, y, z) }
   onVehicleDestroyed(v, src) { this.mode?.onVehicleDestroyed?.(v, src); if (src?.isPlayer) this.hud.kill(`You destroyed a ${v.def.name}`) }
   radioNear(s, text) { if (this.player && s.team === this.player.s.team && s.pos.distanceTo(this.player.s.pos) < 150) this.hud.radio(s.name, text) }
   orderSquad(type, o = {}) {

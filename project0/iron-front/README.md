@@ -112,6 +112,8 @@ quads over the 3D view.
 - **Concealment**: spotting falls off steeply with range, and woods along the sight line or around a
   crouching or prone target slow it further; deep in the trees contact can be broken.
 - **Destruction**: tank shells, rockets, missiles and bombs knock wall sections out of buildings (`citystream.js`), and glass breaks.
+- **Sound travels at 343 m/s** (`src/game/sfx.js`): a distant shot, explosion or impact is heard after it is seen (a gun 700 m away about two seconds late), and a blast's shock reaches your camera when its sound does. Only a supersonic bullet cracks as it passes you.
+- **Wind** (`src/world/sky.js`): each weather has its own strength, gusting, from a direction that drifts slowly; bullets fly through the moving air (drag on the speed relative to the wind), so a crosswind pushes long shots aside. A magnified scope shows the wind across your line of sight (WIND 4.2 m/s →, with head or tail wind); rain falls with it.
 - **Combat** (`src/combat/`): bullets are projectiles with gravity, drag, penetration by material and
   thickness, ricochets and near-miss suppression (`ballistics.js`); 70 hand-held weapons and 13 mounted
   ones with attachments (`weapons-data.js`); models built in code (`weapon-models.js`).

@@ -60,7 +60,7 @@ void main() { gl_FragColor = vec4(0.78, 0.82, 0.88, uAlpha * (0.35 + 0.65 * (1.0
     // the box follows the camera: the streaks keep their place on the island as you move
     u.uShift.value.set(camPos.x, camPos.y, camPos.z)
     const wind = sky.w.wind || 0
-    u.uWind.value.set(wind * 0.35, wind * 0.2)
+    u.uWind.value.set(Math.sin(sky.windDir || 0) * wind * 0.4, Math.cos(sky.windDir || 0) * wind * 0.4)
     u.uAlpha.value = Math.min(0.55, r * 0.6) * (camPos.y > 900 ? 0 : 1)
     this.mesh.geometry.setDrawRange(0, Math.floor(this.max * Math.min(1, r)) * 2)
     // lightning in a storm

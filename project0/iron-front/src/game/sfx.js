@@ -28,6 +28,9 @@ export class SFX {
     this.count++
     try { const r = this.p0.sound.play(`sfx/${name}.mp3`, { volume: Math.min(1, vol * this.volume), rate }); if (r?.catch) r.catch(() => {}); return r } catch { return null }
   }
+  // Sound travels at 343 m/s: something far off is heard after it is seen (a shot 700 m away two seconds
+  // late). Near sounds play at once.
+  later(d, fn) { if (d > 25) setTimeout(fn, d / 343 * 1000); else fn() }
   // Level for a sound at (x, y, z) with a reference range `ref` (metres at which it is at half volume).
   at(x, y, z, ref) {
     const c = this.g.camPos
@@ -38,7 +41,7 @@ export class SFX {
     const def = weapon(id), a = AMMO[def?.ammo] || {}
     const { d, v } = this.at(pos.x, pos.y, pos.z, suppressed ? 12 : 60)
     const rate = 0.94 + Math.random() * 0.12
-    if (suppressed) { this.play('shot_suppressed', v * 0.8, rate); return }
+    if (suppressed) { this.later(d, () => this.play('shot_suppressed', v * 0.8, rate)); return }
     let name = 'shot_rifle'
     if (a.rocket || def?.cat === 'launcher') name = 'shot_rocket'
     else if (a.mass >= 100) name = 'shot_cannon'
@@ -47,16 +50,17 @@ export class SFX {
     else if (def?.cat === 'shotgun') name = 'shot_shotgun'
     else if (a.mass >= 15 || def?.cat === 'mmg' || def?.cat === 'sniper') name = 'shot_heavy'
     if (d > 300 && name !== 'shot_rocket') name = name === 'shot_cannon' ? 'explosion_far' : 'shot_far'
-    this.play(name, v * (shooter?.isPlayer ? 0.75 : 0.9), rate)
+    this.later(d, () => this.play(name, v * (shooter?.isPlayer ? 0.75 : 0.9), rate))
     if (shooter?.isPlayer && (def?.modes[0] === 'bolt' || def?.modes[0] === 'pump')) setTimeout(() => this.play('bolt', 0.5), 280)
   }
-  explosion(x, y, z, r) { const { d, v } = this.at(x, y, z, 120 + r * 10); this.play(d > 400 ? 'explosion_far' : 'explosion', v, 0.9 + Math.random() * 0.15) }
+  explosion(x, y, z, r) { const { d, v } = this.at(x, y, z, 120 + r * 10), rate = 0.9 + Math.random() * 0.15; this.later(d, () => this.play(d > 400 ? 'explosion_far' : 'explosion', v, rate)) }
   impact(kind, x, y, z) {
     const { v } = this.at(x, y, z, 8)
     const name = kind === 'metal' || kind === 'steel' || kind === 'vehicle' ? 'impact_metal' : kind === 'flesh' || kind === 'body' ? 'impact_body' : kind === 'concrete' || kind === 'brick' || kind === 'rock' || kind === 'glass' || kind === 'wood' ? 'impact_hard' : 'impact_dirt'
-    this.play(name, v * 0.6, 0.9 + Math.random() * 0.25)
+    const { d } = this.at(x, y, z, 8), rate = 0.9 + Math.random() * 0.25
+    this.later(d, () => this.play(name, v * 0.6, rate))
   }
-  ricochet(x, y, z) { const { v } = this.at(x, y, z, 15); this.play('ricochet', v * 0.6, 0.85 + Math.random() * 0.3) }
+  ricochet(x, y, z) { const { d, v } = this.at(x, y, z, 15), rate = 0.85 + Math.random() * 0.3; this.later(d, () => this.play('ricochet', v * 0.6, rate)) }
   crack(x, y, z) { const { v } = this.at(x, y, z, 6); this.play('crack', v * 0.8, 0.9 + Math.random() * 0.2) }
   reload(s) { if (s.isPlayer) this.play('reload', 0.55, s.w ? 2.4 / Math.max(1, s.w.reloadDur) + 0.2 : 1) }
   dry() { this.play('dry', 0.5) }

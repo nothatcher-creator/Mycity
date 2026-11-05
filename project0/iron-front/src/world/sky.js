@@ -67,6 +67,8 @@ export class Sky {
   constructor(scene, world, quality) {
     this.scene = scene
     this.hour = 9.5        // 0..24
+    // the wind: where it blows towards (radians, like a yaw) and its strength in m/s, gusting round the weather's
+    this.windDir = Math.random() * Math.PI * 2; this.windT = 0; this.windNow = 0
     this.daySpeed = 1 / 60 // game hours per real second (an hour a minute) when the cycle runs
     this.cycle = true
     this.weatherKey = 'clear'
@@ -92,6 +94,8 @@ export class Sky {
     scene.add(this.sun, this.sun.target)
     this.setQuality(quality)
   }
+  // the wind as a velocity (m/s) on the ground plane
+  windVec(out = { x: 0, z: 0 }) { out.x = Math.sin(this.windDir) * this.windNow; out.z = Math.cos(this.windDir) * this.windNow; return out }
   setQuality(q) {
     const s = this.sun
     s.castShadow = q === 'high'
@@ -110,6 +114,8 @@ export class Sky {
     return Math.min(this.w.fog * 0.9, 1100) * (1 - night * 0.72)
   }
   update(dt, anchor) {
+    this.windT += dt; this.windDir += dt * 0.004 * Math.sin(this.windT * 0.01)
+    this.windNow = (this.w?.wind || 0) * (0.8 + 0.2 * Math.sin(this.windT * 0.37) + 0.15 * Math.sin(this.windT * 1.13))
     if (this.cycle) this.hour = (this.hour + dt * this.daySpeed) % 24
     // ease weather changes in
     if (this.target) for (const k of ['cloud', 'fog', 'rain', 'wind', 'light']) {

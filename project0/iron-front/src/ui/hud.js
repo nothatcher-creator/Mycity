@@ -142,6 +142,15 @@ export class HUD {
     if (g.input.touch) { const tk = [!!s.vehicle, s.vehicle?.kind, g.player.touchAds, s.stance, s.reloading, g.gear?.selected(s), (g.mode?.t ?? 99) < 30, g.player.nade, g.player.nvg, s.vehicle?.engine, s.vehicle?.lights, s.seat?.role, (g.acts?.length || 0) > 1, this.touchNeeds().join(), s.vehicle && performance.now() - (this.vehT ?? 0) < 6000, !!s.w].join(); if (tk !== this.lastTouchKey) { this.lastTouchKey = tk; this.touch.dirty = true } }
     this.touch.show(g.input.touch)
   }
+  // running out: no spare rounds at all, or the magazine in the gun is the last one and nearly spent
+  ammoWarn(w, s) {
+    if (!w || w.def.disposable) return ''
+    const inMag = w.rec.mag, reserve = s.inv.countAmmo(w.def)
+    if (!inMag && !w.rec.chamber && !reserve) return 'NO AMMO'
+    if (!reserve) return 'LAST MAG'
+    if (reserve + inMag <= w.def.mag) return 'LOW AMMO'
+    return ''
+  }
   // what a touch screen needs buttons for right now: grenades carried (and of how many kinds), hurt with
   // something to treat it, night (or night vision already on)
   touchNeeds() {
@@ -251,6 +260,8 @@ export class HUD {
       text(c, w.def.name.toUpperCase(), 10 * sc, 44 * sc, { size: 9.5 * sc, color: C.dim, weight: 600, max: W * 0.55 })
       text(c, `F${s.inv.count('frag')}  M${s.inv.count('bandage') + s.inv.count('firstaid') + s.inv.count('medkit')}`, W - 8 * sc, 44 * sc, { size: 9.5 * sc, color: C.text, weight: 700, align: 'right' })
       if (w.reloadT > 0) bar(c, 10 * sc, H - 4 * sc, W - 20 * sc, 2.5 * sc, 1 - w.reloadT / (w.reloadDur || 1), C.gold2, { segments: 0 })
+      const low = this.ammoWarn(w, s)
+      if (low) chip(c, low, W - 8 * sc, 22 * sc, 13 * sc, { align: 'right', size: 8 * sc, fill: 'rgba(255,90,69,0.2)', stroke: C.red, color: C.red })
       return
     }
     text(c, w.def.name.toUpperCase(), 16 * sc, 21 * sc, { size: 13.5 * sc, weight: 700, max: W - 110 * sc })
@@ -262,7 +273,8 @@ export class HUD {
     c.fillText(String(inMag), 16 * sc, 64 * sc)
     const wd = c.measureText(String(inMag)).width
     text(c, ch, 19 * sc + wd, 44 * sc, { size: 12 * sc, color: C.gold2, weight: 700 })
-    text(c, `/ ${reserve}`, 22 * sc + wd + 18 * sc, 63 * sc, { size: 16 * sc, color: C.dim, weight: 600 })
+    text(c, `/ ${reserve}`, 22 * sc + wd + 18 * sc, 63 * sc, { size: 16 * sc, color: reserve ? C.dim : C.red, weight: 600 })
+    { const low = this.ammoWarn(w, s); if (low) chip(c, low, W / 2 + 10 * sc, 30 * sc, 16 * sc, { size: 9.5 * sc, fill: 'rgba(255,90,69,0.2)', stroke: C.red, color: C.red }) }
     text(c, AMMO[w.def.ammo].name, 16 * sc, 83 * sc, { size: 10 * sc, color: C.dim })
     if (w.reloadT > 0) {
       const f = 1 - w.reloadT / (w.reloadDur || 1)

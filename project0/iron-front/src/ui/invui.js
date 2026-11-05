@@ -114,8 +114,15 @@ export class InventoryUI {
       if (def?.kind === 'food' || def?.kind === 'water') acts.push([def.kind === 'food' ? 'Eat' : 'Drink', () => { g.consume(s, it.id); this.sel = null }])
       if (def?.gear) { acts.push(['Use now', () => { this.close?.(); g.gear.use(s, it.id); this.sel = null }]); acts.push(['Select for [Y]', () => { s.gearSel = it.id; g.hud.note(`Gear: ${def.name}`) }]) }
       if (it.id === 'nvg') acts.push(['Put on / off', () => { g.player.nvg = !g.player.nvg }])
+      if (it.id === 'matches' && g.mode?.lightFire) acts.push(['Light a campfire', () => { if (g.mode.lightFire(s)) { this.sel = null; this.close?.() } }])
       for (const [cid, label] of CONT) if (cid !== this.sel.from && inv.free(cid) >= itemSize(it)) acts.push([`Move to ${label.toLowerCase()}`, () => { inv.remove(it); inv.containers[cid].push(it); this.sel = { item: it, from: cid } }])
       acts.push([this.loot?.vehicle ? 'Store' : 'Drop', () => { inv.remove(it); this.drop([it]); this.sel = null }])
+      // part-used magazines of the same kind: top them up from each other into as few as will hold the rounds
+      if (it.kind === 'mag' && !it.belt && it.cap) {
+        const same = inv.all().filter(o => o.kind === 'mag' && o.ammo === it.ammo && o.cap === it.cap && !o.belt)
+        const total = same.reduce((n, o) => n + (o.rounds || 0), 0), need = Math.ceil(total / it.cap)
+        if (need < same.length) acts.push([`Repack (${same.length} mags → ${need})`, () => { let left = total; for (const o of same) { o.rounds = Math.min(o.cap, left); left -= o.rounds } for (const o of same) if (!o.rounds) inv.remove(o); g.hud.note(`Repacked: ${need} magazine${need === 1 ? '' : 's'}, ${total} rounds`); this.sel = null }])
+      }
       acts.push(['Inspect', () => { g.hud.note(`${itemName(it)}: ${itemSize(it)} space, ${itemWeight(it).toFixed(1)} kg${def?.food ? `, food +${def.food}` : ''}${def?.water ? `, drink +${def.water}` : ''}${def?.heal ? `, heals ${def.heal}` : ''}`) }])
     } else if (this.sel?.loot && this.loot?.items.includes(this.sel.loot)) {
       const it = this.sel.loot, same = this.loot.items.filter(o => o.id === it.id && o.kind === it.kind && o.ammo === it.ammo)

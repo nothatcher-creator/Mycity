@@ -508,7 +508,7 @@ export class Menus {
     const g = this.g, pl = g.player?.s, x = W / 2
     text(c, 'KILLED IN ACTION', x, H * 0.28, { size: 40 * s, weight: 900, align: 'center', color: C.red, shadow: true })
     const k = pl?.killer
-    text(c, k && k !== pl ? `by ${k.name}${k.faction ? ' (' + FACTIONS[k.faction].short + ')' : ''}${k.pos && pl ? ', ' + Math.round(k.pos.distanceTo(pl.pos)) + ' m' : ''}` : 'You died.', x, H * 0.28 + 34 * s, { size: 16 * s, align: 'center', shadow: true })
+    text(c, k && k !== pl ? `by ${k.name}${k.faction ? ' (' + FACTIONS[k.faction].short + ')' : ''}${k.vehicle ? ' in a ' + k.vehicle.def.name : k.w?.def ? ' with ' + k.w.def.name : ''}${k.pos && pl ? ', ' + Math.round(k.pos.distanceTo(pl.pos)) + ' m' : ''}` : 'You died.', x, H * 0.28 + 34 * s, { size: 16 * s, align: 'center', shadow: true })
     const opts = g.mode?.respawnOptions() || []
     const w = Math.min(420 * s, W - 40 * s)
     this.column(c, p, x - w / 2, H * 0.4, w, [...opts.map(o => ({ id: 'r' + o.id, label: o.label.toUpperCase(), sub: o.sub, fn: () => g.mode.respawn(o.id) })), null, { id: 'quit', label: 'QUIT TO MENU', fn: () => g.quitToMenu() }], s)

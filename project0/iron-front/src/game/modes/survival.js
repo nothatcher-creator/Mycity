@@ -52,7 +52,7 @@ export class Survival extends Mode {
     if (resume && save.blood) s.blood = save.blood
     this.dress(s)
     this.update(0, true)
-    g.hud.note(resume ? `Still alive: ${this.days()}` : 'SURVIVAL: find food, water and something to fight with. The infected hear gunshots.', C.gold2)
+    g.hud.note(resume ? `Still alive: ${this.days()}` : 'SURVIVAL: you have a pistol and two magazines. Find food, water and a better gun. The infected hear gunshots and running feet. Matches (inventory) light a fire to cook on.', C.gold2)
   }
   // a quiet beach near a village or a town
   coast() {
@@ -68,6 +68,10 @@ export class Survival extends Mode {
     const inv = new Inventory()
     inv.wear('tshirt'); inv.wear('jeans'); inv.wear('sneakers')
     inv.add({ kind: 'med', id: 'bandage', count: 1 }); inv.add({ kind: 'water', id: 'water' }); inv.add({ kind: 'food', id: 'apple' }); inv.add({ kind: 'tool', id: 'matches' })
+    // a pistol, loaded, and two spare magazines
+    const def = weapon('p17'), st = stats(def, {})
+    inv.weapons.sidearm = { id: def.id, att: {}, mag: st.mag, chamber: 1 }
+    for (let i = 0; i < 2; i++) inv.add(newMag(def, st))
     return inv
   }
   dress(s) { s.plain = true; s.noVest = !s.inv.worn.vest; s.unarmed = !s.w; s.uniform = { hoodie: [0.38, 0.4, 0.44], jacket: [0.3, 0.2, 0.14], combatshirt: [0.36, 0.42, 0.25], fieldjacket: [0.36, 0.42, 0.25] }[s.inv.worn.shirt] || [0.8, 0.8, 0.78]; s.pants = { jeans: [0.2, 0.27, 0.45], cargopants: [0.36, 0.38, 0.28], combatpants: [0.36, 0.42, 0.25] }[s.inv.worn.pants] || [0.25, 0.25, 0.27]; s.headgear = s.inv.worn.head === 'helmet' ? 'helmet' : s.inv.worn.head ? 'cap' : 'none'; s.pack = !!s.inv.worn.backpack }
@@ -83,6 +87,8 @@ export class Survival extends Mode {
   }
   removeInf(n) { const g = this.g, i = g.soldiers.indexOf(n.s); if (i >= 0 && !n.s.dead) g.soldiers.splice(i, 1); this.inf.splice(this.inf.indexOf(n), 1) }
   // how far an infected can see you: less at night, crouched, lying down, in the woods
+  // how far you can be heard: running feet carry, a crouched walk barely, a moving car a long way
+  noise(P) { if (!P || P.dead) return 0; if (P.vehicle) return Math.abs(P.vehicle.speed) > 1 ? 70 : P.vehicle.engine ? 25 : 0; const v = P.speed; return P.stance === PRONE ? 0 : v > 4.5 ? 24 : v > 2.2 ? (P.stance === CROUCH ? 6 : 12) : v > 0.3 ? (P.stance === CROUCH ? 1.5 : 4) : 0 }
   sight(P) { const night = this.g.sky.night || 0; return 34 * (1 - night * 0.55) * (P.stance === PRONE ? 0.35 : P.stance === CROUCH ? 0.6 : 1) * (P.speed > 4 ? 1.3 : 1) }
   infUpdate(dt) {
     const g = this.g, P = g.player?.s
@@ -92,9 +98,9 @@ export class Survival extends Mode {
       if (s.dead) { if (s.deadT < 3) s.step(dt, g.W); continue }
       s.stamina = 1
       const d = P && !P.dead ? Math.hypot(P.pos.x - s.pos.x, P.pos.z - s.pos.z) : 1e9
-      if (!n.chase && P && !P.dead && !P.vehicle) {
+      if (!n.chase && P && !P.dead && (!P.vehicle || d < this.noise(P))) {
         const facing = Math.abs(angle(Math.atan2(P.pos.x - s.pos.x, P.pos.z - s.pos.z), s.yaw)) < 1.4
-        if ((d < this.sight(P) && (facing || d < 7)) || loud.some(L => Math.hypot(L.x - s.pos.x, L.z - s.pos.z) < 130)) { n.chase = true; n.lostT = 0; if (d < 60) g.sfx?.ui?.('hurt') }
+        if ((d < this.sight(P) && (facing || d < 7)) || d < this.noise(P) || loud.some(L => Math.hypot(L.x - s.pos.x, L.z - s.pos.z) < 130)) { n.chase = true; n.lostT = 0; if (d < 60) g.sfx?.ui?.('hurt') }
       }
       if (n.chase) {
         if (!P || P.dead || d > 90) { n.lostT += dt; if (n.lostT > 6) { n.chase = false; n.home = { x: s.pos.x, z: s.pos.z } } }
@@ -231,15 +237,18 @@ export class Survival extends Mode {
       if (raw) out.push({ label: `Cook venison (${raw})`, fn: () => this.cook(s, 'venison', 'cookedvenison', 'venison') })
       if (fish) out.push({ label: `Cook fish (${fish})`, fn: () => this.cook(s, 'fish', 'cookedfish', 'fish') })
       if (!raw && !fish) out.push({ label: `Campfire (${Math.ceil(fire.t / 60)} min left): cook meat and fish here`, fn: null })
-    } else if (s.inv.count('matches') && s.onGround && waterLevel(s.pos.x, s.pos.z) < s.pos.y - 0.3) {
-      out.push({ label: 'Light a campfire (uses the matches)', fn: () => {
-        s.inv.use('matches')
-        const x = s.pos.x + Math.sin(s.yaw) * 1.4, z = s.pos.z + Math.cos(s.yaw) * 1.4
-        ;(this.fires || (this.fires = [])).push({ x, z, y: heightAt(x, z), t: 240, fx: 0 })
-        g.hud.note('The fire catches. Stand by it to cook.'); g.sfx.ui('click')
-      } })
     }
     return out
+  }
+  // matches, from the inventory: a campfire in front of you (not in water, not in a vehicle)
+  lightFire(s) {
+    const g = this.g
+    if (s.vehicle || !s.onGround || waterLevel(s.pos.x, s.pos.z) > s.pos.y - 0.3) { g.hud.note('You cannot light a fire here'); return false }
+    if (!s.inv.use('matches')) return false
+    const x = s.pos.x + Math.sin(s.yaw) * 1.4, z = s.pos.z + Math.cos(s.yaw) * 1.4
+    ;(this.fires || (this.fires = [])).push({ x, z, y: heightAt(x, z), t: 240, fx: 0 })
+    g.hud.note('The fire catches. Stand by it to cook (F).'); g.sfx.ui('click')
+    return true
   }
   cook(s, from, to, what) {
     let n = 0
@@ -273,7 +282,7 @@ export class Survival extends Mode {
   }
   dispose() { this.persist(); for (const pl of this.piles) this.g.engine.world.remove(pl.mesh) }
   // ---- HUD ----
-  hudKey() { return [Math.round(this.hunger * 40), Math.round(this.thirst * 40), Math.floor(this.alive / 60), this.kills, Math.floor(this.g.sky.hour * 4), nearestPlace(this.g.player?.s.pos.x || 0, this.g.player?.s.pos.z || 0).place?.id].join() }
+  hudKey() { return [Math.round(this.noise(this.g.player?.s) / 4), this.inf.filter(n => n.chase && !n.s.dead).length, Math.round(this.hunger * 40), Math.round(this.thirst * 40), Math.floor(this.alive / 60), this.kills, Math.floor(this.g.sky.hour * 4), nearestPlace(this.g.player?.s.pos.x || 0, this.g.player?.s.pos.z || 0).place?.id].join() }
   drawHud(c, p, k) {
     const g = this.g, s = g.player.s, { place, d } = nearestPlace(s.pos.x, s.pos.z)
     const h = g.sky.hour, hh = String(Math.floor(h)).padStart(2, '0'), mm = String(Math.floor((h % 1) * 60)).padStart(2, '0')
@@ -282,5 +291,9 @@ export class Survival extends Mode {
     for (const [label, v, col] of [['FOOD', this.hunger, '#e0a526'], ['WATER', this.thirst, '#5ab0ff']]) {
       text(c, label, 10 * k, y + 8 * k, { size: 10 * k, weight: 700, color: C.dim, shadow: true }); bar(c, 58 * k, y, 120 * k, 8 * k, v, v < 0.2 ? C.red : col); y += 14 * k
     }
+    // how loud you are, and whether anything is after you
+    const nz = this.noise(s), chasing = this.inf.filter(n => n.chase && !n.s.dead).length
+    text(c, 'NOISE', 10 * k, y + 8 * k, { size: 10 * k, weight: 700, color: C.dim, shadow: true }); bar(c, 58 * k, y, 120 * k, 8 * k, Math.min(1, nz / 24), nz > 15 ? C.red : nz > 5 ? C.amber : C.green, { segments: 0 }); y += 14 * k
+    if (chasing) text(c, `${chasing} INFECTED AFTER YOU`, 10 * k, y + 9 * k, { size: 10.5 * k, weight: 800, color: C.red, shadow: true })
   }
 }

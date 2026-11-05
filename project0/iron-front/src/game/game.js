@@ -910,7 +910,8 @@ export class Game {
     const v = this.vehicles.nearest(s.pos, 3)
     const bodyActs = [], vActs = []
     if (body) {
-      bodyActs.push({ label: `Search ${body.name}`, fn: () => this.invui.open(body) })
+      const empty = !body.items.length && !(body.weapons && Object.values(body.weapons.weapons || {}).some(Boolean))
+      bodyActs.push({ label: `${body.searched ? 'Search again' : 'Search'} ${body.name}${empty ? ' (empty)' : ''}`, fn: () => { body.searched = true; this.invui.open(body) } })
       // the magazines and rounds there that fit your weapons, in one go
       const want = new Set(['primary', 'sidearm', 'launcher'].map(k => s.inv.weapons[k] && weapon(s.inv.weapons[k].id).ammo).filter(Boolean))
       const fits = body.items.filter(it => (it.kind === 'mag' || it.kind === 'ammo') && want.has(it.ammo) && (it.rounds ?? it.count ?? 1) > 0)

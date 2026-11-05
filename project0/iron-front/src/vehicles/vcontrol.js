@@ -3,6 +3,7 @@
 import * as THREE from 'three'
 import { heightAt } from '../world/heightfield.js'
 import { raycastTerrain } from '../world/collision.js'
+import { C } from '../ui/ui.js'
 
 export class VehicleControl {
   constructor(game) {
@@ -30,6 +31,15 @@ export class VehicleControl {
     if (input.hit('vHorn')) g.sfx?.horn(v)
     if (input.hit('vFlares') && v.popFlares()) g.hud.note('Flares!')
     const driving = seat.role === 'driver' || seat.role === 'pilot'
+    // warnings, once each: fuel running low, the engine badly damaged, on fire
+    if (driving) {
+      const W = v.warned || (v.warned = {})
+      if (v.fuel < v.maxFuel * 0.15 && v.fuel > 0 && !W.fuel) { W.fuel = true; g.hud.note('Low fuel: find a fuel station or a jerrycan', C.amber) }
+      if (v.fuel >= v.maxFuel * 0.3) W.fuel = false
+      if (v.hp < v.maxHp * 0.4 && !W.hp) { W.hp = true; g.hud.note('Heavy damage: repair it with a repair kit', C.amber) }
+      if (v.hp >= v.maxHp * 0.6) W.hp = false
+      if (v.burning > 0 && !W.fire) { W.fire = true; g.hud.note('ON FIRE: get out before it blows!', C.red) }
+    }
     // the touch buttons stand in for the mouse buttons and the up and down keys
     const P = g.player
     const fire = input.mouse.left || P.touchFire, alt = input.mouse.right || P.touchAlt
@@ -169,7 +179,12 @@ export class VehicleControl {
     this.fov = g.settings.fov + Math.min(12, Math.abs(v.speed) * 0.15)
   }
   // in first person on foot, first person in the vehicle too
-  entered(v) { this.orbit.yaw = 0; this.orbit.pitch = 0.18; this.aim.yaw = v.yaw; this.aim.pitch = v.pitch; this.zoom = 1; this.camPos.set(0, 0, 0); this.firstPerson = (this.game.player?.lastView || this.game.player?.view) === 'fp'; v.engineOff = false }
+  entered(v) {
+    // headlights on by themselves when you take the wheel in the dark
+    const g = this.game, seat = g.player?.s.seat
+    if ((seat?.role === 'driver' || seat?.role === 'pilot') && (g.sky?.night ?? 0) > 0.45 && !v.lights) { v.lights = true; g.hud.note('Headlights on (L)') }
+    if (g.debug) g.p0.log('dbg entered', v.def.id, 'lights', v.lights, 'night', (g.sky?.night ?? 0).toFixed(2))
+    this.orbit.yaw = 0; this.orbit.pitch = 0.18; this.aim.yaw = v.yaw; this.aim.pitch = v.pitch; this.zoom = 1; this.camPos.set(0, 0, 0); this.firstPerson = (this.game.player?.lastView || this.game.player?.view) === 'fp'; v.engineOff = false }
   // A dashboard and a steering wheel (or an instrument panel) drawn with the first-person weapon's camera, so
   // the driver's first-person view has something to hold.
   cockpit(v, seat, show) {

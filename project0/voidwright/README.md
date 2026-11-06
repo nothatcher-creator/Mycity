@@ -1,0 +1,56 @@
+# VOIDWRIGHT
+
+An open star system to build in, for Project 0 (lot 224). Ships and stations are made of blocks on large
+(2.5 m) and small (0.5 m) grids; they have real mass, thrust and inertia. Planets, moons and asteroids can be
+landed on and built on. Everything here (code, block models, textures, sounds) is original to this game.
+
+## Round one (this version): creative mode
+
+- **The system.** Halvor (a 30 km world with air, 1 g, plains, dry lakes and snowy ranges), its airless moon
+  Ket (craters, 0.25 g), the rust world Vashti (canyons and mesas, thin air) 430 km out, and Oru, Vashti's ice
+  moon. Three asteroid fields: Halvor Shoal (high orbit), Ket Debris and the Drift (between the worlds). The star
+  goes round once an hour, so days and nights pass.
+- **Planets** are cube-sphere quadtrees, refined from 47 km patches down to under a metre between points near
+  the camera, with skirts, colours by height/slope/latitude, a stable detail texture, haze worked out from the
+  line of sight through the air, and an atmosphere shell seen from the ground and from space.
+- **Asteroids** are distance fields (noisy stretched spheres, craters, ore veins) meshed with surface nets;
+  holes can be dug into them (drills arrive in round two).
+- **Rendering** is camera-relative (system coordinates in doubles, everything drawn relative to the camera)
+  and split into far, middle and near depth slices, so a moon 120 km away and a bolt 5 cm away both draw right.
+- **50 block types**: light and heavy hull in eight shapes, windows, cockpit, fighter canopy, control seat,
+  gyro stabiliser, atmos / ion / fuel thrusters in two sizes, battery, fusion cores, solar array, cargo, med bay,
+  beacon, antenna, gravity generator, jump drive, landing clamp, docking port, ducts, catwalk, stairs, sliding
+  door, passage, girder frame, lamp and floodlight. Faces pressed against full neighbours are not drawn.
+- **Building**: a ghost block snaps to the grid you look at or starts a new grid (a station when built into
+  rock or chosen with B, otherwise a ship); rotation keys turn it about the grid axes nearest your view
+  (PgUp/PgDn, Home/End, Ins/Del, or [ ] ; ' , .); Ctrl + drag places a line and Ctrl + Shift + drag a plane;
+  the right button removes; the welder repairs; the grinder cuts; the middle button paints (P: palette);
+  Ctrl + C / Ctrl + V copy and paste whole grids; H spawns ready-made designs. A grid cut in two falls apart.
+- **Flight**: thrusters grouped by the direction they push; inertia dampeners cancel drift and hold a hover;
+  gyros turn the grid at the rate asked for. Atmos thrusters need air, ion drives lose most of their push in
+  thick air. Power is drawn from cores, batteries and the sun. Landing clamps lock (P). The jump drive (J)
+  crosses the system in one jump after a 10 s charge.
+- **Physics**: rigid bodies with mass and inertia from their blocks; collisions of hull points against
+  planets, asteroids and other grids; hard hits break blocks; a grid at rest sleeps.
+- **The engineer** walks wherever there is gravity (a planet's or a gravity generator's), flies a jetpack
+  (upright in gravity, free in six directions in space) with suit dampeners, sits in cockpits and seats.
+- **Starts**: Halvor landing site, Kestrel orbital station, Ket crater base, the Drift, and empty space.
+- Desktop and touch controls; a helmet display with an artificial horizon, block integrity, ship mass,
+  lift/weight and power.
+
+## Coming next
+
+- Round two: survival (components, welding blocks up from frames, oxygen and hydrogen), drills and mining,
+  refining and assembling, cargo and conveyors carrying items.
+- Round three: wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, saved
+  worlds, playing together, and an exterior for the lot.
+
+## Files
+
+- `src/core`: the split-depth camera-relative engine, input, touch, noise.
+- `src/world`: the system (`universe.js`), planets, asteroids, sky, haze shader.
+- `src/grid`: block catalogue and shapes, the texture atlas, rotations, grids, flight control, physics.
+- `src/game`: the game loop, world, building, ready-made designs, sound.
+- `src/ui`: the interface kit, helmet display, menus, block icons.
+- `tools/pack.sh` packs `build/experience.zip`; `tools/sfxgen.py` makes the sounds; `tools/prefabtest.mjs`
+  checks the designs (block overlaps, lift/weight); `tools/bench.mjs` times terrain and rock building.

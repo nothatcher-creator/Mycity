@@ -1,0 +1,23 @@
+{
+  "entry": "main.js",
+  "name": "VOIDWRIGHT",
+  "description": "Build ships and stations block by block, in a star system you can fly across: land on planets with air and gravity, on airless moons and on asteroids. Large and small grid blocks (hull, thrusters, gyros, cockpits, power, lights, doors, gravity generators, jump drives), real thrust and mass, inertia dampeners, a jetpack. Creative mode; survival, mining and mechanical parts are coming in the next updates.",
+  "maxPlayers": 16,
+  "ui": "minimized",
+  "loading": {
+    "background": "#03080b",
+    "accent": "#3fe0d0",
+    "text": "#e4f2f2"
+  },
+  "credits": [
+    {
+      "work": "All models, code and sound effects",
+      "by": "made for this game (sounds synthesised with tools/sfxgen.py)"
+    },
+    {
+      "work": "Chakra Petch typeface (interface)",
+      "by": "The Chakra Petch Project Authors (Cadson Demak), SIL Open Font License 1.1"
+    }
+  ],
+  "stick": false
+}

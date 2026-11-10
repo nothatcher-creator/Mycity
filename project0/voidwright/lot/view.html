@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- A local look at the lot's exterior: serve the repository root and open
+     /project0/voidwright/lot/view.html?lod=0&t=12&yaw=0.6&pitch=0.25&dist=62 (plain materials: the lot's own
+     shaders only run in the city, so lights show as flat colour and the air as a pale shell). -->
+<html><body style="margin:0;background:#e9ecef;overflow:hidden">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+const q = new URLSearchParams(location.search), num = (k, d) => parseFloat(q.get(k) ?? d)
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement)
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe9ecef)
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f96, 1.3)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(30, 50, 40); scene.add(sun)
+const cam = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 500)
+const yaw = num('yaw', 0.6), pitch = num('pitch', 0.25), dist = num('dist', 62)
+cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, 14 + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(0, num('look', 13), 0)
+const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(32, 29, 44).translate(0, 14.5, 0)), new THREE.LineBasicMaterial({ color: 0x99a3ad })); scene.add(box)
+const gltf = await new GLTFLoader().loadAsync(`out/lod${q.get('lod') ?? 0}.glb`)
+scene.add(gltf.scene)
+gltf.scene.traverse(o => { if (o.material?.name === 'Glow') { o.material.emissiveIntensity = 2 } if (o.material?.name === 'Air') { o.material.transparent = true; o.material.opacity = 0.22; o.material.depthWrite = false } })
+const mixer = new THREE.AnimationMixer(gltf.scene); for (const c of gltf.animations) mixer.clipAction(c).play()
+mixer.setTime(num('t', 12)); r.render(scene, cam); window.done = true
+</script></body></html>

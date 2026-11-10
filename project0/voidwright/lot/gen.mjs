@@ -125,7 +125,7 @@ function globe(r, rect, seg = 48) {
 }
 
 // ---------- the game's blueprints as meshes ----------
-const PROXY = id => /^(thr_|gyro|jumpdrive|dish|antenna|drill|crusher|refinery|assembler|turbine|detector|core_|beacon|tank_|flood|warnlight|lamp|light|medbay|o2h2|survival_kit|door|gear|porthole|console|locker|blastdoor|hangar|conveyor|duct|gravgen)/.test(id)
+const PROXY = id => /^(thr_|gyro|jumpdrive|dish|antenna|drill|crusher|refinery|assembler|turbine|detector|core_|beacon|tank_|flood|warnlight|lamp|lightstrip|lightpanel|medbay|o2h2|survival_kit|door|gear|porthole|console|locker|blastdoor|hangar|conveyor|duct|gravgen)/.test(id)
 const stubWorld = { addGrid() {} }
 function ship(id, o = {}) {
   const bp = prefab(id), g = new Grid(stubWorld, bp.size, {}), cs = g.cs
@@ -154,7 +154,7 @@ function ship(id, o = {}) {
     else if (bid.startsWith('tank_')) { addGeo(cyl(Math.min(sz[0], sz[2]) * 0.46, Math.min(sz[0], sz[2]) * 0.46, sz[1] * 0.96, 10).applyMatrix4(mm), bid === 'tank_h2' ? CELLI.white : CELLI.sky) }
     else if (bid === 'drill') { const ex = apply(rot, 0, 0, -1, [0, 0, 0]), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...ex)); addGeo(cyl(0.02, Math.min(sz[0], sz[1]) * 0.42, Math.max(...sz), 10).applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...c), q, new THREE.Vector3(1, 1, 1))), CELLI.gold) }
     else if (bid === 'crusher') { addGeo(box(sz[0], sz[1], sz[2] * 0.5).applyMatrix4(new THREE.Matrix4().makeTranslation(c[0], c[1], c[2] + sz[2] * 0.25)), CELLI.dark); for (const dy of [-0.22, 0.22]) addGeo(cyl(sz[1] * 0.2, sz[1] * 0.2, sz[0] * 0.9, 8).rotateZ(Math.PI / 2).applyMatrix4(new THREE.Matrix4().makeTranslation(c[0], c[1] + dy * sz[1], c[2] - sz[2] * 0.2)), CELLI.gold) }
-    else if (/^(flood|warnlight|lamp|light)/.test(bid)) { lamps.push({ p: c, r: cs * 0.22, blink: bid === 'warnlight' }) }
+    else if (/^(flood|warnlight|lamp|lightstrip|lightpanel)/.test(bid)) { lamps.push({ p: c, r: cs * 0.22, blink: bid === 'warnlight' }) }
     else if (bid === 'gear') { addGeo(box(sz[0] * 0.9, sz[1] * 0.3, sz[2] * 0.9).applyMatrix4(new THREE.Matrix4().makeTranslation(c[0], lo[1] + sz[1] * 0.15, c[2])), CELLI.hazard); addGeo(box(sz[0] * 0.25, sz[1] * 0.8, sz[2] * 0.25).applyMatrix4(mm), CELLI.steel) }
     else if (bid === 'porthole') { addGeo(box(sz[0], sz[1], sz[2]).applyMatrix4(mm), paint); const ex = apply(rot, 0, 0, 1, [0, 0, 0]); addGeo(box(ex[0] ? sz[0] * 1.04 : sz[0] * 0.5, sz[1] * 0.5, ex[2] ? sz[2] * 1.04 : sz[2] * 0.5).applyMatrix4(mm), CELLI.glass) }
     else if (bid === 'hangar' || bid === 'door' || bid === 'blastdoor') addGeo(box(sz[0] * (bid === 'hangar' ? 1 : 0.9), sz[1], sz[2] * 0.3).applyMatrix4(mm), bid === 'hangar' ? CELLI.hazard : CELLI.steel)
@@ -305,18 +305,24 @@ function build(lod) {
     }
     for (const sz of [-1, 1]) map.add(box(px * 2 + 0.5, 0.45, 0.45), 'frame', M(0, top - 0.22, sz * pz))
     for (const sx of [-1, 1]) map.add(box(0.45, 0.45, pz * 2 + 0.5), 'frame', M(sx * px, top - 0.22, 0))
+    // neon along the top beams and round the edge of the slab
+    for (const sz of [-1, 1]) { glow.add(box(px * 2 - 1, 0.1, 0.1), fx('lamp', 0, 1), M(0, top - 0.5, sz * (pz - 0.28))); glow.add(box(HX * 2 - 0.6, 0.1, 0.08), fx('run', 0.2, 1), M(0, 0.7, sz * (HZ - 0.27))) }
+    for (const sx of [-1, 1]) { glow.add(box(0.1, 0.1, pz * 2 - 1), fx('lamp', 0, 1), M(sx * (px - 0.28), top - 0.5, 0)); glow.add(box(0.08, 0.1, HZ * 2 - 0.6), fx('run', 0.7, 1), M(sx * (HX - 0.27), 0.7, 0)) }
     // four banners (12.8 x 3.2 m) hung under the top beams, lit both ways
     const bw = 12.8, bh = 3.2, by = top - 0.5 - bh / 2
-    const banner = m => { const g = new THREE.PlaneGeometry(bw, bh); sign.add(g, null, m); sign.add(g, null, m.clone().multiply(new THREE.Matrix4().makeRotationY(Math.PI))) }
+    const banner = m => { const g = new THREE.PlaneGeometry(bw, bh); { const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i)) } sign.add(g, null, m); sign.add(g, null, m.clone().multiply(new THREE.Matrix4().makeRotationY(Math.PI))) }
     banner(M(0, by, pz - 0.3, 0)); banner(M(0, by, -pz + 0.3, Math.PI)); banner(M(px - 0.3, by, 0, Math.PI / 2)); banner(M(-px + 0.3, by, 0, -Math.PI / 2))
     for (const [x, z, ry] of [[0, pz - 0.3, 0], [0, -pz + 0.3, 0], [px - 0.3, 0, Math.PI / 2], [-px + 0.3, 0, Math.PI / 2]]) { map.add(box(bw + 0.5, 0.2, 0.25), 'frame2', M(x, by - bh / 2 - 0.12, z, ry)); glow.add(box(bw, 0.06, 0.3), fx('lamp', 0, 1), M(x, by - bh / 2 - 0.26, z, ry)) }
   }
   // ---- Halvor: the globe turns (its own part), the air round it glows at the rim ----
-  const halvor = new Bag(); halvor.add(globe(PR, RECT.halvor, hi ? 64 : 24), null)
+  const halvor = new Bag(); halvor.add(globe(PR, RECT.halvor, hi ? 88 : 28), null)
   if (hi) {
     parts.halvor = { bags: { Map: halvor }, anim: t => ({ p: C.toArray(), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0.3, t / LOOP * TAU, 0.12, 'ZXY')) }) }
     air.add(new THREE.SphereGeometry(PR * 1.07, 48, 24), 'sky', M(C.x, C.y, C.z))
   } else map.raw(halvor.parts[0], M(C.x, C.y, C.z, 0.6, 0.12, 0.3))
+  // violet Thessa, small and far off in a corner of the sky
+  map.add(globe(2.1, RECT.thessa, hi ? 28 : 12), null, M(-10.4, 22.4, -16.2, 0.8, 0.2))
+  if (hi) glow.add(new THREE.TorusGeometry(3.0, 0.025, 4, 48).rotateX(Math.PI / 2), fx('lamp', 0, 1), M(-10.4, 22.4, -16.2, 0, 0.5, 0.25))
   // the moon, on its own tilted round
   const ket = new Bag(); ket.add(globe(1.0, RECT.ket, hi ? 20 : 10), null)
   const moonAt = t => { const a = t / LOOP * TAU + 1.2; return new THREE.Vector3(Math.cos(a) * 10.6, 0, Math.sin(a) * 10.6).applyAxisAngle(new THREE.Vector3(1, 0, 0), 0.42).add(C) }
@@ -335,6 +341,13 @@ function build(lod) {
     if (hi) parts.belt = { bags: { Map: belt }, anim: t => ({ p: C.toArray(), q: tilt.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -t / LOOP * TAU)) }) }
     else for (const g of belt.parts) map.raw(g, new THREE.Matrix4().compose(C, tilt, new THREE.Vector3(1, 1, 1)))
   }
+  // ---- the orbits drawn in light: the moon's, the station's, the flight's lap ----
+  if (hi) {
+    const ringGeo = (r, t) => new THREE.TorusGeometry(r, t, 4, 72).rotateX(Math.PI / 2)
+    glow.add(ringGeo(10.6, 0.022), fx('lamp', 0, 1), new THREE.Matrix4().compose(C, new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.42), new THREE.Vector3(1, 1, 1)))
+    glow.add(ringGeo(7.95, 0.02), fx('lamp', 0, 1), new THREE.Matrix4().compose(C, new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.2), new THREE.Vector3(1, 1, 1)))
+    glow.add(ringGeo(1, 0.0022), fx('lamp', 0, 1), new THREE.Matrix4().compose(new THREE.Vector3(0, 15.4, -0.6), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), TILT_L), new THREE.Vector3(12.4, 12.4, 16.2)))
+  }
   // ---- Kestrel Station in low orbit ----
   {
     const b = new Bag(), g = new Bag()
@@ -350,7 +363,9 @@ function build(lod) {
     if (hi) {
       placeShip(SHIPS.lancer, M(0, 0, 0, 0, 0, 0, 0.088), b, g, { flames: true, only: f => f.d[2] > 0.5 })
       for (const [dx, dy, dz] of [[-1.9, 0.5, 2.6], [1.9, -0.3, 3.4]]) placeShip(SHIPS.sparrow, M(dx, dy, dz, 0, 0, dx * 0.08, 0.2), b, g, { flames: true, only: f => f.d[2] > 0.5 })
-    } else { b.add(box(0.9, 0.6, 3.4), 'p12_0'); b.add(box(0.5, 0.3, 1.4), 'p6_0', M(-1.9, 0.5, 2.6)); b.add(box(0.5, 0.3, 1.4), 'p6_0', M(1.9, -0.3, 3.4)) }
+      // long trails behind the engines
+      for (const [x, y, z, r, len, k] of [[-0.18, -0.05, 2.1, 0.11, 3.4, 0], [0.18, -0.05, 2.1, 0.11, 3.4, 0], [0, 0.12, 2.1, 0.08, 2.6, 1], [-1.9, 0.5, 3.5, 0.07, 1.8, 1], [1.9, -0.3, 4.3, 0.07, 1.8, 1]]) g.add(new THREE.ConeGeometry(r, len, 6).rotateX(Math.PI / 2), fx('flame', (x + 2) / 4, k), M(x, y, z + len / 2))
+    } else { placeShip(SHIPS.lancer, M(0, 0, 0, 0, 0, 0, 0.088), b, null); b.add(box(0.5, 0.3, 1.4), 'p6_0', M(-1.9, 0.5, 2.6)); b.add(box(0.5, 0.3, 1.4), 'p6_0', M(1.9, -0.3, 3.4)) }
     const at = t => { const a = t / LOOP * TAU * 2, p = lapPos(a), d = lapPos(a + 0.01).sub(p).normalize(); return { p: p.toArray(), q: lookQuat(d, new THREE.Vector3(0, 1, 0), -0.35) } }
     if (hi) parts.flight = { bags: { Map: b, Glow: g }, anim: at }
     else { const o = at(4); for (const gg of b.parts) map.raw(gg, new THREE.Matrix4().compose(new THREE.Vector3(...o.p), o.q, new THREE.Vector3(1, 1, 1))) }
@@ -377,7 +392,7 @@ function build(lod) {
   {
     const gy = ground(BASE[0], BASE[1])
     if (hi) placeShip(SHIPS.foothold, M(BASE[0], gy - 0.25, BASE[1], 0.5, 0, 0, 0.27), map, glow, { onGround: true })
-    else map.add(box(6.5, 1.6, 6.5).translate(0, 0.8, 0), 'p1_1', M(BASE[0], gy, BASE[1], 0.5))
+    else placeShip(SHIPS.foothold, M(BASE[0], gy - 0.25, BASE[1], 0.5, 0, 0, 0.27), map, null, { onGround: true })
     // the pad: a dark slab with a lit edge
     const py = ground(PAD[0], PAD[1])
     map.add(cyl(4.2, 4.5, 0.3, 10), 'pad', M(PAD[0], py + 0.1, PAD[1]))
@@ -385,11 +400,11 @@ function build(lod) {
     // the Mule: on the pad, up on its fans, a slow turn in the air, down again
     const b = new Bag(), g = new Bag()
     if (hi) placeShip(SHIPS.mule, M(0, 0, 0, 0, 0, 0, 0.19), b, g, { flames: true, lift: true, only: f => f.d[1] < -0.5, onGround: true })
-    else b.add(box(2.4, 1.4, 5).translate(0, 0.7, 0), 'p4_0')
+    else placeShip(SHIPS.mule, M(0, 0, 0, 0, 0, 0, 0.19), b, null, { onGround: true })
     const ss = (a, c, x) => { const k = Math.max(0, Math.min(1, (x - a) / (c - a))); return k * k * (3 - 2 * k) }
     const at = t => { const up = ss(8, 20, t) - ss(34, 46, t), yaw = 0.9 + ss(18, 36, t) * TAU; return { p: [PAD[0], py + 0.28 + up * 6.2, PAD[1]], q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.sin(t * 0.9) * 0.03 * up, yaw, Math.sin(t * 0.7) * 0.04 * up, 'YXZ')) } }
     if (hi) parts.mule = { bags: { Map: b, Glow: g }, anim: at }
-    else map.raw(b.parts[0], M(PAD[0], py + 0.28, PAD[1], 0.9))
+    else map.raw(b.parts[0], M(PAD[0], py + 0.28 + 4, PAD[1], 0.9))
     // the rock and the Mole
     const ry = ground(ROCK[0], ROCK[1])
     const rg = new THREE.IcosahedronGeometry(2.7, hi ? 2 : 1), p = rg.attributes.position

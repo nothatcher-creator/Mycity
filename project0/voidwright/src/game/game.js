@@ -372,6 +372,11 @@ export class Game {
     if (e.code === 'F9' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'moon', 'rocks', 'empty'][this.dbgS = ((this.dbgS ?? -1) + 1) % 5]); return }
     if (!P) return
     if (e.code === 'F8') { this.quitToTitle(); return }
+    if (e.code === 'Numpad3') { // dig a tunnel along the view from the first rock it meets
+      const eye = this.camPos.clone(), dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camQuat), h = this.world.raycast(eye, dir, 60)
+      if (h?.solid) { for (let i = 0; i < 10; i++) this.world.survival.dig(h.point.clone().addScaledVector(dir, i * 1.3), 1.7, 0); this.p0.log('dbg tunnel at', Math.round(h.dist), 'm; voxel chunks', this.world.universe.nearestPlanet(eye)?.vox.chunks.size) } else this.p0.log('dbg no rock ahead')
+    }
+    if (e.code === 'Numpad7') this.p0.log('dbg uni', JSON.stringify({ awake: this.world.universe.planets.map(p => p.name), known: [...this.world.universe.known], sig: this.world.universe.signals(P.pos).slice(0, 2).map(x => Math.round(x.dist / 1000)), pos: P.pos.toArray().map(v => Math.round(v / 1000)), trees: this.world.trees.count, marks: (this.oreMarks || []).length }))
     if (e.code === 'Numpad1') { // a showroom: each press puts the next design in front of you
       if (this.dbgShow) this.world.removeGrid(this.dbgShow)
       const ids = ['sparrow', 'pick', 'mule', 'mole', 'lancer', 'kestrel', 'foothold'], id = ids[this.dbgP = ((this.dbgP ?? -1) + 1) % ids.length]
@@ -387,7 +392,7 @@ export class Game {
     if (e.code === 'F2') this.p0.log('dbg', JSON.stringify({ pos: P.pos.toArray().map(v => Math.round(v)), vel: P.vel.length().toFixed(2), ground: P.onGround, g: P.gravity.toFixed(2), jet: P.jetpack, seat: !!P.seat, grids: this.world.grids.length, prog: this.engine.renderer.info.programs?.length, calls: this.engine.renderer.info.render.calls, tris: this.engine.renderer.info.render.triangles, pending: this.world.universe.planets.map(p => p.pending).join() }))
     if (e.code === 'F4') { const gr = this.world.grids.find(g => g.parts?.cockpits.length && !g.static); if (gr) { P.enterSeat(gr, gr.parts.cockpits[0]); this.p0.log('dbg seat', gr.name) } }
     if (e.code === 'F6' && P.seat) { const g = P.seat.grid; this.p0.log('dbg ship', JSON.stringify({ v: g.vel.toArray().map(v => v.toFixed(2)), w: g.angVel.toArray().map(v => v.toFixed(3)), mass: Math.round(g.mass), max: [...g.thrustMax].map(v => Math.round(v / 1000)), out: [...g.thrustOut].map(v => v.toFixed(2)), sleep: g.sleep.toFixed(2), touch: g.touching, air: g.air?.toFixed(2), grav: g.gravity?.toFixed(2), power: g.power, locked: !!g.locked })) }
-    if (e.code === 'F10' && P.seat) { const U = this.world.universe, pl = e.shiftKey || this.dbgJ ? U.signals(P.pos)[0] : U.places().find(x => x.id === 'ket'); this.dbgJ = true; if (pl) { this.planJump(pl); this.jump.t = 2 } }
+    if (e.code === 'F10' && P.seat) { const U = this.world.universe, pl = e.shiftKey || this.dbgJ ? U.signals(P.pos)[0] : U.places().find(x => x.id === 'ket'); this.dbgJ = true; if (pl) { this.planJump(pl); this.jump.t = 0.15 } }
     if (e.code === 'F7') { this.world.universe.time += 600; this.hud.toast('+10 min') }
   }
   // ---- the frame ----

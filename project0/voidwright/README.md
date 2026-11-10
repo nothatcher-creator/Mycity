@@ -58,18 +58,46 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - New blocks: survival kit, refinery, assembler, oxygen-hydrogen splitter, hydrogen and oxygen tanks, ship
   drill. New design: the Pick, a small-grid miner.
 
+## Round three: digging through, a universe that keeps going, and the lot
+
+- **Planets are minable all the way through.** Digging turns the ground near you into 1 m voxels (16 m
+  chunks, `src/world/voxels.js`), so the drill leaves real shafts, tunnels and caves with rock overhead,
+  not just bowls; from far away the terrain still shows the hole.
+- **Trees** on Halvor (`src/world/trees.js`): pines, broadleaves and bushes by climate, instanced near the
+  camera; they stop you and your ship.
+- **More worlds.** The home system has eight (Halvor, Ket, Vashti, Oru, Thessa, Nix, Sabik, Cinder) and
+  three rock fields. Beyond it space is cut into sectors 1,800 km across; most hold a generated group of
+  planets, moons and a field. A group loads as you come within about 1,000 km and the one behind you
+  unloads; undiscovered groups show as unknown signals you can jump towards.
+- **The map** (M) grows as you discover groups and is kept with your save. Waypoints can be dropped where
+  you stand or on the map, tracked on the helmet display with distance and time to arrive, and jumped to.
+- **Mining ships**: the Drill and the new Rock Crusher both mount on the front of a ship. The crusher is
+  larger, bores a wider hole, keeps the ore (half as much again) and throws the stone away. The ore
+  detector marks nearby ore.
+- **86 blocks** (was 51): rounded hull, hazard, vent, grate and tech plating, ramps, portholes, skylights,
+  walls, pillars, railings, ladders, beds, consoles, lockers, tables, signs, blast doors, hangar doors,
+  light strips and panels, warning lights, wind turbines, dishes. Thrusters have new models (ducted fan,
+  finned ion, two-stage bell).
+- **Designs rebuilt** with bevelled hulls: Sparrow, Pick, Mule, Lancer, the Kestrel station, the Foothold
+  outpost, and a new large-grid miner, the Mole.
+- **The lot's exterior** (`lot/gen.mjs`): a shipyard with Halvor turning in the middle, its moon, a rock
+  belt, the Kestrel in orbit, and the game's own ships lapping through a jump gate.
+
 ## Coming next
 
-- Round three: wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a
-  projector for blueprints in survival, saved worlds, playing together, and an exterior for the lot.
+- Wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a projector for
+  blueprints in survival, saved worlds, playing together.
 
 ## Files
 
 - `src/core`: the split-depth camera-relative engine, input, touch, noise.
-- `src/world`: the system (`universe.js`), planets, asteroids, sky, haze shader.
+- `src/world`: the sectors and home system (`universe.js`), planets, dug voxels, trees, asteroids, sky,
+  haze shader.
 - `src/grid`: block catalogue and shapes, the texture atlas, rotations, grids, flight control, physics.
 - `src/game`: the game loop, world, building, items and recipes, survival rules, ready-made designs, sound.
 - `src/ui`: the interface kit, helmet display, menus, block icons.
 - `tools/pack.sh` packs `build/experience.zip`; `tools/sfxgen.py` makes the sounds; `tools/prefabtest.mjs`
   checks the designs (block overlaps, lift/weight); `tools/bench.mjs` times terrain and rock building; `tools/survivaltest.mjs`, `tools/weldtest.mjs` and
-  `tools/digtest.mjs` check mining, production and welding without the renderer.
+  `tools/digtest.mjs` check mining, production and welding without the renderer; `tools/voxtest.mjs` checks
+  tunnels.
+- `lot/`: the exterior generator, its shaders and the three built levels of detail in `lot/out`.

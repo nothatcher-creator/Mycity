@@ -312,6 +312,29 @@ export class Game {
   onGridRemoved(g) { if (this.player?.seat?.grid === g) this.player.seat = null; if (this.player?.ground === g) this.player.ground = null }
   onBlockRemoved(g, b) { if (this.player?.seat?.block === b) { this.player.seat = null } }
   onImpact(c) { if (c.A === this.player?.seat?.grid || c.B === this.player?.seat?.grid) { this.sfx.play('impact', Math.min(1, c.hit / 30)); this.shake = Math.min(1, c.hit / 25) } }
+  // with a working ore detector near (on the grid you sit in or stand by): the nearest patch of each ore
+  scanOre(P) {
+    const W = this.world
+    let range = 0
+    for (const g of W.grids) { if (!g.parts?.detectors.length || g.frozen) continue; if (g !== P.seat?.grid && g.pos.distanceTo(P.pos) > g.radius + 30) continue; for (const b of g.parts.detectors) if (b.on && b.build >= 1) range = Math.max(range, b.def.func.detector[g.size]) }
+    if (!range) return null
+    const out = new Map(), p = new THREE.Vector3()
+    const pl = W.universe.nearestPlanet(P.pos)
+    if (pl && pl.ores.length && P.pos.distanceTo(pl.center) - pl.R < pl.relief + range) {
+      const up = P.pos.clone().sub(pl.center).normalize(), e = new THREE.Vector3(0, 1, 0).cross(up).normalize(), n = up.clone().cross(e)
+      for (let i = -9; i <= 9; i++) for (let j = -9; j <= 9; j++) {
+        const dx = i / 9 * range, dz = j / 9 * range
+        p.copy(up).multiplyScalar(pl.R).addScaledVector(e, dx).addScaledVector(n, dz).normalize()
+        const h = pl.height(p.x, p.y, p.z, 4), gp = p.clone().multiplyScalar(pl.R + h)
+        const ore = pl.oreAt(gp.x, gp.y, gp.z)
+        if (ore === 'stone') continue
+        const d = Math.hypot(dx, dz), cur = out.get(ore)
+        if (!cur || d < cur.d) out.set(ore, { ore, d, pos: gp.add(pl.center) })
+      }
+    }
+    for (const f of W.universe.fields) for (const a of f.near(P.pos, range * 8)) out.set('a' + a.id, { ore: a.ores.join(' + ') || 'stone', d: a.pos.distanceTo(P.pos), pos: a.pos, rock: true })
+    return [...out.values()]
+  }
   nearGrid(p, d) { let best = null, bd = d; for (const g of this.world.grids) { if (!g.parts?.invs.length) continue; const x = g.sdf(p, d, null); if (x < bd) { bd = x; best = g } } return best }
   groundNormal(hit) { if (hit.solid.surface) { const s = hit.solid.surface(hit.point); return new THREE.Vector3(s.nx, s.ny, s.nz) } const p = hit.point, e = 0.3, S = hit.solid; return new THREE.Vector3(S.sdf(p.clone().setX(p.x + e)) - S.sdf(p.clone().setX(p.x - e)), S.sdf(p.clone().setY(p.y + e)) - S.sdf(p.clone().setY(p.y - e)), S.sdf(p.clone().setZ(p.z + e)) - S.sdf(p.clone().setZ(p.z - e))).normalize() }
   // ---- the jump drive ----
@@ -349,6 +372,13 @@ export class Game {
     if (e.code === 'F9' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'moon', 'rocks', 'empty'][this.dbgS = ((this.dbgS ?? -1) + 1) % 5]); return }
     if (!P) return
     if (e.code === 'F8') { this.quitToTitle(); return }
+    if (e.code === 'Numpad1') { // a showroom: each press puts the next design in front of you
+      if (this.dbgShow) this.world.removeGrid(this.dbgShow)
+      const ids = ['sparrow', 'pick', 'mule', 'mole', 'lancer', 'kestrel', 'foothold'], id = ids[this.dbgP = ((this.dbgP ?? -1) + 1) % ids.length]
+      const q = P.viewQuat(), g = this.spawnGrid(id, P.pos.clone(), q.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.35, e.shiftKey ? 2.5 : -0.7, 0, 'YXZ'))), { static: true })
+      g.pos.copy(P.eye()).add(new THREE.Vector3(0, 0, -(g.radius * 1.9 + 4)).applyQuaternion(q)).sub(g.com.clone().applyQuaternion(g.quat))
+      this.dbgShow = g; this.p0.log('dbg show', id, g.blocks.size)
+    }
     if (e.code === 'Numpad2') P.pitch = -0.9
     if (e.code === 'Numpad8') P.pitch = 0
     if (e.code === 'Numpad6') P.look(-0.4, 0)
@@ -462,6 +492,8 @@ export class Game {
     // ships move, then the engineer (on what moved)
     W.update(dt, piloted, ctl)
     if (P.seat) { const n = W.survival.shipDrill(P.seat.grid, dt, !menu && inp.mouse.left && P.seat.grid.parts.drills.length > 0); if (n) this.shake = Math.max(this.shake || 0, 0.15) }
+    this.oreT = (this.oreT || 0) + dt
+    if (this.oreT > 2) { this.oreT = 0; this.oreMarks = this.scanOre(P) }
     this.suitWarn = W.survival.suit(P, dt)
     if (this.suitWarn && this.suitWarn !== this.lastWarn) { this.hud.toast(this.suitWarn, C.red); this.sfx.play('ui_error', 0.5) }
     this.lastWarn = this.suitWarn
@@ -483,6 +515,7 @@ export class Game {
         const b = h.block, f = b.def.func
         if (f?.cockpit && b.build < 1) this.interactTarget = { label: `${b.name} is not finished: weld it first`, fn: () => {} }
         else if (f?.cockpit) this.interactTarget = { label: `Sit in ${b.name}`, fn: () => { P.enterSeat(h.grid, b); this.view = 'fp'; this.sfx.play('seat', 0.5); this.hud.toast(`${h.grid.name}: WASD, Space/C to fly, mouse to turn, Z dampeners, F to leave`) } }
+        else if (f?.hangar && b.build >= 1) this.interactTarget = { label: b.open ? 'Close the hangar door' : 'Open the hangar door', fn: () => { const o = !b.open; for (const d of h.grid.parts.doors) if (d.def.func.hangar) { d.open = o; h.grid.touch(d) } this.sfx.play('door', 0.7, 0.7) } }
         else if (f?.door && b.build >= 1) this.interactTarget = { label: b.open ? 'Close door' : 'Open door', fn: () => { b.open = !b.open; h.grid.touch(b); this.sfx.play('door', 0.5) } }
         else if (f?.medbay) this.interactTarget = { label: `${b.name}: stand by it to heal and refill your suit`, fn: () => {} }
         else if (f?.inv || f?.tank) this.interactTarget = { label: `Open ${h.grid.name}'s cargo`, fn: () => { this.invGrid = h.grid; this.menus.open('inventory') } }

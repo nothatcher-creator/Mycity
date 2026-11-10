@@ -145,15 +145,18 @@ export class Survival {
       if (!works(b)) { b.spin = false; continue }
       b.spin = true
       if (!bite) continue
-      const S = b.def.sizes[g.size], r = b.def.func.drill[g.size]
+      const S = b.def.sizes[g.size], f = b.def.func, crush = !!f.crusher, r = (f.drill || f.crusher)[g.size]
       const tip = g.toWorld(g.blockPoint(b, (S[0] - 1) / 2, (S[1] - 1) / 2, -0.5))
       const fwd = g.dirToWorld(g.blockDir(b, 0, 0, -1))
-      const p = tip.clone().addScaledVector(fwd, r * 0.5)
+      const p = tip.clone().addScaledVector(fwd, r * (crush ? 0.35 : 0.5))
       const res = this.dig(p, r, g.size === 'large' ? 220 : 45)
       if (res) {
-        const put = netPut(g, res.ore, res.kg)
-        this.world.sparks.burst(p, 6, 3)
-        if (put < res.kg * 0.5) g.cargoFull = true; else g.cargoFull = false
+        // a drill keeps everything; a crusher throws the stone away (a little gravel aside) and keeps the ore
+        let put = 1, want = 1
+        if (crush && res.ore === 'ore_stone') netPut(g, 'ing_gravel', res.kg * 0.05)
+        else { want = res.kg * (crush ? 1.5 : 1); put = netPut(g, res.ore, want) }
+        this.world.sparks.burst(p, crush ? 12 : 6, crush ? 5 : 3)
+        g.cargoFull = put < want * 0.5
         n++
       }
     }

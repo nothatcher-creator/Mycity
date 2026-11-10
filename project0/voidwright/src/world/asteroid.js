@@ -225,7 +225,7 @@ export class AsteroidField {
   }
   update(cam, quality = 1) {
     const dc = cam.distanceTo(this.center)
-    if (dc > this.radius + 60000) { if (this.list) for (const a of this.list) a.show(false); return }
+    if (dc > this.radius + 60000) { if (this.list) for (const a of this.list) a.show(false); this.queue.length = 0; return }
     if (!this.list) this.make()
     const lp = new THREE.Vector3()
     this.queue.length = 0
@@ -253,12 +253,13 @@ export class AsteroidField {
     const t0 = performance.now()
     this.queue.sort((x, y) => x.d - y.d)
     let n = 0
-    for (const q of this.queue) {
+    while (this.queue.length) {
       if (performance.now() - t0 > ms) break
+      const q = this.queue.shift()
       if (q.coarse) { if (!q.a.coarseBuilt) q.a.buildCoarse() } else q.a.buildChunk(q.key, q.i, q.j, q.k)
       n++
     }
-    return this.queue.length - n
+    return this.queue.length
   }
   // asteroids near a point (for collisions)
   near(p, pad) {

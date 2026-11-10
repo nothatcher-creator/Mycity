@@ -8,9 +8,11 @@ import { Physics } from '../grid/physics.js'
 import { ShipControl } from '../grid/ship.js'
 import { makeAtlas } from '../grid/atlas.js'
 import { patchMaterial } from '../world/atmo-glsl.js'
-import { BLOCKS } from '../grid/blocks.js'
+import { BLOCKS, rollerYs } from '../grid/blocks.js'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { lin } from '../core/color.js'
 import { blockRecipe } from './items.js'
-import { apply, INV } from '../grid/rot.js'
+import { apply, INV, QUATS } from '../grid/rot.js'
 import { Survival, netCount, netTake, netPut, gasTotal, gasTake, gasPut } from './survival.js'
 
 function envTexture() {
@@ -44,6 +46,7 @@ export class World {
     this.ships = new ShipControl(this)
     this.flames = new Flames(e)
     this.sparks = new Sparks(e)
+    this.spinners = new Spinners(e, this)
     this.survival = new Survival(this)
     this.tmp = new THREE.Vector3()
   }
@@ -207,6 +210,7 @@ export class World {
     for (const g of this.grids) g.rebuild(6)
   }
   draw(dt) {
+    this.spinners.update(dt, this.grids, this.engine)
     this.flames.update(this.grids, this.engine)
     this.sparks.update(dt, this.engine)
   }
@@ -296,3 +300,70 @@ class Sparks {
     this.points.geometry.attributes.position.needsUpdate = true
   }
 }
+
+// The heads of drills and the rollers of rock crushers: they turn while the block works, so they are drawn
+// here, one instanced mesh for each kind, rather than as part of the grid's own mesh.
+function painted(g, col) { g = g.index ? g.toNonIndexed() : g; g.deleteAttribute('uv'); const n = g.attributes.position.count, c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { c[i * 3] = lin(col[0]); c[i * 3 + 1] = lin(col[1]); c[i * 3 + 2] = lin(col[2]) } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g }
+export function drillHeadGeo() {
+  // along -Z from the base (z = 0, radius 1.08) to the tip (z = -1), teeth in three spirals
+  const parts = [painted(new THREE.ConeGeometry(1.08, 1, 16, 1, true).rotateX(-Math.PI / 2).translate(0, 0, -0.5), [0.6, 0.6, 0.63])]
+  for (let k = 0; k < 3; k++) for (let i = 0; i < 7; i++) {
+    const t = (i + 0.5) / 7, a = k * 2.094 + t * 4.4, rr = 1.02 * (1 - t), z = -t
+    const m = new THREE.Matrix4().lookAt(new THREE.Vector3(), new THREE.Vector3(Math.cos(a), Math.sin(a), -0.5), new THREE.Vector3(0, 0, 1))
+    const g = new THREE.ConeGeometry(0.11, 0.26, 5).rotateX(-Math.PI / 2).applyMatrix4(m).translate(Math.cos(a) * rr, Math.sin(a) * rr, z)
+    parts.push(painted(g, [0.86, 0.6, 0.2]))
+  }
+  return mergeGeometries(parts)
+}
+export function rollerGeo() {
+  // along X, length 1 (scaled to the mouth), radius 1 (scaled), studded with teeth
+  const parts = [painted(new THREE.CylinderGeometry(1, 1, 1, 14).rotateZ(Math.PI / 2), [0.48, 0.48, 0.5])]
+  for (let i = 0; i < 5; i++) for (let k = 0; k < 6; k++) {
+    const a = k / 6 * Math.PI * 2 + i * 0.5, x = (i + 0.5) / 5 - 0.5
+    parts.push(painted(new THREE.ConeGeometry(0.2, 0.36, 4).rotateX(a).translate(x, Math.cos(a) * 1.12, Math.sin(a) * 1.12), [0.86, 0.6, 0.2]))
+  }
+  return mergeGeometries(parts)
+}
+class Spinners {
+  constructor(engine, world) {
+    const mat = patchMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.45, envMap: world.env, envMapIntensity: 0.5 }), engine.spaceUniforms, {})
+    this.heads = new THREE.InstancedMesh(drillHeadGeo(), mat, 96)
+    this.rolls = new THREE.InstancedMesh(rollerGeo(), mat, 192)
+    for (const m of [this.heads, this.rolls]) { m.frustumCulled = false; m.count = 0; engine.scene.add(m) }
+    this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.s = new THREE.Vector3(); this.p = new THREE.Vector3(); this.spin = new THREE.Quaternion()
+    this.t = 0
+  }
+  update(dt, grids, engine) {
+    this.t += dt
+    let nh = 0, nr = 0
+    const cam = engine.camPos
+    for (const g of grids) {
+      const D = g.parts?.drills
+      if (!D || !D.length || g.pos.distanceTo(cam) > 1500 + g.radius) continue
+      for (const b of D) {
+        if (b.build < 1) continue
+        const S = b.def.sizes[g.size], f = b.def.func, cs = g.cs
+        b.angle = (b.angle || 0) + (b.spin ? dt * (f.drill ? 9 : 5) : 0)
+        const bq = this.q.copy(g.quat).multiply(QUATS[b.rot])
+        if (f.drill && nh < 96) {
+          const z1 = S[2] - 0.5, len = z1 - 1.8 + 0.5
+          engine.rel(g.toWorld(g.blockPoint(b, 1, 1, z1 - 1.8)), this.p)
+          this.spin.setFromAxisAngle(Z, b.angle)
+          this.s.set(cs, cs, cs * len)
+          this.m.compose(this.p, bq.clone().multiply(this.spin), this.s); this.heads.setMatrixAt(nh++, this.m)
+        } else if (f.crusher) {
+          const x1 = S[0] - 0.5, zm = S[2] - 0.5 - (S[2] > 2 ? 1.3 : 0.9), ys = rollerYs(S), r = (S[1] - 0.9) / 4.6, len = x1 - 0.22 + 0.28
+          for (let k = 0; k < 2 && nr < 192; k++) {
+            engine.rel(g.toWorld(g.blockPoint(b, (x1 - 0.5) / 2 + 0.03, ys[k], (zm - 0.5) / 2 - 0.1)), this.p)
+            this.spin.setFromAxisAngle(X, b.angle * (k ? -1 : 1))
+            this.s.set(cs * len, cs * r, cs * r)
+            this.m.compose(this.p, bq.clone().multiply(this.spin), this.s); this.rolls.setMatrixAt(nr++, this.m)
+          }
+        }
+      }
+    }
+    this.heads.count = nh; this.rolls.count = nr
+    this.heads.instanceMatrix.needsUpdate = true; this.rolls.instanceMatrix.needsUpdate = true
+  }
+}
+const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1)

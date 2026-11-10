@@ -111,6 +111,7 @@ export class ShipControl {
       if (f.out && !f.store && !f.solar && !creative) { b.fuelled = this.world.netCount(grid, 'ing_uranium') > 0.001; if (!b.fuelled) continue }
       if (f.out && !f.store) {
         let o = f.out[size]
+        if (f.wind) o *= grid.static ? this.world.airAt(grid.pos) : 0
         if (f.solar) { const n = grid.dirToWorld(grid.blockDir(b, 0, 1, 0)); o *= Math.max(0, n.dot(sun)) * (this.world.inShadow?.(grid.comWorld()) ? 0 : 1) }
         supply += o
       }

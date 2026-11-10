@@ -98,13 +98,22 @@ const R = {
   tank_h2: [['plate', 280], ['tube_l', 80], ['tube_s', 60], ['computer', 8], ['construct', 40]],
   tank_o2: [['plate', 80], ['tube_l', 40], ['tube_s', 60], ['computer', 8], ['construct', 40]],
   drill: [['plate', 300], ['construct', 40], ['tube_l', 12], ['motor', 5], ['computer', 5]],
-  vent: [['plate', 45], ['construct', 20], ['motor', 10], ['computer', 5]],
+  crusher: [['plate', 420], ['construct', 60], ['tube_l', 16], ['motor', 12], ['grid', 30], ['computer', 5]],
+  detector: [['plate', 50], ['construct', 40], ['motor', 5], ['computer', 25], ['detector', 20]],
+  turbine: [['interior', 40], ['motor', 8], ['construct', 20], ['girder', 24], ['computer', 2]],
+  dish: [['plate', 60], ['construct', 40], ['tube_s', 40], ['tube_l', 20], ['computer', 12], ['radio', 60]],
+  ramp: [['plate', 12], ['girder', 4]], porthole: [['plate', 16], ['glass', 6]], skylight: [['girder', 4], ['glass', 8]], wall: [['interior', 12], ['construct', 4]],
+  pillar: [['plate', 8], ['girder', 6]], railing: [['girder', 4], ['tube_s', 4]], ladder: [['tube_s', 8]], bed: [['interior', 20], ['construct', 10]],
+  console: [['interior', 10], ['construct', 10], ['display', 4], ['computer', 20]], locker: [['interior', 20], ['construct', 10]], table: [['interior', 8], ['tube_s', 4]],
+  sign: [['interior', 4], ['display', 6], ['computer', 4]], blastdoor: [['plate', 140], ['grid', 40], ['construct', 40], ['motor', 8], ['computer', 4]],
+  hangar: [['plate', 30], ['construct', 20], ['tube_s', 10], ['motor', 4]], lightstrip: [['construct', 2], ['interior', 1]], lightpanel: [['construct', 4], ['interior', 4]], warnlight: [['construct', 2], ['computer', 1]],
+  hull_hazard: [['plate', 25]], hull_vent: [['plate', 22], ['tube_s', 4]], hull_grate: [['plate', 25]], hull_tech: [['plate', 20], ['interior', 6]],
 }
 // small-grid blocks need about a twelfth as many of each (and at least one)
 export function blockRecipe(def, size) {
   const id = def.id, base = def.armor ? (def.group === 'heavy' ? R.heavy : R.light) : R[id]
   let r = base || [['construct', 10], ['plate', 10], ['computer', 2]]
-  const frac = def.armor ? (def.mass.large / (def.group === 'heavy' ? 3300 : 500)) : 1
+  const frac = def.armor ? Math.min(1, def.mass.large / (def.group === 'heavy' ? 3300 : 500)) : 1
   if (def.armor) r = r.map(([k, n]) => [k, Math.max(1, Math.round(n * frac))])
   if (size === 'small') r = r.map(([k, n]) => [k, Math.max(1, Math.round(n / (def.armor ? 25 : 12)))])
   return r

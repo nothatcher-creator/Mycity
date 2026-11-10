@@ -242,6 +242,7 @@ export class HUD {
     if (this.sigT % 20 === 1) this.sigs = U.signals(eye).slice(0, 2)
     for (const sg of this.sigs || []) mark(sg.pos, 'Unknown signal', fmtDist(eye.distanceTo(sg.pos)), 'rgba(255,255,255,0.7)')
     for (const w of g.waypoints) if (g.tracked?.wp !== w) mark(w.pos, w.name, fmtDist(eye.distanceTo(w.pos)), 'rgba(63,224,208,0.75)')
+    for (const o of g.oreMarks || []) mark(o.pos, o.ore.split(' + ').map(x => x[0].toUpperCase() + x.slice(1)).join(' + '), fmtDist(eye.distanceTo(o.pos)), o.rock ? 'rgba(255,190,110,0.9)' : 'rgba(140,230,120,0.95)')
     // the tracked waypoint: always shown, at the edge of the glass when it is off to one side, with how far
     const T = g.tracked
     if (T) {

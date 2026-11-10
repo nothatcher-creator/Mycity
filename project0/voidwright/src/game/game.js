@@ -16,6 +16,7 @@ import { Builder, load } from './build.js'
 import { prefab } from './prefabs.js'
 import { Engineer, EYE } from '../actors/engineer.js'
 import { SFX } from './sfx.js'
+import { Trees } from '../world/trees.js'
 import { BLOCKS } from '../grid/blocks.js'
 import { ITEMS } from './items.js'
 import { netPut } from './survival.js'
@@ -50,6 +51,8 @@ export class Game {
     this.time = 0
   }
   saveSettings() { this.save.store() }
+  saveMap() { this.save.data.known = [...this.world.universe.known]; this.save.data.wps = this.waypoints.slice(-24).map(w => [w.name, Math.round(w.pos.x), Math.round(w.pos.y), Math.round(w.pos.z)]); this.save.store() }
+  addWaypoint(pos, name) { const w = { name: name || `Waypoint ${this.waypoints.length + 1}`, pos: pos.clone() }; this.waypoints.push(w); this.saveMap(); return w }
   async boot() {
     const p0 = this.p0, t0 = performance.now()
     const L = (f, label) => p0.loading(Math.min(0.99, f), label)
@@ -66,7 +69,14 @@ export class Game {
     const B = [performance.now()], bm = () => B.push(performance.now())
     this.sky = new Sky(e); bm()
     L(0.2, 'raising the worlds'); await pause()
-    this.world = new World(this); bm()
+    this.world = new World(this)
+    this.world.trees = new Trees(e)
+    // the map: what has been found, and waypoints (kept between visits; the universe itself is always the same)
+    const U0 = this.world.universe
+    for (const key of this.save.data.known || []) U0.known.add(key)
+    this.waypoints = (this.save.data.wps || []).map(w => ({ name: w[0], pos: new THREE.Vector3(w[1], w[2], w[3]) }))
+    this.tracked = null
+    U0.onDiscover = d => { this.hud?.toast(`Discovered: the ${d.name} group (${d.bodies.length} worlds, ${d.fields.length} rock fields)`, C.gold2); this.sfx?.play('ui_on', 0.6); this.saveMap() }; bm()
     this.input = new Input(p0)
     this.input.sens = this.settings.sens; this.input.invertY = this.settings.invertY
     this.ui = new UI(e)
@@ -124,7 +134,7 @@ export class Game {
   }
   titleView(t) {
     const a = 0.6 + t * 0.01
-    const pl = this.world.universe.planets[0]
+    const pl = this.world.universe.byId('halvor')
     this.camPos.set(Math.sin(a) * 82000, 30000, Math.cos(a) * 82000).add(pl.center)
     const m = new THREE.Matrix4().lookAt(this.camPos, pl.center.clone().add(new THREE.Vector3(18000, 6000, 0)), new THREE.Vector3(0, 1, 0))
     this.camQuat.setFromRotationMatrix(m)
@@ -215,15 +225,16 @@ export class Game {
     W.creative = mode === 'creative'
     this.menus.open('loading')
     let spawn = null, jet = false
-    const halvor = U.planets[0], ket = U.planets[1]
-    if (id === 'planet' || id === 'moon') {
-      const pl = id === 'planet' ? halvor : ket
-      const f = this.findFlat(pl, id === 'planet' ? new THREE.Vector3(0.35, 0.72, 0.6).normalize() : new THREE.Vector3(-0.4, 0.8, 0.45).normalize(), 0.03, 140)
+    U.ensure(new THREE.Vector3(0, 0, 0))
+    const halvor = U.byId('halvor'), ket = U.byId('ket')
+    if (id === 'planet' || id === 'moon' || id === 'thessa') {
+      const pl = id === 'planet' ? halvor : id === 'moon' ? ket : U.byId('thessa')
+      const f = this.findFlat(pl, id === 'planet' ? new THREE.Vector3(0.35, 0.72, 0.6).normalize() : id === 'moon' ? new THREE.Vector3(-0.4, 0.8, 0.45).normalize() : new THREE.Vector3(0.2, 0.6, -0.7).normalize(), 0.03, 140)
       const fr = this.frameAt(pl, f.dir, f.h)
       const base = this.spawnGrid('foothold', fr.p.clone().addScaledVector(fr.up, 1.5), fr.q, { static: true, ground: true, sink: 0.6 })
       const at = (dx, dz, yaw) => { const d = f.dir.clone().addScaledVector(fr.east, dx / pl.R).addScaledVector(fr.north, dz / pl.R).normalize(); const h = pl.height(d.x, d.y, d.z); return this.frameAt(pl, d, h, yaw) }
       const s1 = at(36, 6, 0.4); this.spawnGrid('sparrow', s1.p.clone().addScaledVector(s1.up, 3), s1.q, { ground: true, sleep: true, static: false })
-      if (id === 'planet') { const s2 = at(-14, 58, -0.3); this.spawnGrid('mule', s2.p.clone().addScaledVector(s2.up, 10), s2.q, { ground: true, sleep: true, static: false }) }
+      if (id !== 'moon') { const s2 = at(-14, 58, -0.3); this.spawnGrid('mule', s2.p.clone().addScaledVector(s2.up, 10), s2.q, { ground: true, sleep: true, static: false }) }
       const s3 = at(40, -30, 1.2); this.spawnGrid('pick', s3.p.clone().addScaledVector(s3.up, 3), s3.q, { ground: true, sleep: true, static: false })
       const sp = at(-3, -16, 0); spawn = { pos: sp.p.clone().addScaledVector(sp.up, 1.2), quat: sp.q }
     } else if (id === 'orbit') {
@@ -235,7 +246,7 @@ export class Game {
       this.spawnGrid('sparrow', st.toWorld(new THREE.Vector3(-10, 4, -8)), q, { static: false })
       spawn = { pos: st.toWorld(new THREE.Vector3(0, 1.4, 20)), quat: q }
     } else if (id === 'rocks') {
-      const f = U.fields[2]; f.make()
+      const f = U.field('belt'); f.make()
       const a = f.list[f.list.length - 1]
       // a point on the anchor rock's surface, facing the star
       const dir = W.sunDir.clone().normalize(), p = a.pos.clone().addScaledVector(dir, a.r * 2.5)
@@ -317,10 +328,12 @@ export class Game {
     const J = this.jump, gr = J.grid, pl = J.place
     this.jump = null
     if (!this.world.grids.includes(gr)) return
-    // arrive outside the target: above the near side of a world, at the edge of a rock field
+    // arrive outside the target: above the near side of a world, at the edge of a rock field, short of a
+    // waypoint, well out from an unknown group's centre
     const from = gr.comWorld(), dir = from.clone().sub(pl.pos).normalize()
-    const dist = pl.kind === 'planet' ? pl.r + (pl.id === 'halvor' || pl.id === 'vashti' ? 16000 : 6000) : pl.r + 2500
+    const dist = pl.kind === 'planet' ? pl.r + Math.max(6000, pl.r * 0.55) : pl.kind === 'field' ? pl.r + 2500 : pl.kind === 'signal' ? 140000 : 300
     const to = pl.pos.clone().addScaledVector(dir, dist)
+    this.world.universe.ensure(to)
     const d = to.clone().sub(from)
     gr.pos.add(d)
     for (const o of this.world.grids) if (o.locked?.grid === gr) o.pos.add(d)
@@ -344,7 +357,7 @@ export class Game {
     if (e.code === 'F2') this.p0.log('dbg', JSON.stringify({ pos: P.pos.toArray().map(v => Math.round(v)), vel: P.vel.length().toFixed(2), ground: P.onGround, g: P.gravity.toFixed(2), jet: P.jetpack, seat: !!P.seat, grids: this.world.grids.length, prog: this.engine.renderer.info.programs?.length, calls: this.engine.renderer.info.render.calls, tris: this.engine.renderer.info.render.triangles, pending: this.world.universe.planets.map(p => p.pending).join() }))
     if (e.code === 'F4') { const gr = this.world.grids.find(g => g.parts?.cockpits.length && !g.static); if (gr) { P.enterSeat(gr, gr.parts.cockpits[0]); this.p0.log('dbg seat', gr.name) } }
     if (e.code === 'F6' && P.seat) { const g = P.seat.grid; this.p0.log('dbg ship', JSON.stringify({ v: g.vel.toArray().map(v => v.toFixed(2)), w: g.angVel.toArray().map(v => v.toFixed(3)), mass: Math.round(g.mass), max: [...g.thrustMax].map(v => Math.round(v / 1000)), out: [...g.thrustOut].map(v => v.toFixed(2)), sleep: g.sleep.toFixed(2), touch: g.touching, air: g.air?.toFixed(2), grav: g.gravity?.toFixed(2), power: g.power, locked: !!g.locked })) }
-    if (e.code === 'F10' && P.seat) { const pl = this.world.universe.places().find(x => x.id === 'ket'); this.planJump(pl); this.jump.t = 2 }
+    if (e.code === 'F10' && P.seat) { const U = this.world.universe, pl = e.shiftKey || this.dbgJ ? U.signals(P.pos)[0] : U.places().find(x => x.id === 'ket'); this.dbgJ = true; if (pl) { this.planJump(pl); this.jump.t = 2 } }
     if (e.code === 'F7') { this.world.universe.time += 600; this.hud.toast('+10 min') }
   }
   // ---- the frame ----
@@ -363,6 +376,7 @@ export class Game {
     const budget = this.state === 'loading' ? 60 : this.state === 'play' ? 5 : 10
     e.uiOnly = this.state === 'loading'
     W.universe.work(budget)
+    if (this.state !== 'menu') { const tp = W.universe.nearestPlanet(this.camPos); W.trees.update(tp, this.camPos, this.player ? (this.player.seat ? this.player.seat.grid.vel.length() : this.player.vel.length()) : 0, e.quality.detail) } else W.trees.update(null)
     mk()
     e.setView(this.camPos, this.camQuat, this.state === 'play' ? this.settings.fov : 55)
     this.environment(sun)
@@ -409,6 +423,7 @@ export class Game {
       if (inp.hit('view')) this.view = this.view === 'fp' ? 'tp' : 'fp'
       if (inp.hit('terminal')) { this.terminalGrid = P.seat?.grid || B.hit?.grid || P.ground; this.menus.open('terminal') }
       if (inp.hit('blueprints')) { if (W.creative) this.menus.open('blueprints'); else this.hud.toast('Blueprints are for creative mode (a projector arrives in the next update)') }
+      if (inp.hit('map')) this.menus.open('map')
       if (inp.hit('inventory')) { this.invGrid = P.seat?.grid || (B.hit?.grid && B.hit.dist < 6 ? B.hit.grid : null) || this.nearGrid(P.pos, 8); this.menus.open('inventory') }
     }
     let piloted = null, ctl = null

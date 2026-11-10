@@ -6,7 +6,7 @@ export const DEFAULT_BINDS = {
   forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', up: 'Space', down: 'KeyC', rollL: 'KeyQ', rollR: 'KeyE',
   sprint: 'ShiftLeft', jetpack: 'KeyX', dampeners: 'KeyZ', use: 'KeyF', light: 'KeyL', view: 'KeyV',
   catalog: 'KeyG', terminal: 'KeyK', pause: 'Tab', help: 'F1', size: 'KeyR', gridType: 'KeyB', palette: 'KeyP', park: 'KeyP',
-  blueprints: 'KeyH', inventory: 'KeyI', jump: 'KeyJ', freeLook: 'AltLeft', symmetry: 'KeyM',
+  blueprints: 'KeyH', inventory: 'KeyI', jump: 'KeyJ', freeLook: 'AltLeft', map: 'KeyM',
   slot1: 'Digit1', slot2: 'Digit2', slot3: 'Digit3', slot4: 'Digit4', slot5: 'Digit5', slot6: 'Digit6', slot7: 'Digit7', slot8: 'Digit8', slot9: 'Digit9', slot0: 'Digit0',
   // turning the block in your hands (and the same on keys every keyboard has)
   rotRollL: 'PageUp', rotRollR: 'PageDown', rotPitchU: 'Home', rotPitchD: 'End', rotYawL: 'Insert', rotYawR: 'Delete',
@@ -16,7 +16,7 @@ export const ACTION_NAMES = {
   forward: 'Forward', back: 'Back', left: 'Strafe left', right: 'Strafe right', up: 'Up / jump', down: 'Down / crouch', rollL: 'Roll left', rollR: 'Roll right',
   sprint: 'Sprint / boost', jetpack: 'Jetpack on/off', dampeners: 'Inertia dampeners on/off', use: 'Use / enter / leave seat', light: 'Helmet light / ship lights', view: 'First / third person',
   catalog: 'Block catalog', terminal: 'Terminal (grid control)', pause: 'Game menu', help: 'Controls', size: 'Large / small block', gridType: 'New grid: ship or station', palette: 'Colour palette', park: 'Ship: lock landing gear',
-  blueprints: 'Blueprints (spawn a design)', inventory: 'Inventory and cargo', jump: 'Ship: jump drive', freeLook: 'Free look', symmetry: 'Symmetry plane',
+  blueprints: 'Blueprints (spawn a design)', inventory: 'Inventory and cargo', jump: 'Ship: jump drive', freeLook: 'Free look', map: 'Map and waypoints',
   slot1: 'Toolbar 1', slot2: 'Toolbar 2', slot3: 'Toolbar 3', slot4: 'Toolbar 4', slot5: 'Toolbar 5', slot6: 'Toolbar 6', slot7: 'Toolbar 7', slot8: 'Toolbar 8', slot9: 'Toolbar 9', slot0: 'Empty hands',
   rotRollL: 'Rotate block: roll left', rotRollR: 'Rotate block: roll right', rotPitchU: 'Rotate block: tip up', rotPitchD: 'Rotate block: tip down', rotYawL: 'Rotate block: turn left', rotYawR: 'Rotate block: turn right',
   rotRollL2: 'Rotate block: roll left (alt)', rotRollR2: 'Rotate block: roll right (alt)', rotPitchU2: 'Rotate block: tip up (alt)', rotPitchD2: 'Rotate block: tip down (alt)', rotYawL2: 'Rotate block: turn left (alt)', rotYawR2: 'Rotate block: turn right (alt)',

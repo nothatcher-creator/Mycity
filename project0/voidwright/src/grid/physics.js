@@ -18,7 +18,7 @@ export class Physics {
     const W = this.world, grids = W.grids
     for (const g of grids) g.updateMass()
     for (const g of grids) {
-      if (g.static || g.locked || !g.blocks.size) continue
+      if (g.static || g.locked || g.frozen || !g.blocks.size) continue
       if (g.sleep > 1.5) continue
       g._iw = this.invIWorld(g, g._iw || new THREE.Matrix3())
       const com = g.comWorld(v1)
@@ -31,14 +31,14 @@ export class Physics {
     }
     // contacts
     this.contacts.length = 0
-    for (const g of grids) if (!g.static && !g.locked && g.blocks.size && g.sleep <= 1.5) this.solidContacts(g)
+    for (const g of grids) if (!g.static && !g.locked && !g.frozen && g.blocks.size && g.sleep <= 1.5) this.solidContacts(g)
     for (let i = 0; i < grids.length; i++) for (let j = i + 1; j < grids.length; j++) this.gridContacts(grids[i], grids[j])
     for (const c of this.contacts) this.prepare(c, dt)
     for (let it = 0; it < 6; it++) for (const c of this.contacts) this.solve(c)
     for (const c of this.contacts) if (c.hit > 9) W.impact(c)
     // move
     for (const g of grids) {
-      if (g.static || !g.blocks.size) continue
+      if (g.static || g.frozen || !g.blocks.size) continue
       if (g.locked) { W.followLock(g); continue }
       const sp = g.vel.length()
       if (sp > MAX_SPEED) g.vel.multiplyScalar(MAX_SPEED / sp)
@@ -85,6 +85,7 @@ export class Physics {
   // two grids: the smaller one's hull points against the other's blocks
   gridContacts(a, b) {
     if (!a.blocks.size || !b.blocks.size) return
+    if (a.frozen || b.frozen) return
     if ((a.static || a.locked || a.sleep > 1.5) && (b.static || b.locked || b.sleep > 1.5)) return
     if (a.parentOf === b || b.parentOf === a) return
     const ca = a.comWorld(v1), cb = b.comWorld(v2)
@@ -112,7 +113,7 @@ export class Physics {
       this.contacts.push({ A: src, B: dst, p: f.p.addScaledVector(f.n, -rad + f.pen * 0.5), n: f.n, pen: f.pen })
     }
   }
-  movable(g) { return g && !g.static && !g.locked }
+  movable(g) { return g && !g.static && !g.locked && !g.frozen }
   applyImpulse(g, p, J) {
     if (!this.movable(g)) return
     g.vel.addScaledVector(J, 1 / g.mass)

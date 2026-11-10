@@ -230,13 +230,50 @@ export class HUD {
       text(c, label, x + 11, y - 1, { size: 11, weight: 700, color: col, shadow: true })
       if (sub) text(c, sub, x + 11, y + 12, { size: 10, weight: 600, color: C.dim, shadow: true })
     }
-    const eye = g.camPos
-    for (const pl of g.world.universe.planets) {
+    const eye = g.camPos, U = g.world.universe
+    for (const pl of U.planets) {
       const d = eye.distanceTo(pl.center) - pl.R
       if (d < pl.R * 0.6) continue
       mark(pl.center, pl.name, fmtDist(d), 'rgba(166,255,245,0.85)')
     }
-    for (const f of g.world.universe.fields) { const d = eye.distanceTo(f.center); if (d > f.radius * 1.2) mark(f.center, f.name, fmtDist(d), 'rgba(255,190,110,0.85)') }
+    for (const f of U.fields) { const d = eye.distanceTo(f.center); if (d > f.radius * 1.2) mark(f.center, f.name, fmtDist(d), 'rgba(255,190,110,0.85)') }
+    // groups of worlds not yet found (the two nearest), and your waypoints
+    this.sigT = (this.sigT || 0) + 1
+    if (this.sigT % 20 === 1) this.sigs = U.signals(eye).slice(0, 2)
+    for (const sg of this.sigs || []) mark(sg.pos, 'Unknown signal', fmtDist(eye.distanceTo(sg.pos)), 'rgba(255,255,255,0.7)')
+    for (const w of g.waypoints) if (g.tracked?.wp !== w) mark(w.pos, w.name, fmtDist(eye.distanceTo(w.pos)), 'rgba(63,224,208,0.75)')
+    // the tracked waypoint: always shown, at the edge of the glass when it is off to one side, with how far
+    const T = g.tracked
+    if (T) {
+      const d = Math.max(0, eye.distanceTo(T.pos) - (T.r || 0))
+      e.rel(T.pos, v); v.applyMatrix4(cam.matrixWorldInverse)
+      const behind = v.z > 0
+      v.applyMatrix4(cam.projectionMatrix)
+      let x = (v.x + 1) / 2 * p.w, y = (1 - v.y) / 2 * p.h
+      if (behind) { x = p.w - x; y = p.h - y }
+      const m = 46, off = behind || x < m || x > p.w - m || y < m + 40 || y > p.h - m - 80
+      if (off) {
+        // clamp to the edge along the direction from the centre
+        let dx = x - p.w / 2, dy = y - p.h / 2
+        if (behind) { const l = Math.hypot(dx, dy) || 1; dx = dx / l * p.w; dy = dy / l * p.w }
+        const k = Math.min((p.w / 2 - m) / Math.abs(dx || 1e-6), (p.h / 2 - m - 40) / Math.abs(dy || 1e-6))
+        x = p.w / 2 + dx * k; y = p.h / 2 + dy * k
+        c.save(); c.translate(x, y); c.rotate(Math.atan2(dy, dx)); c.fillStyle = C.gold2; c.beginPath(); c.moveTo(14, 0); c.lineTo(-6, -9); c.lineTo(-6, 9); c.closePath(); c.fill(); c.restore()
+      } else {
+        c.strokeStyle = C.gold2; c.lineWidth = 2
+        c.beginPath(); c.moveTo(x, y - 11); c.lineTo(x + 11, y); c.lineTo(x, y + 11); c.lineTo(x - 11, y); c.closePath(); c.stroke()
+        c.beginPath(); c.arc(x, y, 2.5, 0, 7); c.fillStyle = C.gold2; c.fill()
+      }
+      const lx = Math.max(90, Math.min(p.w - 90, x)), ly = y + (y > p.h / 2 ? -22 : 30)
+      text(c, T.name, lx, ly, { size: 12, weight: 700, color: C.gold2, align: 'center', shadow: true })
+      text(c, fmtDist(d), lx, ly + 15, { size: 12, weight: 700, color: C.white, align: 'center', shadow: true })
+      // and at the top: the name, the distance, the time at this speed
+      const sp = P.seat ? P.seat.grid.vel.length() : P.vel.length(), eta = sp > 2 ? d / sp : 0
+      const line = `▸ ${T.name.toUpperCase()}   ${fmtDist(d)}${eta ? '   ' + (eta > 3600 ? (eta / 3600).toFixed(1) + ' h' : eta > 90 ? Math.round(eta / 60) + ' min' : Math.round(eta) + ' s') : ''}`
+      c.font = FONT(13, 700); const tw = c.measureText(line).width + 28
+      box(c, p.w / 2 - tw / 2, this.touch ? p.h - 150 : 64, tw, 26, { ticks: false })
+      text(c, line, p.w / 2, (this.touch ? p.h - 150 : 64) + 18, { size: 13, weight: 700, color: C.gold2, align: 'center' })
+    }
     for (const gr of g.world.grids) {
       if (!gr.parts?.beacons.length || gr === P.seat?.grid) continue
       const c0 = gr.comWorld(), d = eye.distanceTo(c0)

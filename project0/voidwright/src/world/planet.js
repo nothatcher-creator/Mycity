@@ -7,8 +7,10 @@ import { simplex3, fbm3, ridged3, craters } from '../core/noise3.js'
 import { clamp, smooth } from '../core/noise.js'
 import { lin } from '../core/color.js'
 import { patchMaterial, ATMO_UNIFORMS } from './atmo-glsl.js'
+import { PlanetVoxels } from './voxels.js'
 
 const SEG = 32
+const VEG = [0.34, 0.41, 0.22], VEG2 = [0.24, 0.33, 0.18]
 const ORE_COL = { iron: [0.55, 0.36, 0.26], nickel: [0.62, 0.62, 0.5], silicon: [0.72, 0.72, 0.76], cobalt: [0.3, 0.4, 0.62], ice: [0.82, 0.92, 1], magnesium: [0.68, 0.6, 0.76], silver: [0.8, 0.82, 0.86], gold: [0.82, 0.64, 0.26], platinum: [0.86, 0.88, 0.9], uranium: [0.38, 0.6, 0.34] }
 const FACES = [
   [[1, 0, 0], [0, 0, -1], [0, 1, 0]], [[-1, 0, 0], [0, 0, 1], [0, 1, 0]],
@@ -68,13 +70,37 @@ const KINDS = {
     if (mw < 50) h += fbm3(n[3], x / 90, y / 90, z / 90, oct(90, mw, 3)) * 3
     return h
   },
+  // sand seas: long dunes, flat-topped mesas, dry basins
+  desert(P, x, y, z, mw) {
+    const n = P.n
+    let h = fbm3(n[0], x / 16000, y / 16000, z / 16000, oct(16000, mw, 4)) * 520
+    const m = fbm3(n[2], x / 2600, y / 2600, z / 2600, oct(2600, mw, 3))
+    h += smooth(0.26, 0.34, m) * 240 + Math.max(0, m - 0.34) * 120
+    if (mw < 200) h += Math.abs(n[3](x / 300, y / 460, z / 300)) * 26 * (1 - smooth(0.2, 0.34, m))
+    if (mw < 40) h += Math.abs(n[4](x / 60, y / 90, z / 60)) * 4
+    if (mw < 8) h += n[5](x / 9, y / 9, z / 9) * 0.4
+    return h
+  },
+  // black basalt, sharp ridges, rivers of molten rock in the low ground
+  lava(P, x, y, z, mw) {
+    const n = P.n
+    let h = fbm3(n[0], x / 9000, y / 9000, z / 9000, oct(9000, mw, 4)) * 480
+    const k = Math.round(oct(2600, mw, 5))
+    if (k > 0) { const r = ridged3(n[2], x / 2600, y / 2600, z / 2600, k); h += r * r * 800 }
+    const c = Math.abs(fbm3(n[1], x / 3200, y / 3200, z / 3200, oct(3200, mw, 3)))
+    h -= smooth(0.07, 0.0, c) * 130
+    if (mw < 60) h += fbm3(n[3], x / 110, y / 110, z / 110, oct(110, mw, 3)) * 6
+    if (mw < 8) h += n[5](x / 7, y / 7, z / 7) * 0.5
+    return h
+  },
 }
 // colours (display values; made linear at the end)
 const COLS = {
   terra(P, x, y, z, h, slope, lat, out) {
     const v = P.n[6](x / 900, y / 900, z / 900), f = P.n[7](x / 140, y / 140, z / 140)
-    let r = 0.34 + v * 0.05, g = 0.41 + v * 0.04, b = 0.22
-    if (v + f * 0.4 > 0.25) { r = 0.24; g = 0.33; b = 0.18 }
+    const G = P.def.veg || VEG, G2 = P.def.veg2 || VEG2
+    let r = G[0] + v * 0.05, g = G[1] + v * 0.04, b = G[2]
+    if (v + f * 0.4 > 0.25) { r = G2[0]; g = G2[1]; b = G2[2] }
     if (h < -150) { const k = smooth(-150, -172, h); r += (0.70 - r) * k; g += (0.64 - g) * k; b += (0.5 - b) * k }
     const rock = smooth(0.28, 0.5, slope + f * 0.06)
     r += (0.44 - r) * rock; g += (0.41 - g) * rock; b += (0.38 - b) * rock
@@ -96,6 +122,20 @@ const COLS = {
     if (h < -500) { const k = smooth(-500, -800, h); r += (0.5 - r) * k; g += (0.3 - g) * k; b += (0.24 - b) * k }
     const cap = smooth(0.88, 0.93, lat); r += (0.9 - r) * cap; g += (0.88 - g) * cap; b += (0.86 - b) * cap
     out[0] = r; out[1] = g; out[2] = b
+  },
+  desert(P, x, y, z, h, slope, lat, out) {
+    const v = P.n[6](x / 800, y / 800, z / 800), m = fbm3(P.n[2], x / 2600, y / 2600, z / 2600, 2)
+    let r = 0.8 + v * 0.05, g = 0.67 + v * 0.04, b = 0.44
+    const mesa = smooth(0.26, 0.36, m); r += (0.66 - r) * mesa; g += (0.42 - g) * mesa; b += (0.28 - b) * mesa
+    const rock = smooth(0.3, 0.55, slope); r += (0.5 - r) * rock; g += (0.36 - g) * rock; b += (0.26 - b) * rock
+    out[0] = r; out[1] = g; out[2] = b
+  },
+  lava(P, x, y, z, h, slope, lat, out) {
+    const v = P.n[6](x / 500, y / 500, z / 500), c = Math.abs(fbm3(P.n[1], x / 3200, y / 3200, z / 3200, 3))
+    const g0 = 0.15 + v * 0.03 + slope * 0.08
+    out[0] = g0 * 1.05; out[1] = g0 * 0.95; out[2] = g0 * 0.95
+    const hot = smooth(0.05, 0.012, c), warm = smooth(0.11, 0.05, c)
+    out[0] += warm * 0.25 + hot * 1.3; out[1] += warm * 0.05 + hot * 0.5; out[2] += hot * 0.08
   },
   ice(P, x, y, z, h, slope, lat, out) {
     const v = P.n[6](x / 600, y / 600, z / 600)
@@ -153,6 +193,9 @@ export class Planet {
     this.queue = []
     this.built = 0
     this.digs = []; this.digHash = new Map()
+    this.vox = new PlanetVoxels(this)
+    this.rock = def.rock || [0.4, 0.37, 0.34]
+    this.tint = def.tint || null
     this.ores = def.ores || []
     this.tmp = [0, 0, 0]
     if (this.atmo) this.makeSky()
@@ -188,14 +231,26 @@ export class Planet {
       let L = this.digHash.get(k); if (!L) this.digHash.set(k, L = [])
       if (!L.includes(d)) L.push(d)
     }
-    // the patches it touches are rebuilt (keeping the old ones on screen meanwhile)
-    const lp = new THREE.Vector3(x, y, z)
+    this.vox.add(d)
+    this.markDirty(new THREE.Vector3(x, y, z), r + 2)
+  }
+  // the height-map patches round a planet-local point are rebuilt (the old ones stay on screen meanwhile)
+  markDirty(lp, r, fineOnly = false) {
     const mark = nd => {
-      if (!nd.center || nd.center.distanceTo(lp) > nd.arc * 0.8 + r + 2) return
-      if (nd.mesh) { nd.dirty = true; this.request(nd, 0) }
+      if (!nd.center || nd.center.distanceTo(lp) > nd.arc * 0.8 + r) return
+      if (nd.mesh && (!fineOnly || nd.level >= this.maxLevel - 2)) { nd.dirty = true; this.request(nd, 0) }
       if (nd.children) for (const ch of nd.children) mark(ch)
     }
     for (const rt of this.roots) mark(rt)
+  }
+  // the colour of dug rock at a planet-local point: the ground's own near the surface, bare rock below
+  voxelColor(x, y, z, out) {
+    const r = Math.sqrt(x * x + y * y + z * z), q = this.R / r
+    const h0 = this.hfn(this, x * q, y * q, z * q, 2), depth = this.R + h0 - r
+    if (depth < 0.7) { this.cfn(this, x, y, z, h0, 0.1, Math.abs(y / r), out); if (this.tint) for (let i = 0; i < 3; i++) out[i] *= this.tint[i] }
+    else { const f = 0.85 + this.n[5](x / 5, y / 5, z / 5) * 0.15, k = Math.min(1, depth / 30); for (let i = 0; i < 3; i++) out[i] = this.rock[i] * f * (1 - k * 0.25) }
+    const ore = this.oreAt(x, y, z)
+    if (ore !== 'stone') { const oc = ORE_COL[ore]; for (let i = 0; i < 3; i++) out[i] = out[i] * 0.5 + oc[i] * 0.5 }
   }
   // ore in the ground: patches of the world's ores in the stone
   oreAtWorld(p) {
@@ -209,17 +264,33 @@ export class Planet {
     const h = Math.abs(Math.sin(Math.floor(x / 300) * 12.9898 + Math.floor(y / 300) * 78.233 + Math.floor(z / 300) * 37.719) * 43758.5453) % 1
     return this.ores[Math.floor(h * this.ores.length)]
   }
-  // signed distance of a system point above the ground (approximate on steep slopes)
+  // signed distance of a system point above the ground (approximate on steep slopes); where holes have
+  // been dug it is true 3D: the undug ground with the holes cut out (so tunnels and overhangs hold)
   sdf(p) {
     const dx = p.x - this.center.x, dy = p.y - this.center.y, dz = p.z - this.center.z
     const r = Math.sqrt(dx * dx + dy * dy + dz * dz)
     if (r - this.R > this.relief + 50) return r - this.R - this.relief
-    return r - this.R - this.height(dx, dy, dz)
+    const q = this.R / r
+    let s = r - this.R - this.hfn(this, dx * q, dy * q, dz * q, 0.6)
+    if (this.digs.length) { const list = this.digHash.get(this.digKey(dx, dy, dz)); if (list) for (const d of list) { const e = d.r - Math.sqrt((dx - d.x) ** 2 + (dy - d.y) ** 2 + (dz - d.z) ** 2); if (e > s) s = e } }
+    return s
   }
+  dugNear(p) { return this.digs.length > 0 && this.digHash.has(this.digKey(p.x - this.center.x, p.y - this.center.y, p.z - this.center.z)) }
   // ground facts under a system point: height above it, the ground's normal, the up direction
   surface(p, out = {}) {
     const dx = p.x - this.center.x, dy = p.y - this.center.y, dz = p.z - this.center.z
     const r = Math.sqrt(dx * dx + dy * dy + dz * dz), ux = dx / r, uy = dy / r, uz = dz / r
+    if (this.dugNear(p)) {
+      // in and round dug rock: the slope of the 3D field
+      const e = 0.12, v = this._sv || (this._sv = new THREE.Vector3())
+      const f = (a, b, c) => this.sdf(v.set(p.x + a, p.y + b, p.z + c))
+      let nx = f(e, 0, 0) - f(-e, 0, 0), ny = f(0, e, 0) - f(0, -e, 0), nz = f(0, 0, e) - f(0, 0, -e)
+      const nl = Math.hypot(nx, ny, nz)
+      if (nl > 1e-9) { nx /= nl; ny /= nl; nz /= nl } else { nx = ux; ny = uy; nz = uz }
+      out.alt = this.sdf(p); out.h = r - this.R - out.alt; out.r = r
+      out.nx = nx; out.ny = ny; out.nz = nz; out.ux = ux; out.uy = uy; out.uz = uz
+      return out
+    }
     const h = this.height(ux, uy, uz)
     // two tangents and the slope along each (half a metre)
     let tx = -uz, ty = 0, tz = ux; if (Math.abs(uy) > 0.9) { tx = 1; ty = 0; tz = 0 }
@@ -297,6 +368,7 @@ export class Planet {
       loc[o] = x - bx; loc[o + 1] = y - by; loc[o + 2] = z - bz
       const slope = 1 - (nx * D[k * 3] + ny * D[k * 3 + 1] + nz * D[k * 3 + 2])
       this.cfn(this, x, y, z, H[k], slope * 1.6, Math.abs(D[k * 3 + 1]), cc)
+      if (this.tint) { cc[0] *= this.tint[0]; cc[1] *= this.tint[1]; cc[2] *= this.tint[2] }
       if (this.ores.length && mw < 40) { const ore = this.oreAt(x, y, z); if (ore !== 'stone') { const oc = ORE_COL[ore]; for (let q = 0; q < 3; q++) cc[q] = cc[q] * 0.6 + oc[q] * 0.4 } }
       col[o] = lin(cc[0]); col[o + 1] = lin(cc[1]); col[o + 2] = lin(cc[2])
     }
@@ -316,7 +388,21 @@ export class Planet {
     g.setAttribute('normal', new THREE.BufferAttribute(nor, 3))
     g.setAttribute('color', new THREE.BufferAttribute(col, 3))
     g.setAttribute('aLocal', new THREE.BufferAttribute(loc, 3))
-    g.setIndex(sharedIndex())
+    let index = sharedIndex()
+    if (this.vox.ready && nd.level >= this.maxLevel - 2) {
+      // leave out the triangles a dug chunk now draws
+      let cut = null
+      const src = index.array
+      for (let j = 0; j < SEG; j++) for (let i = 0; i < SEG; i++) {
+        const k0 = (j + 1) * E + (i + 1), k1 = k0 + E + 1
+        if (!this.vox.cut((P[k0 * 3] + P[k1 * 3]) / 2, (P[k0 * 3 + 1] + P[k1 * 3 + 1]) / 2, (P[k0 * 3 + 2] + P[k1 * 3 + 2]) / 2)) continue
+        if (!cut) cut = new Uint16Array(src)
+        const q = (j * SEG + i) * 6
+        for (let t = 0; t < 6; t++) cut[q + t] = 0
+      }
+      if (cut) index = new THREE.BufferAttribute(cut, 1)
+    }
+    g.setIndex(index)
     g.computeBoundingSphere()
     const m = new THREE.Mesh(g, this.mat)
     m.position.copy(c); m.matrixAutoUpdate = false; m.updateMatrix()
@@ -334,6 +420,7 @@ export class Planet {
     this.camAlt = lc.length() - this.R
     this.now = now; this.detailK = 2.25 * detail
     for (const r of this.roots) this.visit(r, lc)
+    this.vox.update(lc)
     // the uniforms the shaders use (scene coordinates)
     this.engine.rel(this.center, this.uniforms.uPC.value)
     if (this.sky) { this.sky.u.uPC.value.copy(this.uniforms.uPC.value); this.sky.u.uSunD.value.copy(this.uniforms.uSunD.value) }
@@ -372,8 +459,9 @@ export class Planet {
   request(nd, d) { if (!nd.queued) { nd.queued = true; this.queue.push(nd) } nd.prio = d / nd.arc - nd.level * 0.01 }
   // builds the most wanted patches for up to `ms` milliseconds
   work(ms) {
-    if (!this.queue.length) return 0
     const t0 = performance.now()
+    if (this.vox.pending) { this.vox.work(ms); if (performance.now() - t0 >= ms) return 1 }
+    if (!this.queue.length) return 0
     this.queue.sort((a, b) => a.prio - b.prio)
     let n = 0
     while (this.queue.length && performance.now() - t0 < ms) {
@@ -383,7 +471,7 @@ export class Planet {
     }
     return n
   }
-  get pending() { return this.queue.length }
+  get pending() { return this.queue.length + this.vox.pending }
   // ---- the air, seen from inside and out ----
   makeSky() {
     const a = this.atmo
@@ -425,5 +513,13 @@ export class Planet {
     this.sky = { mesh: m, u }
   }
   setSun(dir) { this.uniforms.uSunD.value.copy(dir) }
-  dispose() { for (const r of this.roots) { if (r.children) this.prune(r); this.free(r) } this.engine.untrack(this.track) }
+  // asleep: nothing drawn, nothing built, but the world (and the holes dug in it) is remembered
+  sleep() {
+    for (const r of this.roots) { if (r.children) this.prune(r); this.free(r); r.queued = false }
+    this.queue.length = 0
+    this.vox.dispose(); for (const c of this.vox.chunks.values()) { c.ready = false; c.dirty = true; c.queued = false } this.vox.ready = 0; this.vox.queue.length = 0
+    this.engine.untrack(this.track); this.track = null; this.asleep = true
+  }
+  wake() { if (!this.track) this.track = this.engine.track(this.group, this.center); this.asleep = false }
+  dispose() { this.vox.dispose(); for (const r of this.roots) { if (r.children) this.prune(r); this.free(r) } this.engine.untrack(this.track) }
 }

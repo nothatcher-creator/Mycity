@@ -163,6 +163,7 @@ export class Engineer {
         }
       }
     }
+    W.trees?.bump(this.pos, this.vel)
     // standing still on the ground: settle (no sliding down gentle slopes)
     this.ground = this.onGround ? ground : (this.jetpack ? null : this.ground && !this.onGround ? null : this.ground)
   }

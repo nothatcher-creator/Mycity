@@ -238,7 +238,7 @@ export class Grid {
   }
   // the working blocks, by kind
   scan() {
-    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [] }
+    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [], detectors: [] }
     for (const b of this.blocks) {
       const f = b.def.func
       if (!f) continue
@@ -259,7 +259,8 @@ export class Grid {
       if (f.assemble) L.assemblers.push(b)
       if (f.gasgen) L.gasgens.push(b)
       if (f.tank) L.tanks.push(b)
-      if (f.drill) L.drills.push(b)
+      if (f.drill || f.crusher) L.drills.push(b)
+      if (f.detector) L.detectors.push(b)
       if (f.kit) L.kits.push(b)
       if (f.power?.store && b.charge == null) b.charge = f.power.store[this.size]
     }
@@ -278,7 +279,7 @@ export class Grid {
     let t = 0, n = [0, 0, 0]
     for (let s = 0; s < 400 && t <= maxT; s++) {
       const b = this.cells.get(kOf(x, y, z))
-      if (b && (b.def.shape !== 'door' || !b.open)) return { grid: this, block: b, cell: [x, y, z], normal: n, dist: t * this.cs }
+      if (b && !((b.def.shape === 'door' || b.def.shape === 'hdoor') && b.open)) return { grid: this, block: b, cell: [x, y, z], normal: n, dist: t * this.cs }
       if (tx < ty && tx < tz) { t = tx; x += sx; tx += tdx; n = [-sx, 0, 0] }
       else if (ty < tz) { t = ty; y += sy; ty += tdy; n = [0, -sy, 0] }
       else { t = tz; z += sz; tz += tdz; n = [0, 0, -sz] }
@@ -360,6 +361,10 @@ export function shapeSdf(b, size, x, y, z) {
     case 'pane': return box(lx, ly, lz, -0.5, -0.5, 0.3, 0.5, 0.5, 0.5)
     case 'door': return b.open ? Math.min(box(lx, ly, lz, -0.5, 0.4, -0.12, 0.5, 0.5, 0.12), box(lx, ly, lz, -0.5, -0.5, -0.12, -0.4, 0.5, 0.12), box(lx, ly, lz, 0.4, -0.5, -0.12, 0.5, 0.5, 0.12)) : box(lx, ly, lz, -0.5, -0.5, -0.12, 0.5, 0.5, 0.12)
     case 'passage': return Math.min(box(lx, ly, lz, -0.5, -0.5, -0.5, 0.5, -0.42, 0.5), box(lx, ly, lz, -0.5, 0.42, -0.5, 0.5, 0.5, 0.5), box(lx, ly, lz, -0.5, -0.5, -0.5, -0.42, 0.5, 0.5), box(lx, ly, lz, 0.42, -0.5, -0.5, 0.5, 0.5, 0.5))
+    case 'round': return Math.max(box(lx, ly, lz, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5), Math.hypot(ly + 0.5, lz - 0.5) - 1)
+    case 'roundcorner': return Math.max(box(lx, ly, lz, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5), Math.hypot(lx - 0.5, ly + 0.5, lz - 0.5) - 1)
+    case 'hdoor': return b.open ? box(lx, ly, lz, -0.5, 0.42, 0.34, 0.5, 0.5, 0.5) : box(lx, ly, lz, -0.5, -0.5, 0.36, 0.5, 0.5, 0.5)
+    case 'boxes': { let d = Infinity; for (const q of b.def.boxes) d = Math.min(d, box(lx, ly, lz, q[0], q[1], q[2], q[3], q[4], q[5])); return d }
     default: return box(lx, ly, lz, -0.5, -0.5, -0.5, S[0] - 0.5, S[1] - 0.5, S[2] - 0.5)
   }
 }

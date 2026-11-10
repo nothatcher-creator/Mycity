@@ -192,6 +192,9 @@ export class World {
   update(dt, piloted, ctl) {
     for (const g of this.grids) {
       if (!g.blocks.size) continue
+      // far from the player nothing moves (and nothing is worked out): it is all as you left it
+      g.frozen = g !== piloted?.grid && g.pos.distanceTo(this.engine.camPos) > 30000
+      if (g.frozen) { g.updateMass(); continue }
       if (g.static) { g.updateMass(); this.ships.update(g, null, null, dt); continue }
       const cp = g === piloted?.grid ? piloted.block : null
       this.ships.update(g, cp, cp ? ctl : null, dt)

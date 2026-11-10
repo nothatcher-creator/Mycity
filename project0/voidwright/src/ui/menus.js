@@ -5,7 +5,9 @@ import { BLOCKS, ORDER, CATS, hasSize } from '../grid/blocks.js'
 import { PALETTE } from '../grid/grid.js'
 import { TOOLS } from '../game/build.js'
 import { PREFAB_LIST, prefab } from '../game/prefabs.js'
+import * as THREE from 'three'
 import { ACTION_NAMES, keyLabel } from '../core/input.js'
+import { SECTOR } from '../world/universe.js'
 import { ITEMS, PART_LIST, fmtAmount } from '../game/items.js'
 import { netItems, netVolume, netTake, netPut, gasTotal, gasMax } from '../game/survival.js'
 
@@ -13,6 +15,7 @@ export const SCENARIOS = [
   { id: 'planet', name: 'Halvor: Landing Site', sub: 'On the home world, 1 g and air', desc: 'Start on the grass of Halvor beside a small outpost, a Sparrow scout and a Mule hauler. Fly them, take them apart, build your own.' },
   { id: 'orbit', name: 'Kestrel Station', sub: 'High orbit over Halvor', desc: 'A station in orbit with the Lancer explorer docked beside it. The Halvor Shoal asteroid field is close by; the jump drive reaches the whole system.' },
   { id: 'moon', name: 'Ket: Crater Base', sub: 'The moon, a quarter g, no air', desc: 'A base on the grey moon. Low gravity makes for easy flying; atmos thrusters do nothing here.' },
+  { id: 'thessa', name: 'Thessa: Violet Woods', sub: 'A purple forest world, 0.84 g', desc: 'Start under a green sky among violet trees, 650 km from home, with an outpost and ships. The air is thick but you cannot breathe it.' },
   { id: 'rocks', name: 'The Drift', sub: 'Deep space among asteroids', desc: 'Between the worlds in the richest rock field, with a scout to explore and an empty station core.' },
   { id: 'empty', name: 'Empty Space', sub: 'Nothing but you', desc: 'Floating in the dark with a jetpack and every block. Build from the first cube.' },
 ]
@@ -33,7 +36,7 @@ export class Menus {
   }
   layout() {
     const e = this.g.engine, W = e.width, H = e.height
-    const big = ['catalog', 'terminal', 'blueprints', 'controls', 'new', 'inventory', 'production'].includes(this.page)
+    const big = ['catalog', 'terminal', 'blueprints', 'controls', 'new', 'inventory', 'production', 'map', 'jump'].includes(this.page)
     const w = Math.min(W - 20, big ? 980 : 560), h = Math.min(H - 20, big ? 640 : 520)
     this.panel.place((W - w) / 2, (H - h) / 2, w, h)
     if (this.page === 'title') { const h = Math.min(H - 20, 460); this.panel.place(Math.max(10, W * 0.06), Math.max(10, (H - h) / 2), Math.min(W - 20, 420), h) }
@@ -41,8 +44,8 @@ export class Menus {
   }
   open(page) { this.page = page; this.visible = true; this.scroll = 0; this.panel.show(true); this.layout(); this.g.p0.input.unlockPointer?.() }
   close() { this.page = null; this.visible = false; this.panel.show(false); this.held = null; if (this.g.state === 'play' && !this.g.input.touch) this.g.p0.input.lockPointer?.() }
-  wheel(dy) { this.scroll = Math.max(0, this.scroll + Math.sign(dy) * 60); this.panel.dirty = true }
-  update() { if (this.visible && ['jump', 'terminal', 'production', 'inventory'].includes(this.page)) { this.acc = (this.acc || 0) + 1; if (this.acc % 10 === 0) this.panel.dirty = true } }
+  wheel(dy) { if (this.page === 'map' && this.mapv) this.mapv.scale = Math.max(40, Math.min(40000, this.mapv.scale * (dy > 0 ? 1.3 : 1 / 1.3))); else this.scroll = Math.max(0, this.scroll + Math.sign(dy) * 60); this.panel.dirty = true }
+  update() { if (this.visible && ['jump', 'terminal', 'production', 'inventory', 'map'].includes(this.page)) { this.acc = (this.acc || 0) + 1; if (this.acc % 10 === 0) this.panel.dirty = true } }
   draw(c, p) {
     const pg = this.page
     if (!pg) return
@@ -73,7 +76,8 @@ export class Menus {
     p.button(c, 'mS', p.w - 124, 18, 106, 30, 'SURVIVAL', () => { this.mode = 'survival'; this.panel.dirty = true }, { align: 'center', selected: surv, font: FONT(11, 700) })
     const S = SCENARIOS, n = S.length, w = Math.min(300, p.w * 0.36)
     let y = 72
-    for (let i = 0; i < n; i++) { p.button(c, 'sc' + i, 18, y, w, 58, S[i].name, () => { this.sel = i; this.panel.dirty = true }, { sub: S[i].sub, selected: this.sel === i }); y += 64 }
+    const bh = Math.min(58, (p.h - 150) / n - 6)
+    for (let i = 0; i < n; i++) { p.button(c, 'sc' + i, 18, y, w, bh, S[i].name, () => { this.sel = i; this.panel.dirty = true }, { sub: bh > 44 ? S[i].sub : null, selected: this.sel === i }); y += bh + 6 }
     const s = S[this.sel], x = 36 + w
     box(c, x, 72, p.w - x - 18, p.h - 150, { ticks: false })
     text(c, s.name.toUpperCase(), x + 18, 104, { size: 20, weight: 700, color: C.gold2, max: p.w - x - 50 })
@@ -93,9 +97,10 @@ export class Menus {
   page_pause(c, p) {
     this.title(c, p, 'GAME MENU')
     let y = 70
-    const B = (id, label, sub, fn) => { p.button(c, id, 18, y, p.w - 36, 50, label, fn, { sub, arrow: true }); y += 56 }
+    const B = (id, label, sub, fn) => { p.button(c, id, 18, y, p.w - 36, 44, label, fn, { sub, arrow: true }); y += 49 }
     B('resume', 'RESUME', null, () => this.close())
     if (this.g.world.creative) B('bp', 'BLUEPRINTS', 'Spawn a ship or station design', () => this.open('blueprints'))
+    B('map', 'MAP', 'What you have found, and waypoints', () => this.open('map'))
     B('inv', 'INVENTORY', 'Your suit and the cargo near you', () => this.g.input.tap('inventory') || this.close())
     B('settings', 'SETTINGS', null, () => this.open('settings'))
     B('controls', 'CONTROLS', null, () => this.open('controls'))
@@ -133,7 +138,7 @@ export class Menus {
     const groups = [
       ['ON FOOT', ['forward', 'back', 'left', 'right', 'up', 'down', 'sprint', 'jetpack', 'dampeners', 'rollL', 'rollR', 'use', 'light', 'view']],
       ['BUILDING', ['catalog', 'size', 'gridType', 'palette', 'blueprints', 'rotYawL', 'rotYawR', 'rotPitchU', 'rotPitchD', 'rotRollL', 'rotRollR']],
-      ['IN A SEAT', ['dampeners', 'park', 'jump', 'terminal', 'freeLook', 'pause', 'help']],
+      ['SHIPS AND SCREENS', ['dampeners', 'park', 'jump', 'terminal', 'inventory', 'map', 'freeLook', 'pause', 'help']],
     ]
     const cw = (p.w - 36) / 3
     groups.forEach(([t, list], gi) => {
@@ -226,20 +231,106 @@ export class Menus {
   }
   // ---- jumping ----
   page_jump(c, p) {
-    const g = this.g, P = g.player, gr = P?.seat?.grid
-    this.title(c, p, 'JUMP DRIVE', 'Choose where to go: the drive charges for 10 seconds, then the whole grid jumps.')
+    const g = this.g, P = g.player, gr = P?.seat?.grid, U = g.world.universe
+    this.title(c, p, 'JUMP DRIVE', 'Up to 2,000 km. The drive charges for 10 seconds, then the whole grid jumps. Unknown signals are groups of worlds not yet on your map.')
     if (!gr?.parts.jumpdrives.length) { text(c, 'This grid has no jump drive.', 18, 90, { size: 14 }); this.back(c, p); return }
-    let y = 74
-    for (const pl of g.world.universe.places()) {
-      const d = gr.comWorld().distanceTo(pl.pos) - pl.r
-      if (d < 3000) continue
-      const ok = d < 2000000
-      p.button(c, 'j' + pl.id, 18, y, p.w - 36, 50, pl.name.toUpperCase(), () => { this.close(); g.planJump(pl) }, { sub: `${pl.kind === 'planet' ? 'World' : 'Rock field'} · ${(d / 1000).toFixed(0)} km · ${pl.blurb}`, disabled: !ok, arrow: true })
-      y += 56
-    }
+    const here = gr.comWorld()
+    const list = []
+    if (g.tracked) list.push({ id: 'trk', name: g.tracked.name, pos: g.tracked.pos, r: g.tracked.r || 0, kind: g.tracked.kind || 'waypoint', blurb: 'Your tracked waypoint.' })
+    for (const w of g.waypoints) if (w !== g.tracked?.wp) list.push({ id: 'wp' + w.name, name: w.name, pos: w.pos, r: 0, kind: 'waypoint', blurb: 'A waypoint you set.' })
+    list.push(...U.signals(here), ...U.places())
+    for (const pl of list) pl.d = here.distanceTo(pl.pos) - (pl.kind === 'signal' ? 0 : pl.r)
+    const rows = list.filter(pl => pl.d > 3000).sort((a, b) => a.d - b.d)
+    const cols = p.w > 700 ? 2 : 1, cw = (p.w - 36 - (cols - 1) * 10) / cols, rh = 50, per = Math.floor((p.h - 150) / (rh + 6))
+    const max = Math.max(0, Math.ceil(rows.length / cols) - per)
+    const off = Math.min(max, Math.round(this.scroll / 60))
+    rows.slice(off * cols, (off + per) * cols).forEach((pl, i) => {
+      const x = 18 + (i % cols) * (cw + 10), y = 78 + Math.floor(i / cols) * (rh + 6), ok = pl.d < 2000000
+      p.button(c, 'j' + pl.id, x, y, cw, rh, pl.name.toUpperCase(), () => { this.close(); g.planJump(pl) }, { sub: `${pl.kind === 'planet' ? 'World' : pl.kind === 'field' ? 'Rock field' : pl.kind === 'signal' ? 'Unknown' : 'Waypoint'} · ${(pl.d / 1000).toFixed(0)} km${ok ? '' : ' · out of range'} · ${pl.blurb || ''}`, disabled: !ok, arrow: true })
+    })
+    if (max > 0) text(c, `Scroll for more (${rows.length} places)`, 18, p.h - 30, { size: 11, weight: 600, color: C.dim })
     this.back(c, p, null, 'CLOSE')
   }
-  // ---- the terminal: the grid you are on or looking at ----
+  // ---- the map: everything found so far, from above; waypoints ----
+  page_map(c, p) {
+    const g = this.g, P = g.player, U = g.world.universe
+    if (!P) return
+    const here = g.camPos
+    const V = this.mapv || (this.mapv = { cx: here.x, cz: here.z, scale: 2400, sel: null })
+    if (this.mapFresh !== this.visible + this.page) { this.mapFresh = this.visible + this.page; V.cx = here.x; V.cz = here.z }
+    this.title(c, p, 'MAP', 'Seen from above. Click a place to select it, empty space to move the map; the wheel zooms. Sectors are 1,800 km across.')
+    const side = Math.min(290, p.w * 0.34), mx = 18, my = 66, mw = p.w - side - 46, mh = p.h - my - 20
+    const sx = x => mx + mw / 2 + (x - V.cx) / V.scale, sy = z => my + mh / 2 + (z - V.cz) / V.scale
+    c.fillStyle = 'rgba(2,6,9,0.75)'; c.fillRect(mx, my, mw, mh); c.strokeStyle = C.line; c.strokeRect(mx + 0.5, my + 0.5, mw - 1, mh - 1)
+    c.save(); c.beginPath(); c.rect(mx, my, mw, mh); c.clip()
+    // sector lines and names
+    const i0 = Math.floor((V.cx - mw / 2 * V.scale) / SECTOR - 0.5), i1 = Math.ceil((V.cx + mw / 2 * V.scale) / SECTOR + 0.5), k0 = Math.floor((V.cz - mh / 2 * V.scale) / SECTOR - 0.5), k1 = Math.ceil((V.cz + mh / 2 * V.scale) / SECTOR + 0.5)
+    if (i1 - i0 < 40) {
+      c.strokeStyle = 'rgba(95,243,230,0.1)'; c.lineWidth = 1
+      for (let i = i0; i <= i1; i++) { const x = sx((i + 0.5) * SECTOR); c.beginPath(); c.moveTo(x, my); c.lineTo(x, my + mh); c.stroke() }
+      for (let k = k0; k <= k1; k++) { const y = sy((k + 0.5) * SECTOR); c.beginPath(); c.moveTo(mx, y); c.lineTo(mx + mw, y); c.stroke() }
+      for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) { if (!U.known.has(i + ',' + k)) continue; const d = U.sector(i, k).def; if (!d.empty && SECTOR / V.scale > 120) text(c, d.name.toUpperCase(), sx((i - 0.5) * SECTOR) + 6, sy((k - 0.5) * SECTOR) + 14, { size: 10, weight: 700, color: 'rgba(95,243,230,0.4)' }) }
+    }
+    const items = []
+    const COL = { terra: '#6fbf6a', mars: '#d0764a', ice: '#cfe8ff', moon: '#a8a8a8', desert: '#e0c070', lava: '#ff6a30' }
+    for (const pl of U.places()) {
+      const x = sx(pl.pos.x), y = sy(pl.pos.z), r = Math.max(pl.kind === 'planet' ? 4 : 3, pl.r / V.scale)
+      if (x < mx - 60 || x > mx + mw + 60 || y < my - 60 || y > my + mh + 60) continue
+      if (pl.kind === 'planet') { c.fillStyle = COL[pl.ptype] || '#aaa'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); if (pl.air) { c.strokeStyle = 'rgba(160,210,255,0.6)'; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, r + 2, 0, 7); c.stroke() } }
+      else { c.strokeStyle = 'rgba(255,190,110,0.8)'; c.setLineDash([3, 3]); c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, Math.max(5, r), 0, 7); c.stroke(); c.setLineDash([]) }
+      if (r > 3.5 || V.scale < 3000) text(c, pl.name, x + r + 5, y + 4, { size: 11, weight: 700, color: pl.kind === 'planet' ? C.text : 'rgba(255,190,110,0.9)', shadow: true })
+      items.push({ ...pl, sx: x, sy: y, sr: Math.max(8, r) })
+    }
+    for (const sg of U.signals(here)) { const x = sx(sg.pos.x), y = sy(sg.pos.z); c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, 9, 0, 7); c.stroke(); text(c, '?', x, y + 4, { size: 12, weight: 700, align: 'center', color: C.white }); text(c, 'Unknown signal', x + 13, y + 4, { size: 10.5, weight: 600, color: C.dim, shadow: true }); items.push({ ...sg, sx: x, sy: y, sr: 12 }) }
+    for (const gr of g.world.grids) { if (!gr.parts?.beacons.length && gr !== P.seat?.grid) continue; const x = sx(gr.pos.x), y = sy(gr.pos.z); c.fillStyle = 'rgba(255,150,90,0.95)'; c.fillRect(x - 3, y - 3, 6, 6); if (V.scale < 900) text(c, gr.name, x + 7, y + 4, { size: 10, weight: 600, color: 'rgba(255,150,90,0.95)', shadow: true }); items.push({ id: 'g' + gr.id, name: gr.name, pos: gr.pos.clone(), r: 0, kind: 'grid', blurb: `${gr.static ? 'Station' : 'Ship'} with a beacon`, sx: x, sy: y, sr: 8 }) }
+    for (const w of g.waypoints) { const x = sx(w.pos.x), y = sy(w.pos.z), on = g.tracked?.wp === w; c.strokeStyle = on ? C.gold2 : C.gold; c.lineWidth = 2; c.beginPath(); c.moveTo(x, y - 7); c.lineTo(x + 6, y); c.lineTo(x, y + 7); c.lineTo(x - 6, y); c.closePath(); c.stroke(); text(c, w.name, x + 9, y + 4, { size: 10.5, weight: 700, color: C.gold2, shadow: true }); items.push({ id: 'wp' + w.name, name: w.name, pos: w.pos, r: 0, kind: 'waypoint', blurb: 'A waypoint you set.', wp: w, sx: x, sy: y, sr: 10 }) }
+    // you: an arrow along your view
+    { const x = sx(here.x), y = sy(here.z), f = new THREE.Vector3(0, 0, -1).applyQuaternion(g.camQuat), a = Math.atan2(f.z, f.x)
+      c.save(); c.translate(x, y); c.rotate(a); c.fillStyle = C.white; c.beginPath(); c.moveTo(10, 0); c.lineTo(-6, -6); c.lineTo(-3, 0); c.lineTo(-6, 6); c.closePath(); c.fill(); c.restore() }
+    if (g.tracked) { const x = sx(g.tracked.pos.x), y = sy(g.tracked.pos.z); c.strokeStyle = 'rgba(166,255,245,0.5)'; c.setLineDash([6, 5]); c.beginPath(); c.moveTo(sx(here.x), sy(here.z)); c.lineTo(x, y); c.stroke(); c.setLineDash([]) }
+    c.restore()
+    // the scale
+    const km = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find(k => k * 1000 / V.scale > 70) || 10000
+    c.fillStyle = C.text; c.fillRect(mx + 12, my + mh - 16, km * 1000 / V.scale, 2); text(c, `${km} km`, mx + 12, my + mh - 22, { size: 10.5, weight: 700 })
+    p.button(c, 'mapArea', mx, my, mw, mh, '', (b, lx, ly) => {
+      let best = null, bd = 1e9
+      for (const it of items) { const d = Math.hypot(lx - it.sx, ly - it.sy); if (d < it.sr + 6 && d < bd) { bd = d; best = it } }
+      if (best) V.sel = best; else { V.cx += (lx - (mx + mw / 2)) * V.scale; V.cz += (ly - (my + mh / 2)) * V.scale }
+      this.panel.dirty = true
+    }, { bg: 'rgba(0,0,0,0)' })
+    c.clearRect(0, 0, 0, 0)
+    // the side: zoom, what is selected, waypoints
+    const x0 = p.w - side - 18
+    let y = 66
+    p.button(c, 'zin', x0, y, 44, 30, '+', () => { V.scale = Math.max(40, V.scale / 1.6); this.panel.dirty = true }, { align: 'center' })
+    p.button(c, 'zout', x0 + 50, y, 44, 30, '−', () => { V.scale = Math.min(40000, V.scale * 1.6); this.panel.dirty = true }, { align: 'center' })
+    p.button(c, 'zme', x0 + 100, y, side - 100, 30, 'CENTRE ON ME', () => { V.cx = here.x; V.cz = here.z; this.panel.dirty = true }, { align: 'center', font: FONT(11, 700) })
+    y += 40
+    const sel = V.sel
+    if (sel) {
+      box(c, x0, y, side, 150, { ticks: false })
+      text(c, sel.name.toUpperCase(), x0 + 12, y + 22, { size: 14, weight: 700, color: C.gold2, max: side - 24 })
+      const d = here.distanceTo(sel.pos) - (sel.kind === 'signal' ? 0 : sel.r)
+      text(c, `${sel.kind === 'planet' ? 'World' : sel.kind === 'field' ? 'Rock field' : sel.kind === 'signal' ? 'Unknown' : sel.kind === 'grid' ? 'Grid' : 'Waypoint'} · ${d >= 1000 ? (d / 1000).toFixed(d > 100000 ? 0 : 1) + ' km' : Math.round(d) + ' m'}${sel.g ? ' · ' + (sel.g / 9.81).toFixed(2) + ' g' : ''}`, x0 + 12, y + 40, { size: 11, weight: 700, color: C.dim })
+      wrap(c, sel.blurb || '', x0 + 12, y + 58, side - 24, 15, { size: 11, weight: 500 })
+      const on = g.tracked && g.tracked.id === sel.id
+      p.button(c, 'trk', x0 + 10, y + 112, (side - 30) / 2, 30, on ? 'TRACKING' : 'TRACK', () => { g.tracked = on ? null : { id: sel.id, name: sel.name, pos: sel.pos.clone(), r: sel.kind === 'signal' ? 0 : sel.r, kind: sel.kind, wp: sel.wp }; this.panel.dirty = true }, { align: 'center', selected: on, font: FONT(11, 700) })
+      if (sel.kind === 'waypoint') p.button(c, 'wdel', x0 + 20 + (side - 30) / 2, y + 112, (side - 30) / 2, 30, 'DELETE', () => { g.waypoints.splice(g.waypoints.indexOf(sel.wp), 1); if (g.tracked?.wp === sel.wp) g.tracked = null; V.sel = null; g.saveMap(); this.panel.dirty = true }, { align: 'center', font: FONT(11, 700) })
+      else if (P.seat?.grid.parts.jumpdrives.length && sel.kind !== 'grid') p.button(c, 'mjump', x0 + 20 + (side - 30) / 2, y + 112, (side - 30) / 2, 30, 'JUMP', () => { this.close(); g.planJump(sel) }, { align: 'center', font: FONT(11, 700), disabled: d > 2000000 || d < 3000 })
+      y += 160
+    }
+    p.button(c, 'wadd', x0, y, side, 36, 'WAYPOINT WHERE I AM', () => { const w = g.addWaypoint(P.pos); g.hud.toast(`${w.name} set`); this.panel.dirty = true }, { align: 'center', font: FONT(11.5, 700) })
+    y += 46
+    header(c, `WAYPOINTS (${g.waypoints.length})`, x0, y + 4, side); y += 14
+    for (const w of g.waypoints.slice(-Math.max(1, Math.floor((p.h - y - 70) / 28)))) {
+      const d = here.distanceTo(w.pos), on = g.tracked?.wp === w
+      p.button(c, 'wl' + w.name, x0, y, side, 25, '', () => { V.sel = { id: 'wp' + w.name, name: w.name, pos: w.pos, r: 0, kind: 'waypoint', blurb: 'A waypoint you set.', wp: w }; V.cx = w.pos.x; V.cz = w.pos.z; this.panel.dirty = true }, { selected: on })
+      text(c, w.name, x0 + 10, y + 17, { size: 11.5, weight: 600, max: side - 100 }); text(c, d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m', x0 + side - 10, y + 17, { size: 11, weight: 700, color: C.gold2, align: 'right' })
+      y += 28
+    }
+    text(c, `${U.known.size} of the sectors found`, x0, p.h - 62, { size: 10.5, weight: 600, color: C.dim })
+    this.back(c, p, null, 'CLOSE')
+  }
   // ---- your suit and the cargo of the grid near you ----
   page_inventory(c, p) {
     const g = this.g, P = g.player, gr = g.invGrid

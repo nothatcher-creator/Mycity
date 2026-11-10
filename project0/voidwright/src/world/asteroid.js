@@ -10,13 +10,14 @@ import { patchMaterial } from './atmo-glsl.js'
 const CH = 16 // cells per chunk side
 
 // surface nets over a box of n^3 cells of size cs whose first corner is (ox, oy, oz) (asteroid-local)
-function surfaceNets(sdf, ox, oy, oz, n, cs, colorAt) {
-  const N = n + 3, S = new Float32Array(N * N * N)
+// (`samples`: the field already sampled at the (n + 3)^3 corners, when the caller keeps them)
+export function surfaceNets(sdf, ox, oy, oz, n, cs, colorAt, samples = null) {
+  const N = n + 3, S = samples || new Float32Array(N * N * N)
   // corners from -1 to n+1 (one extra ring each side so neighbouring chunks agree exactly)
   let any = false, neg = false, plus = false
   for (let k = 0; k < N; k++) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const v = sdf(ox + (i - 1) * cs, oy + (j - 1) * cs, oz + (k - 1) * cs)
-    S[(k * N + j) * N + i] = v
+    const v = samples ? S[(k * N + j) * N + i] : sdf(ox + (i - 1) * cs, oy + (j - 1) * cs, oz + (k - 1) * cs)
+    if (!samples) S[(k * N + j) * N + i] = v
     if (v < 0) neg = true; else plus = true
   }
   any = neg && plus
@@ -247,6 +248,7 @@ export class AsteroidField {
       } else if (a.chunks.size) { a.freeChunks(); a.nearReady = false }
     }
   }
+  sleep() { if (this.list) for (const a of this.list) a.show(false); this.queue.length = 0 }
   work(ms) {
     const t0 = performance.now()
     this.queue.sort((x, y) => x.d - y.d)

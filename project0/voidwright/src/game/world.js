@@ -9,7 +9,9 @@ import { ShipControl } from '../grid/ship.js'
 import { makeAtlas } from '../grid/atlas.js'
 import { patchMaterial } from '../world/atmo-glsl.js'
 import { BLOCKS } from '../grid/blocks.js'
+import { blockRecipe } from './items.js'
 import { apply, INV } from '../grid/rot.js'
+import { Survival, netCount, netTake, netPut, gasTotal, gasTake, gasPut } from './survival.js'
 
 function envTexture() {
   const W = 256, H = 128, cv = new OffscreenCanvas(W, H), c = cv.getContext('2d')
@@ -42,8 +44,16 @@ export class World {
     this.ships = new ShipControl(this)
     this.flames = new Flames(e)
     this.sparks = new Sparks(e)
+    this.survival = new Survival(this)
     this.tmp = new THREE.Vector3()
   }
+  recipeOf(id, size) { return blockRecipe(BLOCKS[id], size) }
+  netCount(g, id) { return netCount(g, id) }
+  netTake(g, id, n) { return netTake(g, id, n) }
+  netPut(g, id, n) { return netPut(g, id, n) }
+  gasTotal(g, gas) { return gasTotal(g, gas) }
+  gasTake(g, gas, n) { return gasTake(g, gas, n) }
+  gasPut(g, gas, n) { return gasPut(g, gas, n) }
   addGrid(g) { this.grids.push(g); g.track = this.engine.track(g.group, g.pos, g.quat) }
   removeGrid(g) { const i = this.grids.indexOf(g); if (i >= 0) this.grids.splice(i, 1); this.engine.untrack(g.track); g.dispose(); this.game.onGridRemoved?.(g) }
   // ---- what is where ----
@@ -124,7 +134,7 @@ export class World {
       for (const comp of comps.slice(1)) {
         const n = this.newGrid(g.size, g.pos, g.quat, { static: g.static })
         n.vel.copy(g.vel); n.angVel.copy(g.angVel)
-        for (const b of comp) { g.remove(b); const nb = n.add(b.id, b.i, b.j, b.k, b.rot, b.color); if (nb) { nb.hp = b.hp; nb.on = b.on } }
+        for (const b of comp) { g.remove(b); const nb = n.add(b.id, b.i, b.j, b.k, b.rot, b.color); if (nb) copyState(b, nb) }
         n.updateMass()
         if (g.static) { n.static = false }
         this.game.onSplit?.(g, n)
@@ -181,7 +191,8 @@ export class World {
   }
   update(dt, piloted, ctl) {
     for (const g of this.grids) {
-      if (g.static || !g.blocks.size) { g.updateMass(); continue }
+      if (!g.blocks.size) continue
+      if (g.static) { g.updateMass(); this.ships.update(g, null, null, dt); continue }
       const cp = g === piloted?.grid ? piloted.block : null
       this.ships.update(g, cp, cp ? ctl : null, dt)
     }
@@ -189,6 +200,7 @@ export class World {
     const n = dt > 1 / 45 ? 3 : 2
     for (let i = 0; i < n; i++) this.physics.step(dt / n)
     this.splitGrids()
+    this.survival.update(dt)
     for (const g of this.grids) g.rebuild(6)
   }
   draw(dt) {
@@ -197,6 +209,13 @@ export class World {
   }
 }
 const v = new THREE.Vector3()
+// a block moved to another grid keeps how built, damaged, full and switched on it was
+export function copyState(a, b) {
+  b.hp = a.hp; b.on = a.on; b.build = a.build; b.comps = a.comps.slice(); b.name = a.name; b.open = a.open
+  if (a.inv && b.inv) b.inv.items = new Map(a.inv.items)
+  if (a.gas != null) b.gas = a.gas
+  if (a.charge != null) b.charge = a.charge
+}
 
 // Thruster exhaust: a glowing cone per running thruster (one instanced mesh for all of them).
 class Flames {

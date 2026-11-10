@@ -3,6 +3,7 @@
 // still when it does not), and the power the thrusters and gyros draw from cores, batteries and the sun.
 import * as THREE from 'three'
 import { apply } from './rot.js'
+import { works } from './grid.js'
 
 const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]
 export const MAX_SPEED = 260
@@ -20,11 +21,12 @@ export class ShipControl {
   update(grid, cockpit, ctl, dt) {
     grid.updateMass()
     const P = grid.parts, w = this.world, size = grid.size
+    if (grid.h2ok === undefined) grid.h2ok = true
     grid.force = grid.force || new THREE.Vector3(); grid.torque = grid.torque || new THREE.Vector3()
     grid.force.set(0, 0, 0); grid.torque.set(0, 0, 0)
     grid.thrustOut = grid.thrustOut || new Float32Array(6); grid.thrustOut.fill(0)
     grid.thrustMax = grid.thrustMax || new Float32Array(6); grid.thrustMax.fill(0)
-    if (grid.static || !grid.blocks.size || grid.locked) { if (grid.locked) for (const b of P.thrusters) b.out = 0; if (grid.locked && grid.parts) this.power(grid, dt); return }
+    if (grid.static || !grid.blocks.size || grid.locked) { for (const b of P.thrusters) b.out = 0; if (grid.parts) this.power(grid, dt); return }
     const com = grid.comWorld(this.v)
     const air = w.airAt(com)
     grid.air = air
@@ -33,12 +35,12 @@ export class ShipControl {
     // thrust available per grid-local direction (the direction the grid is pushed)
     const d = [0, 0, 0]
     for (const b of P.thrusters) {
-      if (!b.on) { b.out = 0; continue }
+      if (!works(b)) { b.out = 0; b.eff = 0; continue }
       const f = b.def.func.thruster
       apply(b.rot, 0, 0, -1, d)
       const ax = d[0] ? (d[0] > 0 ? 0 : 1) : d[1] ? (d[1] > 0 ? 2 : 3) : (d[2] > 0 ? 4 : 5)
       b.axis = ax
-      b.eff = thrustEff(f.kind, air) * (b.hp / b.maxHp > 0.25 ? 1 : 0)
+      b.eff = thrustEff(f.kind, air) * (f.kind === 'h2' && !grid.h2ok ? 0 : 1)
       grid.thrustMax[ax] += f.force[size] * b.eff
     }
     // what the pilot (or the dampeners) want, in grid-local axes
@@ -64,15 +66,20 @@ export class ShipControl {
     // not enough power: everything runs at the share there is
     const k = pw.ratio
     for (let i = 0; i < 6; i++) { out[i] *= k; grid.thrustOut[i] = out[i] }
+    let h2 = 0
     for (const b of P.thrusters) {
-      if (!b.on) continue
+      if (!works(b)) continue
       b.out = (out[b.axis] || 0) * b.eff
+      if (b.def.func.thruster.kind === 'h2') h2 += b.def.func.thruster.force[size] / 1350 * b.out
       const f = b.def.func.thruster.force[size] * b.out, A = AXES[b.axis]
       grid.force.x += A[0] * f; grid.force.y += A[1] * f; grid.force.z += A[2] * f
     }
     // the gyros: torque toward the turn rate wanted
     let tq = 0
-    for (const b of P.gyros) if (b.on && b.hp / b.maxHp > 0.25) tq += b.def.func.gyro[size]
+    // fuel thrusters burn hydrogen from the tanks (in survival)
+    if (w.creative) grid.h2ok = true
+    else { if (h2 > 0) w.gasTake(grid, 'h2', h2 * dt); grid.h2ok = w.gasTotal(grid, 'h2') > 0 }
+    for (const b of P.gyros) if (works(b)) tq += b.def.func.gyro[size]
     tq *= pw.ratio
     grid.gyroTorque = tq
     if (tq > 0) {
@@ -96,9 +103,12 @@ export class ShipControl {
     const P = grid.parts, size = grid.size
     let supply = 0, store = 0, want = 0
     const sun = this.world.sunDir
+    const creative = this.world.creative
     for (const b of P.power) {
-      if (!b.on) continue
+      if (!works(b)) continue
       const f = b.def.func.power
+      // fusion cores need uranium in survival
+      if (f.out && !f.store && !f.solar && !creative) { b.fuelled = this.world.netCount(grid, 'ing_uranium') > 0.001; if (!b.fuelled) continue }
       if (f.out && !f.store) {
         let o = f.out[size]
         if (f.solar) { const n = grid.dirToWorld(grid.blockDir(b, 0, 1, 0)); o *= Math.max(0, n.dot(sun)) * (this.world.inShadow?.(grid.comWorld()) ? 0 : 1) }
@@ -107,11 +117,14 @@ export class ShipControl {
       if (f.store && b.charge > 0) store += f.out[size]
       if (f.use) want += f.use[size]
     }
-    for (const b of P.thrusters) if (b.on) want += b.def.func.thruster.mw[size] * (b.out || 0)
+    for (const b of P.thrusters) if (works(b)) want += b.def.func.thruster.mw[size] * (b.out || 0)
+    want += grid.extraPower || 0
     const total = supply + store
     const ratio = want > total ? total / want : 1
     // batteries: drain for the shortfall, charge from the surplus
-    const bats = P.power.filter(b => b.on && b.def.func.power.store)
+    const bats = P.power.filter(b => works(b) && b.def.func.power.store)
+    // uranium burns in proportion to what the cores give (a kilogram an hour for 15 MW)
+    if (!creative && supply > 0) { const used = Math.min(supply, want); const cores = P.power.some(b => b.fuelled && !b.def.func.power.solar); if (cores && used > 0) this.world.netTake(grid, 'ing_uranium', used / 15 / 3600 * dt) }
     let deficit = Math.max(0, want - supply), surplus = Math.max(0, supply - want)
     for (const b of bats) {
       const cap = b.def.func.power.store[size], out = b.def.func.power.out[size]

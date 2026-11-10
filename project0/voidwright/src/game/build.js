@@ -8,12 +8,18 @@ import * as THREE from 'three'
 import { BLOCKS, CELL, blockGeo, hasSize } from '../grid/blocks.js'
 import { ROTS, QUATS, turn, apply } from '../grid/rot.js'
 import { Grid } from '../grid/grid.js'
+import { ITEMS, recipeTotal } from './items.js'
 
 export const DEFAULT_BAR = [
   { block: 'light_cube' }, { block: 'light_slope' }, { block: 'light_corner' }, { block: 'thr_h2_small' }, { block: 'gyro' },
-  { block: 'cockpit' }, { block: 'battery' }, { tool: 'welder' }, { tool: 'grinder' },
+  { block: 'cockpit' }, { tool: 'drill' }, { tool: 'welder' }, { tool: 'grinder' },
 ]
-export const TOOLS = { welder: { name: 'Welder', desc: 'Hold the left button on a block to repair it.' }, grinder: { name: 'Grinder', desc: 'Hold the left button on a block to cut it apart.' }, paint: { name: 'Paint Gun', desc: 'Left button paints a block; P picks the colour.' } }
+export const TOOLS = {
+  welder: { name: 'Welder', desc: 'Hold the left button on a block to build it up from your parts and repair it.' },
+  grinder: { name: 'Grinder', desc: 'Hold the left button on a block to cut it apart; its parts go to your inventory.' },
+  drill: { name: 'Hand Drill', desc: 'Hold the left button on rock to dig; the ore goes to your inventory.' },
+  paint: { name: 'Paint Gun', desc: 'Left button paints a block; P picks the colour.' },
+}
 const GHOST_GEO = new Map()
 
 function ghostGeometry(id, size, variant = '') {
@@ -146,7 +152,7 @@ export class Builder {
     if (inp.hit('size')) { if (this.toggleSize()) g.hud.toast(this.size === 'large' ? 'Large grid blocks (2.5 m)' : 'Small grid blocks (0.5 m)'); else g.hud.toast('This block only comes in one size') }
     if (inp.hit('gridType')) { this.newStatic = !this.newStatic; g.hud.toast(this.newStatic ? 'New grids in space: STATION (fixed)' : 'New grids in space: SHIP (moves)') }
     if (inp.ctrl && inp.keyHits?.has('KeyC')) this.copy()
-    if (inp.ctrl && inp.keyHits?.has('KeyV')) this.startPaste(this.clip)
+    if (inp.ctrl && inp.keyHits?.has('KeyV')) { if (g.world.creative) this.startPaste(this.clip); else g.hud.toast('Pasting whole grids is for creative mode') }
     // the ghost
     this.drawGhost(t)
     const blockAction = !g.ui.blocking
@@ -159,8 +165,9 @@ export class Builder {
     } else this.drag = null
     // tools and empty hands
     const h = this.hit
-    if (inp.mouse.rightHit && blockAction && h?.block && !this.tool) this.removeBlock(h)
-    if (this.tool && h?.block && inp.mouse.left && blockAction) this.useTool(h, dt)
+    if (inp.mouse.rightHit && blockAction && h?.block && !this.tool) { if (g.world.creative) this.removeBlock(h); else g.hud.toast('In survival, take blocks apart with the grinder') }
+    if (this.tool === 'drill' && inp.mouse.left && blockAction) this.handDrill(h, dt)
+    else if (this.tool && h?.block && inp.mouse.left && blockAction) this.useTool(h, dt)
     else this.toolOn = false
     if (inp.mouse.middleHit && h?.block) {
       if (inp.shift) { this.color = h.block.color; g.hud.toast('Colour picked') } else this.paintBlock(h)
@@ -200,9 +207,19 @@ export class Builder {
     this.edges.material.color.set(t.ok ? 0x5ff3e6 : 0xff5040)
     this.ghostPos = wp
   }
+  // the first part a frame of this block needs, if you have it (survival)
+  firstPart(id, size) {
+    const W = this.g.world
+    if (W.creative) return true
+    const r = BLOCKS[id] && this.g.world.recipeOf(id, size), first = r?.[0]?.[0], P = this.g.player
+    if (!first || !P?.inv) return false
+    return P.inv.count(first) >= 1 ? first : (this.g.hud.toast(`You need a ${ITEMS[first].name} to start a ${BLOCKS[id].name}`, '#ff5a45'), false)
+  }
   place(t) {
     const g = this.g, W = g.world, id = this.blockId
     if (!t.ok) { g.sfx.play('ui_error', 0.4); return }
+    const part = this.firstPart(id, this.size)
+    if (!part) { g.sfx.play('ui_error', 0.4); return }
     let gr = t.grid
     if (!gr) {
       // a new grid: fixed when built into rock, on a station, or when chosen
@@ -212,8 +229,8 @@ export class Builder {
       if (!st && !t.anchor) { const near = g.player?.ground || null; if (near) gr.vel.copy(near.vel) }
       g.hud.toast(st ? 'New station started' : 'New ship started')
     }
-    const b = gr.add(id, t.cell[0], t.cell[1], t.cell[2], this.rot, this.color)
-    if (b) { g.sfx.play('place', 0.5, this.size === 'large' ? 0.9 : 1.3); gr.sleep = 0; g.onBuilt?.(gr, b) }
+    const b = gr.add(id, t.cell[0], t.cell[1], t.cell[2], this.rot, this.color, W.creative ? {} : { build: 0 })
+    if (b) { if (part !== true) g.player.inv.take(part, 1); g.sfx.play('place', 0.5, this.size === 'large' ? 0.9 : 1.3); gr.sleep = 0; g.onBuilt?.(gr, b) }
   }
   dragCells(t) {
     const s = this.drag.start, c = t.cell.slice(), d = [c[0] - s[0], c[1] - s[1], c[2] - s[2]]
@@ -229,7 +246,9 @@ export class Builder {
     let n = 0
     for (let i = Math.min(a[0], b[0]); i <= Math.max(a[0], b[0]); i++) for (let j = Math.min(a[1], b[1]); j <= Math.max(a[1], b[1]); j++) for (let k = Math.min(a[2], b[2]); k <= Math.max(a[2], b[2]); k++) {
       if (n > 1200) break
-      if (gr.add(id, i, j, k, this.rot, this.color)) n++
+      const part = this.g.world.creative ? true : (this.g.player.inv.count(this.g.world.recipeOf(id, gr.size)[0][0]) >= 1 ? this.g.world.recipeOf(id, gr.size)[0][0] : null)
+      if (!part) { this.g.hud.toast('Out of parts for more frames', '#ff5a45'); break }
+      if (gr.add(id, i, j, k, this.rot, this.color, this.g.world.creative ? {} : { build: 0 })) { n++; if (part !== true) this.g.player.inv.take(part, 1) }
     }
     if (n) { this.g.sfx.play('place', 0.6, 0.8); this.g.hud.toast(`${n} blocks placed`) }
   }
@@ -242,19 +261,44 @@ export class Builder {
   }
   paintBlock(h) { if (h.block.color === this.color) return; h.block.color = this.color; h.grid.touch(h.block); this.g.sfx.play('paint', 0.4) }
   useTool(h, dt) {
-    const g = this.g, gr = h.grid, b = h.block, W = g.world
-    const rate = (gr.size === 'large' ? 2500 : 160) * (W.creative ? 1 : 0.25)
+    const g = this.g, gr = h.grid, b = h.block, W = g.world, P = g.player
+    const rate = (gr.size === 'large' ? 2500 : 160) * (W.creative ? 1 : 0.35)
     this.toolOn = true
     const p = h.point
-    if (this.tool === 'welder') { if (b.hp < b.maxHp) { b.hp = Math.min(b.maxHp, b.hp + rate * 2 * dt); gr.touch(b); W.sparks.burst(p, 2, 1.5) } }
+    if (P && !W.creative) { P.energy = Math.max(0, P.energy - dt * 0.15); if (P.energy <= 0) { this.toolOn = false; return } }
+    if (this.tool === 'welder') {
+      const r = weld(b, rate * 2 * dt, W.creative ? null : P?.inv)
+      if (r.changed) gr.touch(b)
+      if (r.missing && !this.warned) { g.hud.toast(`Need ${ITEMS[r.missing].name} to go on welding`, '#ff5a45'); this.warned = true }
+      if (!r.missing) this.warned = false
+      if (r.changed) W.sparks.burst(p, 2, 1.5)
+    }
     if (this.tool === 'grinder') {
-      if (g.player?.seat?.block === b) return
-      b.hp -= rate * dt
+      if (P?.seat?.block === b) return
+      const back = grind(b, rate * dt)
+      for (const [id, n] of back) if (!W.creative && P?.inv) { const put = P.inv.add(id, n); if (put < n) g.hud.toast('Inventory full: parts lost', '#ff5a45') }
       W.sparks.burst(p, 3, 4)
-      if (b.hp <= 0) { gr.remove(b); g.sfx.play('grind_end', 0.5) } else gr.touch(b)
-      // a ship being cut is nudged
+      if (b.hp <= 0 || b.build <= 0) { gr.remove(b); g.sfx.play('grind_end', 0.5) } else gr.touch(b)
       if (!gr.static) gr.sleep = 0
     }
+  }
+  // the hand drill: a bite of rock every third of a second, its ore into your inventory
+  handDrill(h, dt) {
+    const g = this.g, P = g.player, W = g.world
+    this.drillT = (this.drillT || 0) + dt
+    this.toolOn = !!h?.solid && h.dist < 5
+    if (!this.toolOn) return
+    W.sparks.burst(h.point, 2, 2)
+    if (this.drillT < 0.35) return
+    this.drillT = 0
+    if (!W.creative) { P.energy = Math.max(0, P.energy - 0.08); if (P.energy <= 0) return }
+    const res = W.survival.dig(h.point, 0.9, 40)
+    if (!res) return
+    const put = P.inv ? P.inv.add(res.ore, res.kg) : 0
+    W.sparks.burst(h.point, 10, 3)
+    if (put < res.kg * 0.5) g.hud.toast('Inventory full', '#ff5a45')
+    else if (res.ore !== 'ore_stone' && this.lastOre !== res.ore) g.hud.toast(`${ITEMS[res.ore].name}!`)
+    this.lastOre = res.ore
   }
   // ---- copy and paste ----
   copy() {
@@ -308,4 +352,41 @@ export function serialize(g) {
 export function load(g, bp) {
   for (const [id, i, j, k, rot, color] of bp.blocks) g.add(id, i, j, k, rot, color)
   return g
+}
+
+// ---- welding and grinding a block: parts in, parts out ----
+// installs parts (in recipe order) as the weld goes on; returns { changed, missing }
+export function weld(b, amount, inv) {
+  const total = recipeTotal(b.recipe), per = b.maxHp / total
+  let changed = false, missing = null
+  if (b.build < 1) {
+    b.weldAcc = (b.weldAcc || 0) + amount
+    while (b.weldAcc >= per) {
+      const i = b.comps.findIndex((c, k) => c < b.recipe[k][1])
+      if (i < 0) break
+      const id = b.recipe[i][0]
+      if (inv && inv.take(id, 1) < 1) { missing = id; b.weldAcc = Math.min(b.weldAcc, per); break }
+      b.comps[i]++; b.weldAcc -= per; changed = true
+    }
+    const have = b.comps.reduce((s, n) => s + n, 0)
+    b.build = have / total
+    if (b.build >= 0.9999) { b.build = 1; b.weldAcc = 0 }
+    b.hp = Math.max(b.hp, b.maxHp * b.build * 0.999)
+    if (changed) b.hp = Math.min(b.maxHp * b.build, b.hp + amount)
+  } else if (b.hp < b.maxHp) { b.hp = Math.min(b.maxHp, b.hp + amount); changed = true }
+  return { changed, missing }
+}
+// takes health off; each time it drops below what the installed parts hold up, the last part comes out
+export function grind(b, amount) {
+  const total = recipeTotal(b.recipe), per = b.maxHp / total, back = new Map()
+  b.hp -= amount
+  let have = b.comps.reduce((s, n) => s + n, 0)
+  while (have > 0 && b.hp < per * (have - 1)) {
+    let i = b.comps.length - 1; while (i >= 0 && b.comps[i] <= 0) i--
+    if (i < 0) break
+    b.comps[i]--; have--; back.set(b.recipe[i][0], (back.get(b.recipe[i][0]) || 0) + 1)
+  }
+  if (b.hp <= 0) { for (let i = 0; i < b.comps.length; i++) if (b.comps[i] > 0) back.set(b.recipe[i][0], (back.get(b.recipe[i][0]) || 0) + b.comps[i]); b.comps.fill(0); have = 0 }
+  b.build = have / total
+  return back
 }

@@ -17,6 +17,8 @@ import { prefab } from './prefabs.js'
 import { Engineer, EYE } from '../actors/engineer.js'
 import { SFX } from './sfx.js'
 import { BLOCKS } from '../grid/blocks.js'
+import { ITEMS } from './items.js'
+import { netPut } from './survival.js'
 
 const pause = () => new Promise(r => setTimeout(r, 0))
 const DEFAULTS = { quality: 'medium', resScale: 1, fov: 70, sens: 1, invertY: false, volume: 0.8 }
@@ -205,10 +207,12 @@ export class Game {
     const p = up.clone().multiplyScalar(pl.R + h).add(pl.center)
     return { p, q, up, east, north }
   }
-  startWorld(id) {
+  startWorld(id, mode = 'creative') {
     const W = this.world, U = W.universe
     this.clearWorld()
     this.scenario = id
+    this.mode = mode
+    W.creative = mode === 'creative'
     this.menus.open('loading')
     let spawn = null, jet = false
     const halvor = U.planets[0], ket = U.planets[1]
@@ -220,6 +224,7 @@ export class Game {
       const at = (dx, dz, yaw) => { const d = f.dir.clone().addScaledVector(fr.east, dx / pl.R).addScaledVector(fr.north, dz / pl.R).normalize(); const h = pl.height(d.x, d.y, d.z); return this.frameAt(pl, d, h, yaw) }
       const s1 = at(36, 6, 0.4); this.spawnGrid('sparrow', s1.p.clone().addScaledVector(s1.up, 3), s1.q, { ground: true, sleep: true, static: false })
       if (id === 'planet') { const s2 = at(-14, 58, -0.3); this.spawnGrid('mule', s2.p.clone().addScaledVector(s2.up, 10), s2.q, { ground: true, sleep: true, static: false }) }
+      const s3 = at(40, -30, 1.2); this.spawnGrid('pick', s3.p.clone().addScaledVector(s3.up, 3), s3.q, { ground: true, sleep: true, static: false })
       const sp = at(-3, -16, 0); spawn = { pos: sp.p.clone().addScaledVector(sp.up, 1.2), quat: sp.q }
     } else if (id === 'orbit') {
       const c = new THREE.Vector3(-9000, 21000, 72000)
@@ -249,11 +254,24 @@ export class Game {
       spawn = { pos: p, quat: new THREE.Quaternion() }; jet = true
     }
     this.spawnAt = spawn
+    if (!W.creative) this.stock()
     const P = this.player = new Engineer(W, spawn.pos)
+    if (!W.creative) for (const [k, n] of [['plate', 10], ['construct', 12], ['interior', 6], ['computer', 4], ['motor', 2], ['tube_s', 4]]) P.inv.add(k, n)
     P.quat.copy(spawn.quat); P.jetpack = jet
     this.loadT = 0
     this.state = 'loading'
     this.camPos.copy(P.eye()); this.camQuat.copy(P.viewQuat())
+  }
+  // a survival start: tanks part full, cores with a little uranium, the workshop stocked for a first build
+  stock() {
+    for (const g of this.world.grids) {
+      g.updateMass()
+      for (const b of g.parts.tanks) b.gas = b.gasMax * (b.def.func.tank.gas === 'o2' ? 1 : 0.6)
+      if (g.parts.power.some(b => b.def.func.power.out && !b.def.func.power.store && !b.def.func.power.solar)) netPut(g, 'ing_uranium', g.static ? 20 : 4)
+      if (g.static && g.parts.kits.length) {
+        for (const [k, n] of [['plate', 120], ['construct', 80], ['interior', 40], ['motor', 12], ['computer', 40], ['tube_s', 30], ['tube_l', 6], ['girder', 20], ['display', 6], ['glass', 20], ['grid', 12], ['cell', 6], ['ore_ice', 400], ['ing_iron', 300]]) netPut(g, k, n)
+      }
+    }
   }
   finishLoading() {
     this.state = 'play'
@@ -262,7 +280,8 @@ export class Game {
     if (!this.input.touch) this.p0.input.lockPointer()
     const sc = SCENARIOS.find(s => s.id === this.scenario)
     this.hud.toast(sc ? sc.name : 'VOIDWRIGHT')
-    this.hud.toast('G: blocks · F: use / sit · X: jetpack · F1: controls', C.text)
+    this.hud.toast('G: blocks · I: inventory · F: use / sit · X: jetpack · F1: controls', C.text)
+    if (!this.world.creative) this.hud.toast('Survival: weld frames up with parts; watch your oxygen', C.amber)
   }
   quitToTitle() { this.clearWorld(); this.state = 'menu'; this.hud.show(false); this.menus.open('title') }
   respawnPoints() { const out = []; for (const g of this.world.grids) for (const b of g.parts?.medbays || []) out.push({ g, b }); return out }
@@ -275,12 +294,14 @@ export class Game {
       pos = g.toWorld(g.blockPoint(b, 0, -0.3, 0.6)); q = g.quat.clone()
     }
     const N = this.player = new Engineer(this.world, pos)
+    if (!this.world.creative) N.oxygen = 100
     N.quat.copy(q); N.jetpack = this.world.gravityAt(pos).length() < 0.3
     this.menus.close(); this.hud.show(true)
   }
   onGridRemoved(g) { if (this.player?.seat?.grid === g) this.player.seat = null; if (this.player?.ground === g) this.player.ground = null }
   onBlockRemoved(g, b) { if (this.player?.seat?.block === b) { this.player.seat = null } }
   onImpact(c) { if (c.A === this.player?.seat?.grid || c.B === this.player?.seat?.grid) { this.sfx.play('impact', Math.min(1, c.hit / 30)); this.shake = Math.min(1, c.hit / 25) } }
+  nearGrid(p, d) { let best = null, bd = d; for (const g of this.world.grids) { if (!g.parts?.invs.length) continue; const x = g.sdf(p, d, null); if (x < bd) { bd = x; best = g } } return best }
   groundNormal(hit) { if (hit.solid.surface) { const s = hit.solid.surface(hit.point); return new THREE.Vector3(s.nx, s.ny, s.nz) } const p = hit.point, e = 0.3, S = hit.solid; return new THREE.Vector3(S.sdf(p.clone().setX(p.x + e)) - S.sdf(p.clone().setX(p.x - e)), S.sdf(p.clone().setY(p.y + e)) - S.sdf(p.clone().setY(p.y - e)), S.sdf(p.clone().setZ(p.z + e)) - S.sdf(p.clone().setZ(p.z - e))).normalize() }
   // ---- the jump drive ----
   planJump(place) {
@@ -311,12 +332,15 @@ export class Game {
   // ---- debug keys (local dev kit only) ----
   debugKey(e) {
     const P = this.player
+    if (e.code === 'F3' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'rocks'][this.dbgV = ((this.dbgV ?? -1) + 1) % 3], 'survival'); return }
     if (e.code === 'F9' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'moon', 'rocks', 'empty'][this.dbgS = ((this.dbgS ?? -1) + 1) % 5]); return }
     if (!P) return
     if (e.code === 'F8') { this.quitToTitle(); return }
     if (e.code === 'Numpad2') P.pitch = -0.9
     if (e.code === 'Numpad8') P.pitch = 0
     if (e.code === 'Numpad6') P.look(-0.4, 0)
+    if (e.code === 'Numpad5') { const st = this.world.grids.find(g => g.static && g.parts?.kits.length); if (st) { this.terminalGrid = st; this.menus.open('production'); st.queue = [{ id: 'plate', n: 3 }, { id: 'motor', n: 1 }] } }
+    if (e.code === 'Numpad4') { this.p0.log('dbg surv', JSON.stringify({ o2: P.oxygen.toFixed(1), h2: P.fuel.toFixed(1), en: P.energy.toFixed(1), inv: [...P.inv.items].map(([k, n]) => k + ':' + n.toFixed(1)), grids: this.world.grids.map(g => g.name + (g.static ? '(st)' : '') + ' pw' + (g.power ? g.power.ratio.toFixed(2) + '/' + g.power.supply.toFixed(1) : '-') + ' q' + (g.queue || []).length + ' ' + [...(g.parts?.refineries || []), ...(g.parts?.assemblers || [])].map(b => b.status).join('|')) })) }
     if (e.code === 'F2') this.p0.log('dbg', JSON.stringify({ pos: P.pos.toArray().map(v => Math.round(v)), vel: P.vel.length().toFixed(2), ground: P.onGround, g: P.gravity.toFixed(2), jet: P.jetpack, seat: !!P.seat, grids: this.world.grids.length, prog: this.engine.renderer.info.programs?.length, calls: this.engine.renderer.info.render.calls, tris: this.engine.renderer.info.render.triangles, pending: this.world.universe.planets.map(p => p.pending).join() }))
     if (e.code === 'F4') { const gr = this.world.grids.find(g => g.parts?.cockpits.length && !g.static); if (gr) { P.enterSeat(gr, gr.parts.cockpits[0]); this.p0.log('dbg seat', gr.name) } }
     if (e.code === 'F6' && P.seat) { const g = P.seat.grid; this.p0.log('dbg ship', JSON.stringify({ v: g.vel.toArray().map(v => v.toFixed(2)), w: g.angVel.toArray().map(v => v.toFixed(3)), mass: Math.round(g.mass), max: [...g.thrustMax].map(v => Math.round(v / 1000)), out: [...g.thrustOut].map(v => v.toFixed(2)), sleep: g.sleep.toFixed(2), touch: g.touching, air: g.air?.toFixed(2), grav: g.gravity?.toFixed(2), power: g.power, locked: !!g.locked })) }
@@ -384,7 +408,8 @@ export class Game {
     if (!menu) {
       if (inp.hit('view')) this.view = this.view === 'fp' ? 'tp' : 'fp'
       if (inp.hit('terminal')) { this.terminalGrid = P.seat?.grid || B.hit?.grid || P.ground; this.menus.open('terminal') }
-      if (inp.hit('blueprints')) this.menus.open('blueprints')
+      if (inp.hit('blueprints')) { if (W.creative) this.menus.open('blueprints'); else this.hud.toast('Blueprints are for creative mode (a projector arrives in the next update)') }
+      if (inp.hit('inventory')) { this.invGrid = P.seat?.grid || (B.hit?.grid && B.hit.dist < 6 ? B.hit.grid : null) || this.nearGrid(P.pos, 8); this.menus.open('inventory') }
     }
     let piloted = null, ctl = null
     if (P.seat) {
@@ -421,6 +446,11 @@ export class Game {
     }
     // ships move, then the engineer (on what moved)
     W.update(dt, piloted, ctl)
+    if (P.seat) { const n = W.survival.shipDrill(P.seat.grid, dt, !menu && inp.mouse.left && P.seat.grid.parts.drills.length > 0); if (n) this.shake = Math.max(this.shake || 0, 0.15) }
+    this.suitWarn = W.survival.suit(P, dt)
+    if (this.suitWarn && this.suitWarn !== this.lastWarn) { this.hud.toast(this.suitWarn, C.red); this.sfx.play('ui_error', 0.5) }
+    this.lastWarn = this.suitWarn
+    if (P.outOfFuel) { P.outOfFuel = false; this.hud.toast('Jetpack out of hydrogen', C.red) }
     if (!P.seat) P.update(dt, { move: P.seat ? [0, 0, 0] : mv, sprint: inp.down('sprint'), jump: !P.jetpack && inp.hit('up'), roll })
     else P.update(dt, {})
     if (P.health < 100 && !P.dead) for (const { g, b } of this.respawnPoints()) if (g.toWorld(g.blockCenter(b)).distanceTo(P.pos) < 3) P.health = Math.min(100, P.health + dt * 15)
@@ -436,9 +466,11 @@ export class Game {
       const h = B.hit
       if (h?.block && h.dist < (h.grid.size === 'large' ? 5 : 3.5)) {
         const b = h.block, f = b.def.func
-        if (f?.cockpit) this.interactTarget = { label: `Sit in ${b.name}`, fn: () => { P.enterSeat(h.grid, b); this.view = 'fp'; this.sfx.play('seat', 0.5); this.hud.toast(`${h.grid.name}: WASD, Space/C to fly, mouse to turn, Z dampeners, F to leave`) } }
-        else if (f?.door) this.interactTarget = { label: b.open ? 'Close door' : 'Open door', fn: () => { b.open = !b.open; h.grid.touch(b); this.sfx.play('door', 0.5) } }
-        else if (f?.medbay) this.interactTarget = { label: 'Med bay: stand on it to heal', fn: () => {} }
+        if (f?.cockpit && b.build < 1) this.interactTarget = { label: `${b.name} is not finished: weld it first`, fn: () => {} }
+        else if (f?.cockpit) this.interactTarget = { label: `Sit in ${b.name}`, fn: () => { P.enterSeat(h.grid, b); this.view = 'fp'; this.sfx.play('seat', 0.5); this.hud.toast(`${h.grid.name}: WASD, Space/C to fly, mouse to turn, Z dampeners, F to leave`) } }
+        else if (f?.door && b.build >= 1) this.interactTarget = { label: b.open ? 'Close door' : 'Open door', fn: () => { b.open = !b.open; h.grid.touch(b); this.sfx.play('door', 0.5) } }
+        else if (f?.medbay) this.interactTarget = { label: `${b.name}: stand by it to heal and refill your suit`, fn: () => {} }
+        else if (f?.inv || f?.tank) this.interactTarget = { label: `Open ${h.grid.name}'s cargo`, fn: () => { this.invGrid = h.grid; this.menus.open('inventory') } }
       }
     } else { B.mesh.visible = B.edges.visible = B.vol.visible = false; B.hit = null; B.toolOn = false }
   }

@@ -2,7 +2,7 @@ import { PREFAB_LIST, prefab } from '../src/game/prefabs.js'
 import { Grid } from '../src/grid/grid.js'
 import { ShipControl } from '../src/grid/ship.js'
 import * as THREE from 'three'
-const world = { addGrid() {}, gridMat: null, glassMat: null, sunDir: new THREE.Vector3(0, 1, 0), airAt: () => 1, gravityAt: (p, o) => o.set(0, -9.81, 0) }
+const world = { creative: true, addGrid() {}, gridMat: null, glassMat: null, sunDir: new THREE.Vector3(0, 1, 0), airAt: () => 1, gravityAt: (p, o) => o.set(0, -9.81, 0), gasTotal: () => 1, gasTake: () => 0, netCount: () => 1, netTake: () => 0 }
 for (const id of PREFAB_LIST) {
   const bp = prefab(id), g = new Grid(world, bp.size, {})
   let fail = 0, failed = {}
@@ -15,7 +15,7 @@ for (const id of PREFAB_LIST) {
   let t = performance.now(); for (const [ck, ch] of g.chunks) g.buildChunk(ck, ch); console.log('  mesh build', (performance.now() - t).toFixed(1), 'ms', [...g.chunks.values()].reduce((s, c) => s + (c.mesh ? c.mesh.geometry.attributes.position.count / 3 : 0), 0), 'tris')
 }
 // the lowest cells of each ship should include its landing clamps
-for (const id of ['sparrow', 'mule', 'lancer']) {
+for (const id of ['sparrow', 'pick', 'mule', 'lancer']) {
   const bp = prefab(id), g = new Grid(world, bp.size, {})
   for (const [bid, i, j, k, rot, c] of bp.blocks) g.add(bid, i, j, k, rot, c)
   let low = Infinity; for (const b of g.blocks) for (const key of b.cells) { const j = Math.floor(key / 2048) % 2048 - 1024; low = Math.min(low, j) }

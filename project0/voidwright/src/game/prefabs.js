@@ -58,8 +58,21 @@ function sparrow() {
   b.over('thr_h2_small', -2, 0, -8, BK, 2).over('thr_h2_small', 2, 0, -8, BK, 2)
   b.over('thr_h2_small', -7, 1, 1, RT, 2).over('thr_h2_small', 7, 1, 1, LF, 2)
   b.over('gyro', 0, 1, 0).over('gyro', 0, 2, 0).over('battery', 0, 1, 4).over('battery', 0, 2, 4).over('core_small', 0, 1, 5)
+  b.over('tank_h2', -1, 3, 0, 0, 1).over('tank_o2', 0, 1, -4, 0, 1)
   b.over('gear', -2, -1, -5, 0).over('gear', 1, -1, -5, 0).over('gear', -2, -1, 4, 0).over('gear', 1, -1, 4, 0)
   b.over('flood', 0, 0, -8, 0).over('lamp', -6, 2, 1, UPSIDE, 0).over('lamp', 6, 2, 1, UPSIDE, 0)
+  return b.bp
+}
+
+// ---- Pick: the scout with two drills and room for ore ----
+function pick() {
+  const b = new BP('Pick', 'small', { desc: 'Small-grid miner: two drills at the nose (hold the left button in the seat).' })
+  const base = sparrow()
+  b.bp.blocks = base.blocks.map(x => [...x])
+  b.bp.blocks = b.bp.blocks.map(x => x[0] === 'light_cube' && x[5] === 6 ? [x[0], x[1], x[2], x[3], x[4], 4] : x)
+  b.over('drill', -5, 0, -7, F, 2).over('drill', 3, 0, -7, F, 2)
+  b.over('cargo_s', -1, 2, -2, 0, 4).over('cargo_s', 1, 2, -2, 0, 4)
+  b.bp.name = 'Pick'
   return b.bp
 }
 
@@ -82,6 +95,7 @@ function mule() {
   b.set('thr_h2_small', -4, 1, 0, RT, 1).set('thr_h2_small', 4, 1, 0, LF, 1)
   b.over('gyro', -2, 1, 2).over('gyro', 2, 1, 2).over('battery', -2, 1, 3).over('battery', 2, 1, 3).over('core_small', 0, 2, 4)
   b.over('gravgen', 0, 0, -4)
+  b.over('tank_h2', -1, 3, -2, 0, 1)
   b.set('gear', -2, -1, -1, 0).set('gear', 2, -1, -1, 0).set('gear', -2, -1, 1, 0).set('gear', 2, -1, 1, 0)
   b.set('flood', -1, 0, -7, 0).set('flood', 1, 0, -7, 0).set('beacon', 0, 3, 3, 0)
   return b.bp
@@ -107,7 +121,8 @@ function lancer() {
   b.set('thr_h2_small', 0, 1, 7, F, 1).set('thr_h2_small', 0, 3, 7, F, 1)
   for (const [x, z] of [[-2, -4], [2, -4], [-2, 4], [2, 4], [0, -4], [0, 4]]) b.over('thr_h2_small', x, 0, z, UPR, 1)
   b.set('thr_ion_small', -2, 1, -10, BK, 1).set('thr_ion_small', 2, 1, -10, BK, 1)
-  b.set('thr_ion_small', -1, 4, 0, DNR, 1).set('thr_ion_small', 1, 4, 0, DNR, 1)
+  b.set('thr_ion_small', -1, 4, -2, DNR, 1).set('thr_ion_small', 1, 4, -2, DNR, 1)
+  b.set('tank_h2', -1, 4, -1, 0, 1)
   b.set('thr_ion_small', -4, 1, -3, RT, 1).set('thr_ion_small', 4, 1, -3, LF, 1).set('thr_ion_small', -4, 1, 3, RT, 1).set('thr_ion_small', 4, 1, 3, LF, 1)
   b.set('gear', -2, -1, -2, 0).set('gear', 2, -1, -2, 0).set('gear', -2, -1, 2, 0).set('gear', 2, -1, 2, 0)
   b.set('antenna', 0, 4, 4, 0).set('flood', 0, 0, -9, 0)
@@ -128,6 +143,8 @@ function kestrel() {
   }
   for (let i = -5; i <= 5; i += 2) b.over('window', i, 2, 11, 0, 0)
   b.over('door', 0, 1, 7, 0).over('medbay', -4, 1, 9, 0, 3).over('gravgen', 4, 1, 10).over('battery', 5, 1, 10).over('battery', 5, 2, 10).over('core_small', 5, 1, 9)
+  b.set('survival_kit', -2, 1, 10, R([0, 0, -1]), 3).set('refinery', 1, 1, 8, 0, 1).set('assembler', -1, 1, 10, R([0, 0, -1]), 1).set('o2h2', 3, 1, 8, 0, 1)
+  b.set('tank_o2', -5, 1, 8, 0).set('cargo_s', -3, 1, 8, 0, 4).set('tank_h2', 4, 1, -5, 0, 1)
   for (let i = -4; i <= 4; i += 4) b.set('lamp', i, 3, 9, UPSIDE)
   // masts, lights and solar arrays
   b.set('beacon', -6, 1, -6, 0).set('antenna', 6, 1, -6, 0)
@@ -154,12 +171,14 @@ function foothold() {
   b.bp.blocks = b.bp.blocks.filter(x => !(x[0] === 'door' && x[2] === 2))
   b.set('light_cube', 1, 2, 2, 0, 9)
   b.over('window', 4, 2, 3, R([1, 0, 0])).over('window', 2, 2, 4, R([0, 0, 1]))
-  b.set('medbay', 2, 1, 2, 0, 3).set('battery', 3, 1, 3).set('lamp', 3, 2, 2, UPSIDE)
-  b.set('solar', -4, 1, -4, 0).set('solar', -4, 1, -1, 0).set('beacon', -4, 1, 3, 0).set('flood', 4, 1, -4, R([0, 0, -1]))
+  b.set('medbay', 2, 1, 2, 0, 3).set('battery', 3, 1, 3).set('lamp', 3, 2, 2, UPSIDE).set('survival_kit', 3, 1, 2, R([-1, 0, 0]), 3)
+  b.set('solar', -4, 1, -4, 0).set('solar', -4, 1, -1, 0).set('beacon', -1, 1, 3, 0).set('flood', 4, 1, -4, R([0, 0, -1]))
+  b.set('refinery', 1, 1, -4, 0, 1).set('assembler', 3, 1, -2, R([0, 0, 1]), 1).set('o2h2', 4, 1, -2, 0, 1).set('tank_o2', 0, 1, -4, 0).set('tank_h2', -4, 1, 1, 0, 1)
+  b.set('cargo_s', 0, 1, -1, 0, 4).set('core_small', 0, 1, -2, 0)
   return b.bp
 }
 
-export const PREFABS = { sparrow, mule, lancer, kestrel, foothold }
-export const PREFAB_LIST = ['sparrow', 'mule', 'lancer', 'kestrel', 'foothold']
+export const PREFABS = { sparrow, pick, mule, lancer, kestrel, foothold }
+export const PREFAB_LIST = ['sparrow', 'pick', 'mule', 'lancer', 'kestrel', 'foothold']
 const cache = {}
 export function prefab(id) { return cache[id] || (cache[id] = PREFABS[id]()) }

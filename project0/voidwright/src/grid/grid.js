@@ -7,6 +7,7 @@ import { BLOCKS, CELL, blockGeo } from './blocks.js'
 import { ROTS, INV, apply, SIDE_ROT, OPP, QUATS } from './rot.js'
 import { SIDES } from './geo.js'
 import { lin } from '../core/color.js'
+import { Inventory, blockRecipe, recipeTotal } from '../game/items.js'
 
 const CK = 16
 const kOf = (i, j, k) => ((i + 1024) * 2048 + (j + 1024)) * 2048 + (k + 1024)
@@ -66,6 +67,14 @@ export class Grid {
     const cells = this.footprint(id, i, j, k, rot)
     const hp = d.hp[this.size]
     const b = { id, def: d, i, j, k, rot, color, hp, maxHp: hp, cells: cells.map(c => kOf(c[0], c[1], c[2])), on: true, grid: this, open: false, name: o.name || d.name }
+    // how far it is built: the parts installed, in recipe order (a frame holds just the first)
+    b.recipe = blockRecipe(d, this.size)
+    b.comps = b.recipe.map(([, n]) => n)
+    b.build = 1
+    if (o.build != null && o.build < 1) { b.comps = b.recipe.map(() => 0); b.comps[0] = 1; b.build = 1 / recipeTotal(b.recipe); b.hp = Math.max(1, hp * b.build) }
+    const f = d.func
+    if (f?.inv) b.inv = new Inventory(f.inv[this.size] || 1000)
+    if (f?.tank) { b.gas = 0; b.gasMax = f.tank[this.size] }
     for (const c of b.cells) this.cells.set(c, b)
     this.blocks.add(b)
     this.touch(b)
@@ -135,16 +144,17 @@ export class Grid {
     const v = [0, 0, 0], w = [0, 0, 0], cs = this.cs
     for (const b of this.blocks) {
       if (Math.floor(b.i / CK) !== ci || Math.floor(b.j / CK) !== cj || Math.floor(b.k / CK) !== ckk) continue
-      const parts = blockGeo(b.id, this.size, b.def.variant ? b.def.variant(b) : '')
+      const unfinished = b.build < 1
+      const parts = unfinished && b.build < 0.5 ? frameGeo(b.def.sizes[this.size]) : blockGeo(b.id, this.size, b.def.variant ? b.def.variant(b) : '')
       const single = b.cells.length === 1
       const pc = PALETTE[b.color] || PALETTE[0], PC = [lin(pc[0]), lin(pc[1]), lin(pc[2])]
-      const health = b.hp / b.maxHp, tint = 0.45 + 0.55 * health
-      const lit = b.on && this.lights !== false ? 1 : 0.15
+      const health = b.hp / b.maxHp, tint = (0.45 + 0.55 * health) * (unfinished ? 0.55 : 1)
+      const lit = b.on && this.lights !== false && !unfinished ? 1 : 0.15
       for (const part of parts) {
-        if (single && part.side >= 0 && !part.glass) {
+        if (single && part.side >= 0 && !part.glass && !unfinished) {
           const ws = SIDE_ROT[b.rot][part.side], s = SIDES[ws]
           const nb = this.cells.get(kOf(b.i + s[0], b.j + s[1], b.k + s[2]))
-          if (nb && nb !== b && nb.cells.length === 1 && nb.def.full) {
+          if (nb && nb !== b && nb.cells.length === 1 && nb.def.full && nb.build >= 1) {
             const ls = SIDE_ROT[INV[nb.rot]][OPP[ws]]
             if (nb.def.full & (1 << ls)) continue
           }
@@ -187,7 +197,8 @@ export class Grid {
     const c = new THREE.Vector3(), p = new THREE.Vector3()
     for (const b of this.blocks) { const bm = b.def.mass[this.size]; this.blockCenter(b, p); c.addScaledVector(p, bm); m += bm }
     const oldCom = this.com.clone()
-    this.mass = Math.max(1, m)
+    this.blockMass = m
+    this.mass = Math.max(1, m + (this.cargoMass || 0))
     if (m > 0) c.divideScalar(m)
     // keep the grid where it is in space when its centre of mass moves
     if (this.blocks.size && !this.static) {
@@ -227,7 +238,7 @@ export class Grid {
   }
   // the working blocks, by kind
   scan() {
-    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [] }
+    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [] }
     for (const b of this.blocks) {
       const f = b.def.func
       if (!f) continue
@@ -243,6 +254,13 @@ export class Grid {
       if (f.gear) L.gears.push(b)
       if (f.door) L.doors.push(b)
       if (f.cargo) L.cargo.push(b)
+      if (f.inv) L.invs.push(b)
+      if (f.refine) L.refineries.push(b)
+      if (f.assemble) L.assemblers.push(b)
+      if (f.gasgen) L.gasgens.push(b)
+      if (f.tank) L.tanks.push(b)
+      if (f.drill) L.drills.push(b)
+      if (f.kit) L.kits.push(b)
       if (f.power?.store && b.charge == null) b.charge = f.power.store[this.size]
     }
   }
@@ -345,3 +363,17 @@ export function shapeSdf(b, size, x, y, z) {
     default: return box(lx, ly, lz, -0.5, -0.5, -0.5, S[0] - 0.5, S[1] - 0.5, S[2] - 0.5)
   }
 }
+
+// a block that is only a frame: a cage of girders the size of the block
+import { Geo } from './geo.js'
+import { T } from './atlas.js'
+const FRAMES = new Map()
+export function frameGeo(S) {
+  const k = S.join('x')
+  if (FRAMES.has(k)) return FRAMES.get(k)
+  const g = new Geo(), x1 = S[0] - 0.5, y1 = S[1] - 0.5, z1 = S[2] - 0.5
+  g.box(-0.48, -0.48, -0.48, x1 - 0.02, y1 - 0.02, z1 - 0.02, { tile: T.TRUSS, double: true, paint: false, col: [0.75, 0.62, 0.3] })
+  const parts = g.finish(); FRAMES.set(k, parts); return parts
+}
+// a block doing its job: switched on, fully built, not badly damaged
+export const works = b => b.on && b.build >= 1 && b.hp > b.maxHp * 0.25

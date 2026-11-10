@@ -9,6 +9,7 @@ import { lin } from '../core/color.js'
 import { patchMaterial, ATMO_UNIFORMS } from './atmo-glsl.js'
 
 const SEG = 32
+const ORE_COL = { iron: [0.55, 0.36, 0.26], nickel: [0.62, 0.62, 0.5], silicon: [0.72, 0.72, 0.76], cobalt: [0.3, 0.4, 0.62], ice: [0.82, 0.92, 1], magnesium: [0.68, 0.6, 0.76], silver: [0.8, 0.82, 0.86], gold: [0.82, 0.64, 0.26], platinum: [0.86, 0.88, 0.9], uranium: [0.38, 0.6, 0.34] }
 const FACES = [
   [[1, 0, 0], [0, 0, -1], [0, 1, 0]], [[-1, 0, 0], [0, 0, 1], [0, 1, 0]],
   [[0, 1, 0], [1, 0, 0], [0, 0, -1]], [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
@@ -151,6 +152,8 @@ export class Planet {
     this.roots = FACES.map((f, i) => this.node(i, 0, -1, -1, 2))
     this.queue = []
     this.built = 0
+    this.digs = []; this.digHash = new Map()
+    this.ores = def.ores || []
     this.tmp = [0, 0, 0]
     if (this.atmo) this.makeSky()
   }
@@ -159,7 +162,52 @@ export class Planet {
   height(x, y, z, mw = 0.6) {
     // x, y, z: a direction (any length); the height is for the ground point under it
     const L = Math.sqrt(x * x + y * y + z * z), R = this.R / L
-    return this.hfn(this, x * R, y * R, z * R, mw)
+    const h = this.hfn(this, x * R, y * R, z * R, mw)
+    return this.digs.length ? this.digAdjust(x / L, y / L, z / L, h) : h
+  }
+  // ---- holes dug into the ground (drills): the ground under each is lowered to the hole's bottom ----
+  digAdjust(ux, uy, uz, h) {
+    let g = this.R + h
+    const list = this.digHash.get(this.digKey(ux * g, uy * g, uz * g))
+    if (!list) return h
+    for (let pass = 0; pass < 2; pass++) for (const d of list) {
+      const tc = ux * d.x + uy * d.y + uz * d.z, perp = d.x * d.x + d.y * d.y + d.z * d.z - tc * tc
+      if (perp >= d.r * d.r) continue
+      const s = Math.sqrt(d.r * d.r - perp), lo = tc - s, hi = tc + s
+      if (g > lo && g < hi + 0.05) g = lo
+    }
+    return g - this.R
+  }
+  digKey(x, y, z) { return Math.floor(x / 48) + ',' + Math.floor(y / 48) + ',' + Math.floor(z / 48) }
+  dig(p, r) {
+    const x = p.x - this.center.x, y = p.y - this.center.y, z = p.z - this.center.z
+    const d = { x, y, z, r }
+    this.digs.push(d)
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) {
+      const k = this.digKey(x + a * (r + 1), y + b * (r + 1), z + c * (r + 1))
+      let L = this.digHash.get(k); if (!L) this.digHash.set(k, L = [])
+      if (!L.includes(d)) L.push(d)
+    }
+    // the patches it touches are rebuilt (keeping the old ones on screen meanwhile)
+    const lp = new THREE.Vector3(x, y, z)
+    const mark = nd => {
+      if (!nd.center || nd.center.distanceTo(lp) > nd.arc * 0.8 + r + 2) return
+      if (nd.mesh) { nd.dirty = true; this.request(nd, 0) }
+      if (nd.children) for (const ch of nd.children) mark(ch)
+    }
+    for (const rt of this.roots) mark(rt)
+  }
+  // ore in the ground: patches of the world's ores in the stone
+  oreAtWorld(p) {
+    const x = p.x - this.center.x, y = p.y - this.center.y, z = p.z - this.center.z
+    return this.oreAt(x, y, z)
+  }
+  oreAt(x, y, z) {
+    if (!this.ores.length) return 'stone'
+    const v = this.n[7](x / 70 + 13, y / 70, z / 70)
+    if (v < 0.42) return 'stone'
+    const h = Math.abs(Math.sin(Math.floor(x / 300) * 12.9898 + Math.floor(y / 300) * 78.233 + Math.floor(z / 300) * 37.719) * 43758.5453) % 1
+    return this.ores[Math.floor(h * this.ores.length)]
   }
   // signed distance of a system point above the ground (approximate on steep slopes)
   sdf(p) {
@@ -226,7 +274,9 @@ export class Planet {
     const d = [0, 0, 0]
     for (let j = -1; j <= SEG + 1; j++) for (let i = -1; i <= SEG + 1; i++) {
       this.dir(nd.face, nd.a0 + nd.size * i / SEG, nd.b0 + nd.size * j / SEG, d)
-      const h = this.hfn(this, d[0] * this.R, d[1] * this.R, d[2] * this.R, mw), r = this.R + h, k = ((j + 1) * E + (i + 1))
+      let h = this.hfn(this, d[0] * this.R, d[1] * this.R, d[2] * this.R, mw)
+      if (this.digs.length) h = this.digAdjust(d[0], d[1], d[2], h)
+      const r = this.R + h, k = ((j + 1) * E + (i + 1))
       P[k * 3] = d[0] * r; P[k * 3 + 1] = d[1] * r; P[k * 3 + 2] = d[2] * r
       D[k * 3] = d[0]; D[k * 3 + 1] = d[1]; D[k * 3 + 2] = d[2]; H[k] = h
     }
@@ -247,6 +297,7 @@ export class Planet {
       loc[o] = x - bx; loc[o + 1] = y - by; loc[o + 2] = z - bz
       const slope = 1 - (nx * D[k * 3] + ny * D[k * 3 + 1] + nz * D[k * 3 + 2])
       this.cfn(this, x, y, z, H[k], slope * 1.6, Math.abs(D[k * 3 + 1]), cc)
+      if (this.ores.length && mw < 40) { const ore = this.oreAt(x, y, z); if (ore !== 'stone') { const oc = ORE_COL[ore]; for (let q = 0; q < 3; q++) cc[q] = cc[q] * 0.6 + oc[q] * 0.4 } }
       col[o] = lin(cc[0]); col[o + 1] = lin(cc[1]); col[o + 2] = lin(cc[2])
     }
     // the skirts, hanging below the edges
@@ -270,6 +321,8 @@ export class Planet {
     const m = new THREE.Mesh(g, this.mat)
     m.position.copy(c); m.matrixAutoUpdate = false; m.updateMatrix()
     m.visible = false
+    if (nd.mesh) { m.visible = nd.mesh.visible; nd.mesh.geometry.dispose(); this.group.remove(nd.mesh) }
+    nd.dirty = false
     this.group.add(m)
     nd.mesh = m
     this.built++
@@ -325,7 +378,7 @@ export class Planet {
     let n = 0
     while (this.queue.length && performance.now() - t0 < ms) {
       const nd = this.queue.shift(); nd.queued = false
-      if (this.now - nd.lastUsed > 0.5 || nd.mesh) continue
+      if (this.now - nd.lastUsed > 0.5 || (nd.mesh && !nd.dirty)) continue
       this.build(nd); n++
     }
     return n

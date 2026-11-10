@@ -124,6 +124,7 @@ export class Asteroid {
     if (L > big + 20) return L - big
     return this.local(v.x, v.y, v.z)
   }
+  oreAtWorld(p) { const v = this.toLocal(p, new THREE.Vector3()); return this.oreAt(v.x, v.y, v.z) }
   // what ore is at a local point: veins of the asteroid's ores in stone
   oreAt(x, y, z) {
     if (!this.ores.length) return 'stone'

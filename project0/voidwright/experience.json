@@ -1,7 +1,7 @@
 {
   "entry": "main.js",
   "name": "VOIDWRIGHT",
-  "description": "Build ships and stations block by block, in a star system you can fly across: land on planets with air and gravity, on airless moons and on asteroids. Large and small grid blocks (hull, thrusters, gyros, cockpits, power, lights, doors, gravity generators, jump drives), real thrust and mass, inertia dampeners, a jetpack. Creative mode; survival, mining and mechanical parts are coming in the next updates.",
+  "description": "Build ships and stations block by block, in a star system you can fly across: land on planets with air and gravity, on airless moons and on asteroids. Large and small grid blocks (hull, thrusters, gyros, cockpits, power, lights, doors, gravity generators, jump drives), real thrust and mass, inertia dampeners, a jetpack. Creative mode, or survival: mine ore with drills, refine it, assemble parts, weld every block up from a frame, and keep your oxygen and hydrogen topped up.",
   "maxPlayers": 16,
   "ui": "minimized",
   "loading": {

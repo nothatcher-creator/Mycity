@@ -6,6 +6,8 @@ import { Panel, C, FONT, text, box, bar, chip, icon } from './ui.js'
 import { BLOCKS } from '../grid/blocks.js'
 import { TOOLS } from '../game/build.js'
 import { keyLabel } from '../core/input.js'
+import { ITEMS } from '../game/items.js'
+import { gasTotal, gasMax, netVolume } from '../game/survival.js'
 
 const fmtDist = d => d >= 100000 ? `${Math.round(d / 1000)} km` : d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d)} m`
 const fmtMass = m => m >= 1e6 ? `${(m / 1e6).toFixed(2)} kt` : m >= 1000 ? `${(m / 1000).toFixed(1)} t` : `${Math.round(m)} kg`
@@ -18,8 +20,8 @@ export class HUD {
     this.cross = ui.add(new Panel(ui, 0, 0, 360, 120, (c, p) => this.drawCross(c, p), { order: 2 }))
     this.bar = ui.add(new Panel(ui, 0, 0, 10, 10, (c, p) => this.drawBar(c, p), { order: 2 }))
     this.suit = ui.add(new Panel(ui, 0, 0, 250, 150, (c, p) => this.drawSuit(c, p), { order: 2 }))
-    this.ship = ui.add(new Panel(ui, 0, 0, 270, 196, (c, p) => this.drawShip(c, p), { order: 2 }))
-    this.info = ui.add(new Panel(ui, 0, 0, 250, 112, (c, p) => this.drawInfo(c, p), { order: 2 }))
+    this.ship = ui.add(new Panel(ui, 0, 0, 270, 236, (c, p) => this.drawShip(c, p), { order: 2 }))
+    this.info = ui.add(new Panel(ui, 0, 0, 250, 116, (c, p) => this.drawInfo(c, p), { order: 2 }))
     this.note = ui.add(new Panel(ui, 0, 0, 560, 44, (c, p) => this.drawNote(c, p), { order: 3 }))
     this.marks = ui.add(new Panel(ui, 0, 0, 10, 10, (c, p) => this.drawMarks(c, p), { order: 1 }))
     this.notes = []
@@ -37,7 +39,7 @@ export class HUD {
       const sw = Math.max(34, Math.min(54, (right - left) / (n + 0.3)))
       this.slotW = sw
       this.bar.place(left + (right - left - sw * n - 8) / 2, H - sw - 30, sw * n + 8, sw + 26)
-      this.suit.place(10, 10, 230, 150); this.ship.place(10, 10, 260, 196)
+      this.suit.place(10, 10, 230, 150); this.ship.place(10, 10, 260, 236)
       this.info.place(W - 240, 10, 230, 112)
       this.cross.place(W / 2 - 180, H / 2 - 30, 360, 120)
       this.note.place(W / 2 - 280, Math.min(150, H * 0.3), 560, 44)
@@ -49,7 +51,7 @@ export class HUD {
       this.suit.place(W - 262, H - 162, 250, 150)
       // a narrow window: the suit panel sits above the toolbar's right end
       if ((W + sw * n) / 2 > W - 266) this.suit.place(W - 262, H - sw - 40 - 156, 250, 150)
-      this.ship.place(12, H - 208, 270, 196)
+      this.ship.place(12, H - 248, 270, 236)
       this.info.place(W - 262, H * 0.3, 250, 112)
       this.note.place(W / 2 - 280, 14, 560, 44)
     }
@@ -97,7 +99,8 @@ export class HUD {
       if (t && !t.ok) lines.push([t.why === 'you' ? 'Blocked: you are standing there' : 'Blocked: something is in the way', C.red])
       else if (t && !t.grid) lines.push([t.onRock ? 'New station (built into the rock)' : t.anchor ? `New ${B.size} grid on ${t.anchor.name}` : `New ${B.newStatic ? 'station' : 'ship'} (${keyLabel(g.input.binds.gridType)} to switch)`, C.dim])
     }
-    if (B.tool && B.hit?.block) { const b = B.hit.block; lines.push([`${TOOLS[B.tool].name}: ${b.name} ${Math.round(b.hp / b.maxHp * 100)}%`, B.toolOn ? C.amber : C.dim]) }
+    if (B.tool === 'drill') lines.push([B.hit?.solid && B.hit.dist < 5 ? 'Hold the left button to dig' : 'Point at rock within 5 m', B.toolOn ? C.amber : C.dim])
+    else if (B.tool && B.hit?.block) { const b = B.hit.block; lines.push([`${TOOLS[B.tool].name}: ${b.name} ${Math.round(b.hp / b.maxHp * 100)}%`, B.toolOn ? C.amber : C.dim]) }
     if (B.paste) lines.push(['Left button: place   Right button: cancel', C.gold2])
     let y = cy + 34
     for (const [s, col] of lines) { text(c, s, cx, y, { size: 13, weight: 600, color: col, align: 'center', shadow: true }); y += 18 }
@@ -112,7 +115,7 @@ export class HUD {
       const x = 4 + i * sw, y = 20, it = B.bar[i], sel = B.slot === i
       const b = p.button(c, 'slot' + i, x + 2, y, sw - 4, sw - 4, '', () => { g.builder.select(i); this.bar.dirty = true }, { selected: sel })
       if (it?.block) { const ic = icons?.get(it.block, B.size); if (ic) c.drawImage(ic, x + 4, y + 2, sw - 8, sw - 8) }
-      else if (it?.tool) { icon(c, it.tool === 'welder' ? 'bolt' : it.tool === 'grinder' ? 'flare' : 'fire', x + sw * 0.25, y + sw * 0.2, sw * 0.5, sel ? C.gold2 : C.text) }
+      else if (it?.tool) { icon(c, it.tool === 'welder' ? 'bolt' : it.tool === 'grinder' ? 'flare' : it.tool === 'drill' ? 'down' : 'fire', x + sw * 0.25, y + sw * 0.2, sw * 0.5, sel ? C.gold2 : C.text) }
       text(c, String(i + 1), x + 7, y + 13, { size: 11, weight: 700, color: sel ? C.gold2 : C.dim })
     }
   }
@@ -125,18 +128,21 @@ export class HUD {
     const flags = [[P.jetpack ? 'JETPACK' : 'JETPACK OFF', P.jetpack ? C.gold2 : C.dim], [P.dampeners ? 'DAMPENERS' : 'DAMPENERS OFF', P.dampeners ? C.gold2 : C.amber]]
     let fx = 58
     for (const [s, col] of flags) { const w = chip(c, s, fx, 7, 15, { size: 8.5, color: col, stroke: col === C.dim ? 'rgba(134,162,166,0.5)' : undefined, fill: col === C.dim ? 'rgba(0,0,0,0.2)' : undefined }); fx += w + 5 }
-    const rows = [['HEALTH', P.health / 100, P.health < 30 ? C.red : C.green], ['ENERGY', P.energy / 100, C.gold], ['FUEL', P.fuel / 100, C.blue]]
-    let y = 34
-    for (const [l, f, col] of rows) { text(c, l, 12, y + 8, { size: 9.5, weight: 700, color: C.dim }); bar(c, 70, y, p.w - 120, 9, f, col); text(c, `${Math.round(f * 100)}%`, p.w - 12, y + 9, { size: 10, weight: 700, align: 'right' }); y += 16 }
+    const rows = [['HEALTH', P.health / 100, P.health < 30 ? C.red : C.green], ['ENERGY', P.energy / 100, P.energy < 15 ? C.red : C.gold], ['OXYGEN', P.oxygen / 100, P.oxygen < 20 ? C.red : C.blue], ['HYDROGEN', P.fuel / 100, P.fuel < 10 ? C.red : C.orange]]
+    let y = 30
+    for (const [l, f, col] of rows) { text(c, l, 12, y + 8, { size: 9, weight: 700, color: C.dim }); bar(c, 76, y, p.w - 126, 8, f, col); text(c, `${Math.round(f * 100)}%`, p.w - 12, y + 8, { size: 10, weight: 700, align: 'right' }); y += 13 }
+    if (!this.g.world.creative) { text(c, 'SUIT HOLD', 12, y + 8, { size: 9, weight: 700, color: C.dim }); bar(c, 76, y, p.w - 126, 8, P.inv.volume / P.inv.max, P.inv.free() < 20 ? C.red : C.dim, { segments: 0 }); text(c, `${Math.round(P.inv.volume / P.inv.max * 100)}%`, p.w - 12, y + 8, { size: 10, weight: 700, align: 'right' }) }
+    y += 4
     // motion and place
     const sp = P.seat ? P.seat.grid.vel.length() : P.vel.length()
     const gf = P.gravity / 9.81
-    text(c, `${sp.toFixed(1)} m/s`, 12, y + 18, { size: 17, weight: 700, color: C.text })
-    text(c, `${gf.toFixed(2)} g`, p.w / 2 + 6, y + 18, { size: 17, weight: 700, color: gf > 0.05 ? C.text : C.dim })
+    text(c, `${sp.toFixed(1)} m/s`, 12, y + 16, { size: 16, weight: 700, color: C.text })
+    text(c, `${gf.toFixed(2)} g`, p.w / 2 + 6, y + 16, { size: 16, weight: 700, color: gf > 0.05 ? C.text : C.dim })
     const pl = g.world.universe.nearestPlanet(P.pos), alt = pl ? pl.surface(P.pos).alt : 0
     const where = pl && alt < pl.R * 1.4 ? `${pl.name.toUpperCase()} · ${fmtDist(Math.max(0, alt))} UP` : 'DEEP SPACE'
-    text(c, where, 12, y + 38, { size: 10.5, weight: 700, color: C.dim })
-    if (g.world.airAt(P.pos) > 0.3) text(c, 'AIR OK', p.w - 12, y + 38, { size: 10, weight: 700, color: C.green, align: 'right' })
+    text(c, where, 12, y + 33, { size: 10.5, weight: 700, color: C.dim })
+    const pl2 = g.world.universe.nearestPlanet(P.pos), breath = pl2?.def.breathable && g.world.airAt(P.pos) > 0.45
+    if (g.world.airAt(P.pos) > 0.3) text(c, breath ? 'AIR OK' : 'AIR: NOT BREATHABLE', p.w - 12, y + 33, { size: 10, weight: 700, color: breath ? C.green : C.amber, align: 'right' })
   }
   // ---- the ship you sit in ----
   drawShip(c, p) {
@@ -165,6 +171,9 @@ export class HUD {
     const pl = g.world.universe.nearestPlanet(gr.comWorld()), alt = pl ? pl.surface(gr.comWorld()).alt : 0
     if (pl && alt < pl.R) row('ALTITUDE', fmtDist(Math.max(0, alt)))
     if (gr.air > 0.02) row('AIR', `${Math.round(gr.air * 100)}%`)
+    const hm = gasMax(gr, 'h2'); if (hm && !g.world.creative) row('HYDROGEN', `${Math.round(gasTotal(gr, 'h2') / hm * 100)}%`, gasTotal(gr, 'h2') / hm < 0.1 ? C.red : C.text)
+    const cv = netVolume(gr); if (cv.max) row('CARGO', `${Math.round(cv.v / cv.max * 100)}%${gr.cargoFull ? ' FULL' : ''}`, cv.v / cv.max > 0.95 ? C.amber : C.text)
+    if (gr.parts.drills.length) row('DRILLS', 'hold left button', C.dim)
     const jd = gr.parts.jumpdrives.length
     if (jd) row('JUMP DRIVE', g.jump ? `CHARGING ${Math.ceil(g.jump.t)} s` : `${keyLabel(g.input.binds.jump)} to plan a jump`, g.jump ? C.amber : C.dim)
   }
@@ -181,7 +190,11 @@ export class HUD {
     const b = h.block, gr = h.grid
     box(c, 0, 0, p.w, p.h)
     text(c, b.name, 12, 20, { size: 13, weight: 700, color: C.gold2, max: p.w - 24 })
-    text(c, 'INTEGRITY', 12, 40, { size: 9.5, weight: 700, color: C.dim })
+    if (b.build < 1) {
+      const i = b.comps.findIndex((n, k) => n < b.recipe[k][1]), miss = b.recipe.map(([id, n], k) => [id, n - b.comps[k]]).filter(([, n]) => n > 0)
+      text(c, `FRAME · BUILT ${Math.round(b.build * 100)}%`, 12, 40, { size: 9.5, weight: 700, color: C.amber })
+      text(c, 'Needs ' + miss.slice(0, 3).map(([id, n]) => `${ITEMS[id].name} ×${n}`).join(', ') + (miss.length > 3 ? '…' : ''), 12, 104, { size: 9.5, weight: 600, color: C.amber, max: p.w - 24 })
+    } else text(c, 'INTEGRITY', 12, 40, { size: 9.5, weight: 700, color: C.dim })
     bar(c, 80, 32, p.w - 130, 9, b.hp / b.maxHp, b.hp / b.maxHp < 0.4 ? C.red : C.green)
     text(c, `${Math.round(b.hp / b.maxHp * 100)}%`, p.w - 12, 41, { size: 10, weight: 700, align: 'right' })
     text(c, gr.name, 12, 62, { size: 11, weight: 600, color: C.text, max: p.w - 24 })

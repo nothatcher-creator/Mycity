@@ -45,6 +45,7 @@ tt = t(3.4); buzz = sine(120, 3.4) * 0.3 + sine(240, 3.4) * 0.15
 crk = (rng.uniform(0, 1, len(tt)) > 0.995) * rng.uniform(-1, 1, len(tt))
 S['loop_weld'] = norm(loop(buzz + lp(crk, 6000) * 4 + hp(noise(3.4), 3000) * 0.2), 0.6)
 tt = t(3.4); S['loop_grind'] = norm(loop(bp(noise(3.4), 2200, 5200) * (0.8 + 0.2 * np.sin(2 * np.pi * 7 * tt)) + sine(3150 + 80 * np.sin(2 * np.pi * 1.3 * tt), 3.4) * 0.2 + sine(4120, 3.4) * 0.08), 0.6)
+tt = t(3.4); S['loop_drill'] = norm(loop(lp(noise(3.4), 700) * (0.6 + 0.4 * np.abs(np.sin(2 * np.pi * 11 * tt))) + sine(70 + 6 * np.sin(2 * np.pi * 0.7 * tt), 3.4) * 0.5 + bp(noise(3.4), 1500, 3500) * 0.25 * (rng.uniform(0, 1, len(tt)) > 0.6)), 0.7)
 # ambience
 tt = t(8.4); S['loop_wind'] = norm(loop(lp(noise(8.4), 380 + 260 * (0.5 + 0.5 * np.sin(2 * np.pi * 0.17 * tt))) * (0.7 + 0.3 * np.sin(2 * np.pi * 0.11 * tt + 1))), 0.6)
 tt = t(6.4); S['loop_hum'] = norm(loop(sine(50, 6.4) * 0.5 + sine(100, 6.4) * 0.3 + sine(150.5, 6.4) * 0.1 + lp(noise(6.4), 220) * 0.4), 0.5)

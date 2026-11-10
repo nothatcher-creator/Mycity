@@ -3,6 +3,7 @@
 // that stop you, or hold you to the ship you are near. Collides as three spheres with rock and hulls; walks
 // on moving ships. Sits in cockpits and seats.
 import * as THREE from 'three'
+import { Inventory } from '../game/items.js'
 
 const UP = new THREE.Vector3(0, 1, 0)
 const R = 0.34, OFFS = [0.36, 0.95, 1.5]   // sphere centres above the feet
@@ -20,7 +21,8 @@ export class Engineer {
     this.dampeners = true
     this.onGround = false
     this.ground = null                          // the grid stood on
-    this.health = 100; this.energy = 100; this.fuel = 100
+    this.health = 100; this.energy = 100; this.fuel = 100; this.oxygen = 100
+    this.inv = new Inventory(world.creative ? 4000 : 400)
     this.seat = null                             // { grid, block }
     this.crouch = false
     this.light = false
@@ -73,6 +75,7 @@ export class Engineer {
     const gvel = this.ground ? this.ground.pointVel(this.pos, this.gv) : this.gv.set(0, 0, 0)
     const rel = this.tmp.copy(this.vel).sub(gvel)
     this.thrusting = 0
+    if (this.jetpack && !this.world.creative && this.fuel <= 0) { this.jetpack = false; this.outOfFuel = true }
     if (this.jetpack) {
       // thrust along the body's axes; dampeners brake toward the nearest ship's motion (or standing still)
       const acc = new THREE.Vector3().addScaledVector(right, inp.move[0]).addScaledVector(up, inp.move[1]).addScaledVector(fwd, inp.move[2])
@@ -92,7 +95,7 @@ export class Engineer {
       }
       this.vel.addScaledVector(this.g, dt)
       this.energy = Math.max(0, this.energy - dt * this.thrusting * 0.25)
-      this.fuel = Math.max(0, this.fuel - dt * this.thrusting * 0.12)
+      this.fuel = Math.max(0, this.fuel - dt * this.thrusting * 0.35)
       if (inp.roll && g < 0.4) this.quat.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, -1), inp.roll * dt * 1.6))
     } else if (this.onGround) {
       // walking: move toward the speed wanted, along the ground
@@ -113,7 +116,6 @@ export class Engineer {
       this.vel.addScaledVector(this.g, dt)
     }
     this.energy = Math.min(100, this.energy + dt * 0.05)
-    this.fuel = Math.min(100, this.fuel + (this.onGround ? dt * 4 : 0))
     const before = this.vel.clone()
     this.pos.addScaledVector(this.vel, dt)
     this.collide(dt)

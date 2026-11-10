@@ -4,7 +4,7 @@ An open star system to build in, for Project 0 (lot 224). Ships and stations are
 (2.5 m) and small (0.5 m) grids; they have real mass, thrust and inertia. Planets, moons and asteroids can be
 landed on and built on. Everything here (code, block models, textures, sounds) is original to this game.
 
-## Round one (this version): creative mode
+## Round one: the system, building and flight
 
 - **The system.** Halvor (a 30 km world with air, 1 g, plains, dry lakes and snowy ranges), its airless moon
   Ket (craters, 0.25 g), the rust world Vashti (canyons and mesas, thin air) 430 km out, and Oru, Vashti's ice
@@ -38,19 +38,38 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - Desktop and touch controls; a helmet display with an artificial horizon, block integrity, ship mass,
   lift/weight and power.
 
+## Round two: survival
+
+- **Creative or survival** is chosen with the start. Survival uses the same places, stocked for a first build.
+- **Items**: 11 ores, 10 ingots and 20 parts, counted by mass and volume. The suit holds 400 litres; every
+  inventory on a grid (cargo, machines, drills, seats) is linked, as if joined by ducts.
+- **Blocks are built from parts.** Placing one needs its first part and leaves a girder frame; the welder
+  installs the rest from your inventory in recipe order and says what is missing; a block works only when
+  finished. The grinder takes the parts back out, last in first out.
+- **Mining**: the hand drill digs rock into your inventory; ship drills bore ahead of a ship into its cargo
+  (hold the left button in the seat). Asteroids are dug as voxels; planets get bowls dug into the ground.
+  Ore lies in patches (tinted on the ground and in the rock), different on each world and in each field.
+- **Production**: the refinery melts ore from cargo into ingots; assemblers make queued parts (terminal, K,
+  Production); the survival kit does both slowly for basic things and is a respawn point; the
+  oxygen-hydrogen splitter turns ice into gas for the tanks.
+- **Fuel and air**: fuel thrusters burn hydrogen from tanks, fusion cores burn uranium, the suit's oxygen
+  runs down away from breathable air (Halvor's) and refills by a kit or med bay or in a seat, the jetpack
+  burns the suit's hydrogen, tools and lamps its energy.
+- New blocks: survival kit, refinery, assembler, oxygen-hydrogen splitter, hydrogen and oxygen tanks, ship
+  drill. New design: the Pick, a small-grid miner.
+
 ## Coming next
 
-- Round two: survival (components, welding blocks up from frames, oxygen and hydrogen), drills and mining,
-  refining and assembling, cargo and conveyors carrying items.
-- Round three: wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, saved
-  worlds, playing together, and an exterior for the lot.
+- Round three: wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a
+  projector for blueprints in survival, saved worlds, playing together, and an exterior for the lot.
 
 ## Files
 
 - `src/core`: the split-depth camera-relative engine, input, touch, noise.
 - `src/world`: the system (`universe.js`), planets, asteroids, sky, haze shader.
 - `src/grid`: block catalogue and shapes, the texture atlas, rotations, grids, flight control, physics.
-- `src/game`: the game loop, world, building, ready-made designs, sound.
+- `src/game`: the game loop, world, building, items and recipes, survival rules, ready-made designs, sound.
 - `src/ui`: the interface kit, helmet display, menus, block icons.
 - `tools/pack.sh` packs `build/experience.zip`; `tools/sfxgen.py` makes the sounds; `tools/prefabtest.mjs`
-  checks the designs (block overlaps, lift/weight); `tools/bench.mjs` times terrain and rock building.
+  checks the designs (block overlaps, lift/weight); `tools/bench.mjs` times terrain and rock building; `tools/survivaltest.mjs`, `tools/weldtest.mjs` and
+  `tools/digtest.mjs` check mining, production and welding without the renderer.

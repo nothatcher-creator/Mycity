@@ -9,7 +9,7 @@ import { T } from './atlas.js'
 export const CELL = { large: 2.5, small: 0.5 }
 export const BLOCKS = {}
 export const ORDER = []
-export const CATS = ['Hull', 'Windows', 'Control', 'Thrust', 'Power', 'Utility', 'Interior', 'Lights']
+export const CATS = ['Hull', 'Windows', 'Control', 'Thrust', 'Power', 'Production', 'Utility', 'Interior', 'Lights']
 const BIT = { px: 1, nx: 2, py: 4, ny: 8, pz: 16, nz: 32 }
 function def(d) {
   d.sizes = d.sizes || { large: [1, 1, 1], small: [1, 1, 1] }
@@ -100,7 +100,7 @@ function seat(g, x, y, z, s = 1) {
 }
 def({ id: 'cockpit', name: 'Cockpit', cat: 'Control', sizes: { large: [1, 1, 1] }, shape: 'cube', mass: { large: 1200 }, hp: { large: 2400 },
   desc: 'An enclosed seat with windows: fly the grid from here. F to sit, F to leave.',
-  func: { cockpit: { eye: [0, 0.12, 0.02], enclosed: true } },
+  func: { cockpit: { eye: [0, 0.12, 0.02], enclosed: true }, inv: { large: 1000 } },
   geo(g) {
     g.box(-0.5, -0.5, -0.5, 0.5, -0.38, 0.5, { tile: T.FLOOR, cull: true, cullPartial: true })
     g.box(-0.5, -0.38, 0.38, 0.5, 0.5, 0.5, { tile: T.ARMOR, cull: true, cullPartial: true })
@@ -113,7 +113,7 @@ def({ id: 'cockpit', name: 'Cockpit', cat: 'Control', sizes: { large: [1, 1, 1] 
   } })
 def({ id: 'canopy', name: 'Fighter Canopy', cat: 'Control', sizes: { small: [3, 3, 5] }, shape: 'box', mass: { small: 900 }, hp: { small: 500 },
   desc: 'A small-grid cockpit under a glass bubble.',
-  func: { cockpit: { eye: [1, 1.05, 2.0], enclosed: true } },
+  func: { cockpit: { eye: [1, 1.05, 2.0], enclosed: true }, inv: { small: 120 } },
   geo(g) {
     g.box(-0.5, -0.5, -0.5, 2.5, 0.4, 4.5, { tile: T.ARMOR })
     g.box(-0.5, 0.4, 3.2, 2.5, 1.7, 4.5, { tile: T.ARMOR })
@@ -224,10 +224,10 @@ def({ id: 'solar', name: 'Solar Array', cat: 'Power', sizes: { large: [4, 1, 2],
 
 // ---------- utility ----------
 def({ id: 'cargo_s', name: 'Cargo Box', cat: 'Utility', shape: 'cube', full: 63, mass: { large: 1200, small: 60 }, hp: { large: 2000, small: 160 },
-  desc: 'Storage (holds ore and parts from round two).', func: { cargo: { large: 15.6, small: 0.125 } },
+  desc: 'Storage for ore, ingots and parts; every inventory on a grid is linked.', func: { cargo: { large: 15.6, small: 0.125 }, inv: { large: 15625, small: 125 } },
   geo: g => g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.CARGO, nx: T.CARGO, pz: T.CARGO, nz: T.CARGO, py: T.STRIPE, ny: T.METAL } }) })
 def({ id: 'cargo_l', name: 'Cargo Hold', cat: 'Utility', sizes: { large: [3, 3, 3], small: [5, 3, 5] }, shape: 'box', mass: { large: 4600, small: 400 }, hp: { large: 8000, small: 600 },
-  desc: 'A big hold for ore and parts.', func: { cargo: { large: 421, small: 15.6 } },
+  desc: 'A big hold for ore, ingots and parts.', func: { cargo: { large: 421, small: 15.6 }, inv: { large: 421875, small: 15625 } },
   geo(g, S) { g.box(-0.5, -0.5, -0.5, S[0] - 0.5, S[1] - 0.5, S[2] - 0.5, { tiles: { px: T.CARGO, nx: T.CARGO, pz: T.CARGO, nz: T.CARGO, py: T.HAZARD, ny: T.METAL }, cols: { py: [1, 1, 1] } }) } })
 def({ id: 'medbay', name: 'Med Bay', cat: 'Utility', sizes: { large: [1, 1, 2] }, shape: 'panel', mass: { large: 3000 }, hp: { large: 1600 },
   desc: 'Heals you, and you come back here when you die.', func: { medbay: true },
@@ -269,7 +269,7 @@ def({ id: 'gear', name: 'Landing Clamp', cat: 'Utility', sizes: { large: [1, 1, 
     g.box(-0.45, -0.5, -0.45, sx - 0.05, -0.3, sz - 0.05, { tiles: { ny: T.GEAR, py: T.METAL, px: T.HAZARD, nx: T.HAZARD, pz: T.HAZARD, nz: T.HAZARD }, cols: { px: [1, 1, 1], nx: [1, 1, 1], pz: [1, 1, 1], nz: [1, 1, 1], ny: [1, 1, 1] } })
   } })
 def({ id: 'connector', name: 'Docking Port', cat: 'Utility', shape: 'cube', mass: { large: 1800, small: 120 }, hp: { large: 1500, small: 150 },
-  desc: 'A port to dock ships to stations (docking arrives in round three).', func: { connector: true },
+  desc: 'A port to dock ships to stations (docking arrives in round three).', func: { connector: true, inv: { large: 8000, small: 1150 } },
   geo(g) {
     g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.METAL, nx: T.METAL, py: T.METAL, ny: T.METAL, pz: T.METAL, nz: T.GEAR }, cols: { nz: [1, 1, 1] }, skip: ['nz'] })
     g.box(-0.5, -0.5, -0.56, 0.5, 0.5, -0.5, { tile: T.GEAR, col: [1, 1, 1], skip: ['pz'] })
@@ -325,6 +325,67 @@ def({ id: 'flood', name: 'Floodlight', cat: 'Lights', shape: 'box', mass: { larg
     g.box(-0.04, -0.38, 0.1, 0.04, -0.1, 0.18, np)
     g.cyl('z', 0, 0.02, 0, 0.26, 0.5, { r2: 0.2, tile: T.METAL, seg: 12, capA: false })
     g.cyl('z', 0, 0.02, -0.25, 0.25, 0.02, { tile: T.LIGHT, paint: false, emit: 2, seg: 12, capB: false })
+  } })
+
+
+// ---------- production (round two) ----------
+const WHITE = [0.86, 0.88, 0.9], ORANGE = [0.9, 0.5, 0.15], BLUE = [0.25, 0.5, 0.9]
+def({ id: 'survival_kit', name: 'Survival Kit', cat: 'Production', sizes: { large: [1, 1, 1], small: [2, 2, 2] }, shape: 'box', mass: { large: 1700, small: 380 }, hp: { large: 1600, small: 300 },
+  desc: 'Respawn point and first workshop: heals and refills your suit, refines stone and iron slowly, makes basic parts.',
+  func: { kit: true, medbay: true, inv: { large: 2000, small: 400 }, refine: { rate: 0.6, basic: true }, assemble: { rate: 0.3, basic: true }, power: { use: { large: 0.05, small: 0.05 } } },
+  geo(g, S) {
+    const k = S[0], e = k - 0.5
+    g.box(-0.5, -0.5, -0.5, e, e * 0.55, e, { tiles: { px: T.VENT, nx: T.VENT, pz: T.CARGO, nz: T.MED, py: T.PANEL, ny: T.METAL }, cols: { nz: [1, 1, 1] } })
+    g.box(-0.4, e * 0.55, -0.4, e - 0.1, e - 0.05, e - 0.1, { tiles: { nz: T.SCREEN, px: T.METAL, nx: T.METAL, py: T.FRAME, pz: T.METAL, ny: T.METAL }, emits: { nz: 0.8 }, cols: { nz: [1, 1, 1] } })
+  } })
+def({ id: 'refinery', name: 'Refinery', cat: 'Production', sizes: { large: [2, 2, 3] }, shape: 'box', mass: { large: 90000 }, hp: { large: 9000 },
+  desc: 'Melts ore from the grid\'s cargo into ingots, which go back into cargo.', func: { inv: { large: 7500 }, refine: { rate: 4 }, power: { use: { large: 1 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 1.5, 0.9, 2.5, { tiles: { px: T.VENT, nx: T.VENT, nz: T.FRAME, pz: T.HEAVY, py: T.HEAVY, ny: T.METAL } })
+    g.box(0, -0.3, -0.52, 1, 0.5, -0.5, { tile: T.CORE, col: [1, 0.55, 0.25], paint: false, emit: 1.4, skip: ['pz'] })
+    g.cyl('y', 1, 1.15, 2.0, 0.35, 0.5, { tile: T.PIPE, seg: 10 })
+    g.cyl('y', 0, 1.1, 2.0, 0.22, 0.4, { tile: T.PIPE, seg: 8 })
+    g.box(-0.5, 0.9, -0.5, 1.5, 1.5, 0.6, { tiles: { nz: T.HAZARD, py: T.METAL }, tile: T.METAL, cols: { nz: [1, 1, 1] } })
+  } })
+def({ id: 'assembler', name: 'Assembler', cat: 'Production', sizes: { large: [1, 2, 1] }, shape: 'box', mass: { large: 4000 }, hp: { large: 2400 },
+  desc: 'Makes parts from ingots in the grid\'s cargo. Queue them at the terminal (K).', func: { inv: { large: 4000 }, assemble: { rate: 1 }, power: { use: { large: 0.6 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.2, 0.5, { tiles: { nz: T.PANEL, pz: T.CARGO, px: T.VENT, nx: T.VENT, py: T.FLOOR, ny: T.METAL } })
+    g.box(-0.5, 0.2, 0.1, 0.5, 1.5, 0.5, { tiles: { nz: T.DASH, px: T.METAL, nx: T.METAL, py: T.METAL, pz: T.METAL }, emits: { nz: 0.5 }, cols: { nz: [1, 1, 1] } })
+    g.cyl('y', 0, 0.6, -0.05, 0.06, 0.8, { tile: T.PIPE, seg: 6 })
+    g.box(-0.05, 0.95, -0.35, 0.05, 1.05, 0.05, { tile: T.METAL, col: GOLD, paint: false })
+    g.cyl('y', 0, 0.85, -0.3, 0.05, 0.2, { tile: T.GLOW, col: TEAL, paint: false, emit: 1.5, seg: 6 })
+  } })
+def({ id: 'o2h2', name: 'Oxygen-Hydrogen Splitter', cat: 'Production', sizes: { large: [1, 1, 2], small: [1, 1, 2] }, shape: 'box', mass: { large: 2600, small: 500 }, hp: { large: 1600, small: 300 },
+  desc: 'Splits ice into oxygen and hydrogen for the tanks, and refills your suit nearby.', func: { inv: { large: 4000, small: 1000 }, gasgen: { large: 5, small: 1 }, power: { use: { large: 0.5, small: 0.1 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.1, 1.5, { tiles: { px: T.PIPE, nx: T.PIPE, py: T.METAL, ny: T.METAL, pz: T.VENT, nz: T.PANEL } })
+    g.cyl('z', -0.22, 0.3, 0.5, 0.2, 1.8, { tile: T.PLAIN, col: BLUE, paint: false, seg: 10 })
+    g.cyl('z', 0.22, 0.3, 0.5, 0.2, 1.8, { tile: T.PLAIN, col: WHITE, paint: false, seg: 10 })
+  } })
+def({ id: 'tank_h2', name: 'Hydrogen Tank', cat: 'Production', sizes: { large: [3, 3, 3], small: [3, 3, 3] }, shape: 'box', mass: { large: 25000, small: 3000 }, hp: { large: 4000, small: 500 },
+  desc: 'Stores hydrogen for fuel thrusters and jetpacks.', func: { tank: { gas: 'h2', large: 5e6, small: 1.5e5 } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 2.5, -0.2, 2.5, { tile: T.METAL })
+    g.cyl('y', 1, 1.1, 1, 1.38, 2.6, { tile: T.PLAIN, col: WHITE, paint: false, seg: 18 })
+    g.cyl('y', 1, 1.1, 1, 1.4, 0.3, { tile: T.PLAIN, col: ORANGE, paint: false, seg: 18, caps: false, double: true })
+    for (const [x, z] of [[-0.5, -0.5], [2.3, -0.5], [-0.5, 2.3], [2.3, 2.3]]) g.box(x, -0.2, z, x + 0.2, 2.5, z + 0.2, { tile: T.METAL })
+  } })
+def({ id: 'tank_o2', name: 'Oxygen Tank', cat: 'Production', sizes: { large: [1, 2, 1], small: [1, 1, 1] }, shape: 'box', mass: { large: 6000, small: 300 }, hp: { large: 1500, small: 150 },
+  desc: 'Stores oxygen; refills your suit when you sit on its grid.', func: { tank: { gas: 'o2', large: 1e5, small: 5e4 } },
+  geo(g, S) {
+    const h = S[1] - 0.5
+    g.box(-0.5, -0.5, -0.5, 0.5, -0.35, 0.5, { tile: T.METAL })
+    g.cyl('y', 0, (h - 0.35) / 2, 0, 0.42, h + 0.35, { tile: T.PLAIN, col: BLUE, paint: false, seg: 14 })
+    g.cyl('y', 0, (h - 0.35) / 2, 0, 0.44, 0.15, { tile: T.PLAIN, col: WHITE, paint: false, seg: 14, caps: false, double: true })
+  } })
+def({ id: 'drill', name: 'Ship Drill', cat: 'Production', sizes: { large: [3, 3, 3], small: [3, 3, 4] }, shape: 'box', mass: { large: 22000, small: 1200 }, hp: { large: 3000, small: 300 },
+  desc: 'Bores into rock in front of it while you hold the left button in a seat; the ore goes to cargo.', func: { drill: { large: 2.4, small: 1.0 }, inv: { large: 6000, small: 900 }, power: { use: { large: 0.5, small: 0.05 } } },
+  geo(g, S) {
+    const z1 = S[2] - 0.5
+    g.box(-0.5, -0.5, z1 - 1.2, 2.5, 2.5, z1, { tiles: { pz: T.METAL, px: T.HAZARD, nx: T.HAZARD, py: T.VENT, ny: T.VENT, nz: T.METAL }, cols: { px: [1, 1, 1], nx: [1, 1, 1] } })
+    g.cyl('z', 1, 1, z1 - 1.5, 1.2, 0.6, { tile: T.RING, seg: 16 })
+    g.cyl('z', 1, 1, (z1 - 1.8 - 0.5) / 2, 1.1, z1 - 1.8 + 0.5, { r2: 0.05, tile: T.GEAR, col: [0.6, 0.6, 0.6], paint: false, seg: 12, capB: false })
   } })
 
 // ---------- grids and cells ----------

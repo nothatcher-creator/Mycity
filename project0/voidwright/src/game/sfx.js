@@ -2,7 +2,7 @@
 // p0.sound. In vacuum you hear only what reaches you through your suit and the hull you touch: the ship you
 // sit in, your jetpack, your tools. Air carries wind and nearby thrusters. A loop restarts at a new level
 // when its level moves enough (the platform cannot change a playing sound's volume).
-const FILES = ['door', 'gear', 'grind_end', 'impact', 'jump', 'jump_charge', 'land', 'loop_atmo', 'loop_grind', 'loop_h2', 'loop_hum', 'loop_ion', 'loop_jetpack', 'loop_weld', 'loop_wind', 'paint', 'place', 'seat', 'step', 'ui_click', 'ui_error', 'ui_on']
+const FILES = ['door', 'gear', 'grind_end', 'impact', 'jump', 'jump_charge', 'land', 'loop_atmo', 'loop_drill', 'loop_grind', 'loop_h2', 'loop_hum', 'loop_ion', 'loop_jetpack', 'loop_weld', 'loop_wind', 'paint', 'place', 'seat', 'step', 'ui_click', 'ui_error', 'ui_on']
 const SET = new Set(FILES)
 
 export class SFX {
@@ -44,7 +44,8 @@ export class SFX {
     if (!P.seat && P.jetpack && P.thrusting > 0.05) this.loop('jet', 'loop_jetpack', 0.15 + P.thrusting * 0.3); else this.stopLoop('jet')
     // tools
     const B = g.builder
-    if (B.toolOn && B.tool === 'welder') this.loop('tool', 'loop_weld', 0.4); else if (B.toolOn && B.tool === 'grinder') this.loop('tool', 'loop_grind', 0.45); else this.stopLoop('tool')
+    const shipDrill = gr?.parts?.drills.some(b => b.spin)
+    if (B.toolOn && B.tool === 'welder') this.loop('tool', 'loop_weld', 0.4); else if (B.toolOn && B.tool === 'grinder') this.loop('tool', 'loop_grind', 0.45); else if ((B.toolOn && B.tool === 'drill') || shipDrill) this.loop('tool', 'loop_drill', shipDrill ? 0.6 : 0.4); else this.stopLoop('tool')
     // wind: in air, louder the faster you go
     const sp = (gr ? gr.vel.length() : P.vel.length())
     if (air > 0.05) this.loop('wind', 'loop_wind', Math.min(0.6, air * (0.08 + sp / 160))); else this.stopLoop('wind')

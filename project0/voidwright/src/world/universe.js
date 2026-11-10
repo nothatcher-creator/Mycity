@@ -7,14 +7,16 @@ import { AsteroidField } from './asteroid.js'
 
 export const BODIES = [
   { id: 'halvor', name: 'Halvor', kind: 'terra', R: 30000, g: 9.81, seed: 11, center: [0, 0, 0], relief: 1700,
-    atmo: { height: 11000, density: 1 / 24000, day: [0.36, 0.58, 1.0], dusk: [1.0, 0.45, 0.2], gain: 1.1 },
+    atmo: { height: 11000, density: 1 / 24000, day: [0.36, 0.58, 1.0], dusk: [1.0, 0.45, 0.2], gain: 1.1 }, breathable: true,
+    ores: ['iron', 'nickel', 'silicon', 'iron', 'cobalt', 'ice'],
     blurb: 'Home. Breathable air, 1 g, plains, dry lakes and high mountains.' },
-  { id: 'ket', name: 'Ket', kind: 'moon', R: 8000, g: 2.45, seed: 23, center: [96000, 34000, -52000], relief: 900,
+  { id: 'ket', name: 'Ket', kind: 'moon', R: 8000, g: 2.45, seed: 23, center: [96000, 34000, -52000], relief: 900, ores: ['iron', 'magnesium', 'silver', 'ice', 'nickel'],
     blurb: "Halvor's moon. No air, a quarter g, craters and old lava seas." },
   { id: 'vashti', name: 'Vashti', kind: 'mars', R: 21000, g: 5.9, seed: 37, center: [-310000, -46000, 290000], relief: 1700,
     atmo: { height: 7000, density: 1 / 42000, day: [0.85, 0.62, 0.45], dusk: [0.55, 0.62, 0.9], gain: 0.75 },
+    ores: ['iron', 'nickel', 'cobalt', 'gold', 'platinum', 'uranium', 'silicon'],
     blurb: 'Rust deserts, canyons and mesas. Thin air, 0.6 g.' },
-  { id: 'oru', name: 'Oru', kind: 'ice', R: 6500, g: 1.7, seed: 41, center: [-268000, -38000, 322000], relief: 400,
+  { id: 'oru', name: 'Oru', kind: 'ice', R: 6500, g: 1.7, seed: 41, center: [-268000, -38000, 322000], relief: 400, ores: ['ice', 'ice', 'cobalt', 'silver', 'uranium'],
     blurb: "Vashti's frozen moon: sheets of ice and long cracks. No air." },
 ]
 export const FIELDS = [

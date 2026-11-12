@@ -119,6 +119,7 @@ export class Engine {
     }
     sc.background = this.background
     if (drawViewmodel) { r.clearDepth(); r.render(this.vmScene, this.vmCamera) }
+    if (this.noUI) return
     r.clearDepth()
     r.render(this.uiScene, this.uiCamera)
   }

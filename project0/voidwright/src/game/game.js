@@ -20,6 +20,7 @@ import { Trees } from '../world/trees.js'
 import { BLOCKS } from '../grid/blocks.js'
 import { ITEMS } from './items.js'
 import { netPut } from './survival.js'
+import { Photo } from './photo.js'
 
 const pause = () => new Promise(r => setTimeout(r, 0))
 const DEFAULTS = { quality: 'medium', resScale: 1, fov: 70, sens: 1, invertY: false, volume: 0.8 }
@@ -163,6 +164,7 @@ export class Game {
   clearWorld() {
     for (const g of [...this.world.grids]) this.world.removeGrid(g)
     this.builder.cancelPaste()
+    if (this.photo) { this.photo.grids = []; this.photo.on = false; this.photo.n = -1; this.engine.noUI = false }
     this.player = null; this.jump = null
     if (this.pmodel) this.pmodel.visible = false
   }
@@ -394,6 +396,8 @@ export class Game {
     if (e.code === 'F6' && P.seat) { const g = P.seat.grid; this.p0.log('dbg ship', JSON.stringify({ v: g.vel.toArray().map(v => v.toFixed(2)), w: g.angVel.toArray().map(v => v.toFixed(3)), mass: Math.round(g.mass), max: [...g.thrustMax].map(v => Math.round(v / 1000)), out: [...g.thrustOut].map(v => v.toFixed(2)), sleep: g.sleep.toFixed(2), touch: g.touching, air: g.air?.toFixed(2), grav: g.gravity?.toFixed(2), power: g.power, locked: !!g.locked })) }
     if (e.code === 'F10' && P.seat) { const U = this.world.universe, pl = e.shiftKey || this.dbgJ ? U.signals(P.pos)[0] : U.places().find(x => x.id === 'ket'); this.dbgJ = true; if (pl) { this.planJump(pl); this.jump.t = 0.15 } }
     if (e.code === 'F7') { this.world.universe.time += 600; this.hud.toast('+10 min') }
+    if (e.code === 'Numpad0') { this.engine.resScale = this.engine.resScale === 2 ? 0.4 : 2; this.engine.resize() }
+    if (e.code === 'Numpad9') { this.photo = this.photo || new Photo(this); this.photoWant = (this.photoWant ?? this.photo.n) + 1 }
   }
   // ---- the frame ----
   frame(dt) {
@@ -403,17 +407,20 @@ export class Game {
     if (this.state === 'menu') this.titleView(this.time)
     if (this.state === 'loading') this.loading(dt)
     if (this.state === 'play') this.play(dt)
+    if (this.photoWant != null && this.state === 'play') { this.photo.set(this.photoWant); this.photoWant = null }
+    const ph = this.state === 'play' && this.photo?.on ? this.photo : null
+    if (ph) ph.tick(dt)
     mk()
     // the star, the haze, the terrain round the camera
-    const sun = W.universe.updateSun(dt)
+    const sun = W.universe.updateSun(ph ? 0 : dt)
     W.universe.update(this.camPos, this.time, e.quality)
     mk()
-    const budget = this.state === 'loading' ? 60 : this.state === 'play' ? 5 : 10
+    const budget = ph ? 400 : this.state === 'loading' ? 60 : this.state === 'play' ? 5 : 10
     e.uiOnly = this.state === 'loading'
     W.universe.work(budget)
     if (this.state !== 'menu') { const tp = W.universe.nearestPlanet(this.camPos); W.trees.update(tp, this.camPos, this.player ? (this.player.seat ? this.player.seat.grid.vel.length() : this.player.vel.length()) : 0, e.quality.detail) } else W.trees.update(null)
     mk()
-    e.setView(this.camPos, this.camQuat, this.state === 'play' ? this.settings.fov : 55)
+    e.setView(this.camPos, this.camQuat, ph?.cam ? ph.fov : this.state === 'play' ? this.settings.fov : 55)
     this.environment(sun)
     W.draw(dt)
     e.sync()

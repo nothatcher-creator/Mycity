@@ -400,6 +400,18 @@ export class Planet {
         const q = (j * SEG + i) * 6
         for (let t = 0; t < 6; t++) cut[q + t] = 0
       }
+      // and the skirt pieces that would hang into a dug space as curtains
+      for (let e = 0; e < 4; e++) for (let k = 0; k < SEG; k++) {
+        const [s, di, dj] = edges[e], a = s + (di + dj * W) * k, b = a + di + dj * W
+        const ka = (Math.floor(a / W) + 1) * E + (a % W + 1), kb = (Math.floor(b / W) + 1) * E + (b % W + 1)
+        const mx = (P[ka * 3] + P[kb * 3]) / 2, my = (P[ka * 3 + 1] + P[kb * 3 + 1]) / 2, mz = (P[ka * 3 + 2] + P[kb * 3 + 2]) / 2
+        let hit = false
+        for (const f of [0.12, 0.4, 0.7, 1]) if (this.vox.cut(mx - D[ka * 3] * depth * f, my - D[ka * 3 + 1] * depth * f, mz - D[ka * 3 + 2] * depth * f)) { hit = true; break }
+        if (!hit) continue
+        if (!cut) cut = new Uint16Array(src)
+        const q = (SEG * SEG + e * SEG + k) * 6
+        for (let t = 0; t < 6; t++) cut[q + t] = 0
+      }
       if (cut) index = new THREE.BufferAttribute(cut, 1)
     }
     g.setIndex(index)

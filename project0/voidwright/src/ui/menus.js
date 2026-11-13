@@ -221,12 +221,19 @@ export class Menus {
   page_blueprints(c, p) {
     const g = this.g
     this.title(c, p, 'BLUEPRINTS', 'Pick a design: it appears in front of you; left button places it. Ctrl + C on any grid copies it here.')
-    let y = 74
     const list = PREFAB_LIST.map(id => ({ id, bp: prefab(id) }))
     if (g.builder.clip) list.unshift({ id: 'clip', bp: g.builder.clip })
-    for (const { id, bp } of list) {
-      p.button(c, 'bp' + id, 18, y, p.w - 36, 56, (id === 'clip' ? 'COPIED: ' : '') + bp.name.toUpperCase(), () => { this.close(); g.builder.startPaste(bp) }, { sub: `${bp.size === 'large' ? 'Large' : 'Small'} grid ${bp.static ? 'station' : 'ship'} · ${bp.blocks.length} blocks${bp.desc ? ' · ' + bp.desc : ''}`, arrow: true })
-      y += 62
+    // two columns where there is room; the wheel or the arrows page through when the list is long
+    const cols = p.w >= 640 ? 2 : 1, bw = (p.w - 36 - (cols - 1) * 8) / cols, rows = Math.max(1, Math.floor((p.h - 74 - 62) / 62))
+    const total = Math.ceil(list.length / cols), off = Math.min(Math.max(0, total - rows), Math.round(this.scroll / 60))
+    this.scroll = off * 60
+    list.slice(off * cols, (off + rows) * cols).forEach(({ id, bp }, n) => {
+      const x = 18 + (n % cols) * (bw + 8), y = 74 + Math.floor(n / cols) * 62
+  p.button(c, 'bp' + id, x, y, bw, 56, (id === 'clip' ? 'COPIED: ' : '') + bp.name.toUpperCase(), () => { this.close(); g.builder.startPaste(bp) }, { sub: `${bp.size === 'large' ? 'Large' : 'Small'} grid ${bp.static ? 'station' : 'ship'} · ${bp.blocks.length} blocks${bp.desc ? ' · ' + bp.desc : ''}`, arrow: true })
+    })
+    if (total > rows) {
+      p.button(c, 'bpUp', p.w - 250, p.h - 54, 50, 38, '\u25B2', () => { this.scroll = Math.max(0, this.scroll - 60); this.panel.dirty = true }, { align: 'center' })
+      p.button(c, 'bpDn', p.w - 194, p.h - 54, 50, 38, '\u25BC', () => { this.scroll += 60; this.panel.dirty = true }, { align: 'center' })
     }
     this.back(c, p, null, 'CLOSE')
   }

@@ -13,7 +13,7 @@ import { Icons } from '../ui/icons.js'
 import { Sky, detailTexture } from '../world/sky.js'
 import { World } from './world.js'
 import { Builder, load } from './build.js'
-import { prefab } from './prefabs.js'
+import { prefab, PREFAB_LIST } from './prefabs.js'
 import { Engineer, EYE } from '../actors/engineer.js'
 import { SFX } from './sfx.js'
 import { Trees } from '../world/trees.js'
@@ -169,6 +169,7 @@ export class Game {
     for (const g of [...this.world.grids]) this.world.removeGrid(g)
     this.builder.cancelPaste()
     if (this.photo) { this.photo.grids = []; this.photo.on = false; this.photo.n = -1 }
+    this.dbgShowAt = null; this.dbgShow = null
     this.hideUi = false
     this.player = null; this.jump = null
     if (this.pmodel) this.pmodel.visible = false
@@ -243,7 +244,7 @@ export class Game {
       const s1 = at(36, 6, 0.4); this.spawnGrid('sparrow', s1.p.clone().addScaledVector(s1.up, 3), s1.q, { ground: true, sleep: true, static: false })
       if (id !== 'moon') { const s2 = at(-14, 58, -0.3); this.spawnGrid('mule', s2.p.clone().addScaledVector(s2.up, 10), s2.q, { ground: true, sleep: true, static: false }) }
       const s3 = at(40, -30, 1.2); this.spawnGrid('pick', s3.p.clone().addScaledVector(s3.up, 3), s3.q, { ground: true, sleep: true, static: false })
-      const sp = at(-3, -16, 0); spawn = { pos: sp.p.clone().addScaledVector(sp.up, 1.2), quat: sp.q }
+      const sp = at(-4, -36, 0); spawn = { pos: sp.p.clone().addScaledVector(sp.up, 1.2), quat: sp.q }
     } else if (id === 'orbit') {
       const c = new THREE.Vector3(-9000, 21000, 72000)
       const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(c, halvor.center, new THREE.Vector3(0, 1, 0))).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2))
@@ -384,12 +385,20 @@ export class Game {
       if (h?.solid) { for (let i = 0; i < 10; i++) this.world.survival.dig(h.point.clone().addScaledVector(dir, i * 1.3), 1.7, 0); this.p0.log('dbg tunnel at', Math.round(h.dist), 'm; voxel chunks', this.world.universe.nearestPlanet(eye)?.vox.chunks.size) } else this.p0.log('dbg no rock ahead')
     }
     if (e.code === 'Numpad7') this.p0.log('dbg uni', JSON.stringify({ awake: this.world.universe.planets.map(p => p.name), known: [...this.world.universe.known], sig: this.world.universe.signals(P.pos).slice(0, 2).map(x => Math.round(x.dist / 1000)), pos: P.pos.toArray().map(v => Math.round(v / 1000)), trees: this.world.trees.count, marks: (this.oreMarks || []).length }))
-    if (e.code === 'Numpad1') { // a showroom: each press puts the next design in front of you
+    if (e.code === 'Numpad1') { // a showroom: each press shows the next design, front then back, interface off
       if (this.dbgShow) this.world.removeGrid(this.dbgShow)
-      const ids = ['sparrow', 'pick', 'mule', 'mole', 'lancer', 'kestrel', 'foothold'], id = ids[this.dbgP = ((this.dbgP ?? -1) + 1) % ids.length]
-      const q = P.viewQuat(), g = this.spawnGrid(id, P.pos.clone(), q.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.35, e.shiftKey ? 2.5 : -0.7, 0, 'YXZ'))), { static: true })
-      g.pos.copy(P.eye()).add(new THREE.Vector3(0, 0, -(g.radius * 1.9 + 4)).applyQuaternion(q)).sub(g.com.clone().applyQuaternion(g.quat))
-      this.dbgShow = g; this.p0.log('dbg show', id, g.blocks.size)
+      if (!this.dbgShowAt) {
+        // out in the clear, the star behind one shoulder
+        const sun = this.world.sunDir.clone().normalize(), side = new THREE.Vector3().crossVectors(sun, new THREE.Vector3(0, 1, 0)).normalize()
+        this.dbgShowAt = P.pos.clone().addScaledVector(sun, 4000)
+        const dir = sun.clone().multiplyScalar(-1).addScaledVector(side, 0.75).normalize()
+        P.quat.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), dir, new THREE.Vector3().crossVectors(side, dir).normalize())); P.pitch = 0; P.jetpack = true
+      }
+      P.pos.copy(this.dbgShowAt); P.vel.set(0, 0, 0)
+      const n = this.dbgP = (this.dbgP ?? -1) + 1, id = PREFAB_LIST[Math.floor(n / 2) % PREFAB_LIST.length], back = n % 2
+      const q = P.viewQuat(), g = this.spawnGrid(id, P.pos.clone(), q.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(back ? -0.42 : 0.38, back ? 2.45 : -0.75, 0, 'YXZ'))), { static: true })
+      g.pos.copy(P.eye()).add(new THREE.Vector3(0, 0, -(g.radius * 1.5 + 3)).applyQuaternion(q)).sub(g.com.clone().applyQuaternion(g.quat))
+      this.dbgShow = g; this.hideUi = true; this.p0.log('dbg show', id, back, g.blocks.size)
     }
     if (e.code === 'Numpad2') P.pitch = -0.9
     if (e.code === 'Numpad8') P.pitch = 0

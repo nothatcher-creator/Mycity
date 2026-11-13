@@ -15,7 +15,7 @@ for (const id of PREFAB_LIST) {
   let t = performance.now(); for (const [ck, ch] of g.chunks) g.buildChunk(ck, ch); console.log('  mesh build', (performance.now() - t).toFixed(1), 'ms', [...g.chunks.values()].reduce((s, c) => s + (c.mesh ? c.mesh.geometry.attributes.position.count / 3 : 0), 0), 'tris')
 }
 // the lowest cells of each ship should include its landing clamps
-for (const id of ['sparrow', 'pick', 'mule', 'mole', 'lancer']) {
+for (const id of ['sparrow', 'pick', 'mule', 'mole', 'lancer', 'meridian', 'talon', 'crossguard', 'bastion']) {
   const bp = prefab(id), g = new Grid(world, bp.size, {})
   for (const [bid, i, j, k, rot, c] of bp.blocks) g.add(bid, i, j, k, rot, c)
   let low = Infinity; for (const b of g.blocks) for (const key of b.cells) { const j = Math.floor(key / 2048) % 2048 - 1024; low = Math.min(low, j) }

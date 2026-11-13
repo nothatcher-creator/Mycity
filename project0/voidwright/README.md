@@ -97,6 +97,20 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - Terrain skirts no longer hang into dug tunnels as curtains.
 - `tools/promo` holds the photo-scene capture and grading scripts used for promotional stills.
 
+## Round five: more ships, better bases
+
+- **Four new blueprints** (`src/game/fleet.js`), this game's own ships in the two great screen traditions
+  of starship design, under their own names: the **Meridian** (a saucer on a neck, an engine hull, two
+  drive pods), the **Talon** (a long-necked raider with wings swept down to gun pods), the **Crossguard**
+  (a small-grid strike fighter with four spread wings and four guns) and the **Bastion** (a wedge-hulled
+  capital ship with a bridge tower). All fly, on a planet or off it.
+- **Kestrel Station** and the **Foothold Outpost** are rebuilt: painted landing rings, white walls with a
+  teal band under bevelled roofs, a glazed control tower, a reactor keel and long solar wings on the
+  station; a habitat with a lookout, a roofed workshop, a tank yard and a dish mast at the outpost.
+- The Mule has tail fins and the Lancer a dorsal fin. The blueprint list is in two columns and pages.
+- `src/game/bpkit.js` is the blueprint kit (cells, skin, bevelled roofs, discs, struts);
+  `tools/bpcheck.mjs` checks every design for blocks that do not fit, loose pieces and thrust.
+
 ## Coming next
 
 - Wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a projector for

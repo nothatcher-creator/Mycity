@@ -14,7 +14,7 @@ const WAKE = 1050000, SLEEP = 1300000, SENSE = 3400000
 
 const HOME_BODIES = [
   { id: 'halvor', name: 'Halvor', kind: 'terra', R: 30000, g: 9.81, seed: 11, center: [0, 0, 0], relief: 1700,
-    atmo: { height: 11000, density: 1 / 24000, day: [0.36, 0.58, 1.0], dusk: [1.0, 0.45, 0.2], gain: 1.1 }, breathable: true, trees: true,
+    atmo: { height: 11000, density: 1 / 24000, day: [0.36, 0.58, 1.0], dusk: [1.0, 0.45, 0.2], gain: 1.1 }, breathable: true, trees: true, clouds: 0.42,
     ores: ['iron', 'nickel', 'silicon', 'iron', 'cobalt', 'ice'],
     blurb: 'Home. Breathable air, 1 g, forests, plains, dry lakes and high mountains.' },
   { id: 'ket', name: 'Ket', kind: 'moon', R: 8000, g: 2.45, seed: 23, center: [96000, 34000, -52000], relief: 900, ores: ['iron', 'magnesium', 'silver', 'ice', 'nickel'],

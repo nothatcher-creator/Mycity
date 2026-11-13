@@ -227,12 +227,34 @@ export function copyState(a, b) {
 // Thruster exhaust: a glowing cone per running thruster (one instanced mesh for all of them).
 class Flames {
   constructor(engine) {
-    const g = new THREE.ConeGeometry(0.5, 1, 12, 1, true).translate(0, -0.5, 0).rotateX(-Math.PI / 2)
-    const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })
-    this.mesh = new THREE.InstancedMesh(g, m, 400)
+    // each flame is a plume turned on a lathe: as wide as the nozzle where it leaves it (z = 0), a slight
+    // bulge, then closing to a point (z = 1). It is drawn twice: a broad coloured plume and a short white-hot
+    // core. Brighter than white where the picture can hold it.
+    const prof = [[0.4, 0], [0.5, 0.07], [0.48, 0.2], [0.4, 0.4], [0.28, 0.62], [0.14, 0.84], [0, 1]].map(([r, z]) => new THREE.Vector2(r, z))
+    const g = new THREE.LatheGeometry(prof, 14).rotateX(Math.PI / 2)
+    const m = new THREE.ShaderMaterial({
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false,
+      vertexShader: `varying vec3 vCol; varying float vT; varying vec3 vN; varying vec3 vV;
+        void main() {
+          vT = 1.0 - position.z; vCol = instanceColor;
+          vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+          vN = normalize(normalMatrix * mat3(instanceMatrix) * normal); vV = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `varying vec3 vCol; varying float vT; varying vec3 vN; varying vec3 vV;
+        void main() {
+          float face = abs(dot(normalize(vN), normalize(vV)));
+          float soft = 0.18 + 0.82 * pow(face, 1.6);          // the edges of the plume fade out
+          float along = vT * vT * (0.35 + 0.65 * vT);          // bright at the nozzle, gone at the tip
+          vec3 c = vCol * (0.5 + 2.4 * along) + vec3(1.0, 0.96, 0.9) * pow(vT, 6.0) * 1.6;
+          gl_FragColor = vec4(c * along * soft, 1.0);
+        }`,
+    })
+    this.max = 800
+    this.mesh = new THREE.InstancedMesh(g, m, this.max)
     this.mesh.frustumCulled = false
     this.mesh.count = 0
-    for (let i = 0; i < 400; i++) this.mesh.setColorAt(i, new THREE.Color(1, 1, 1))
+    for (let i = 0; i < this.max; i++) this.mesh.setColorAt(i, new THREE.Color(1, 1, 1))
     engine.scene.add(this.mesh)
     this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.s = new THREE.Vector3(); this.p = new THREE.Vector3(); this.c = new THREE.Color(); this.t = 0
   }
@@ -245,7 +267,7 @@ class Flames {
       if (g.comWorld().distanceTo(cam) > 4000) continue
       for (const b of g.parts.thrusters) {
         const o = b.out || 0
-        if (o < 0.02 || n >= 400) continue
+        if (o < 0.02 || n >= this.max - 1) continue
         const f = b.def.func.thruster, S = b.def.sizes[g.size]
         const r = Math.min(S[0], S[1]) * 0.42 * g.cs
         const len = r * (f.kind === 'atmo' ? 1.2 : f.kind === 'ion' ? 3 : 4.5) * (0.4 + o * 0.9) * (0.92 + Math.sin(this.t * 40 + n) * 0.08)
@@ -258,6 +280,13 @@ class Flames {
         this.mesh.setMatrixAt(n, this.m)
         const k = f.kind === 'atmo' ? 0.16 : 0.55 + o * 0.45
         this.c.setRGB(f.flame[0] * k, f.flame[1] * k, f.flame[2] * k)
+        this.mesh.setColorAt(n, this.c)
+        n++
+        // the core: narrower, shorter, paler
+        this.s.set(this.s.x * 0.5, this.s.y * 0.5, len * 0.62)
+        this.m.compose(this.p, this.q, this.s)
+        this.mesh.setMatrixAt(n, this.m)
+        this.c.setRGB(k * (0.55 + f.flame[0] * 0.45), k * (0.55 + f.flame[1] * 0.45), k * (0.55 + f.flame[2] * 0.45))
         this.mesh.setColorAt(n, this.c)
         n++
       }

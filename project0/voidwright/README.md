@@ -83,6 +83,20 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - **The lot's exterior** (`lot/gen.mjs`): a shipyard with Halvor turning in the middle, its moon, a rock
   belt, the Kestrel in orbit, and the game's own ships lapping through a jump gate.
 
+## Round four: the look
+
+- **A finishing pass** (`src/core/post.js`): the scene is drawn into a floating-point picture, so engine
+  flames, lamps and the star can be brighter than white; their glow is added back as bloom, with a soft
+  shoulder, a little contrast and colour, a vignette and edge smoothing. Settings has "Bloom and colour"
+  (on for Medium and High, never on Low); it switches itself off for the visit if the game runs slowly.
+- **Clouds** over every world with air (`src/world/clouds.js`): one shell above the highest ground, seen
+  from orbit and from below, lit by the star and tinted at dusk, thinning to mist as you fly through.
+- **Thruster flames** are shaded plumes with a white-hot core instead of flat cones.
+- **The engineer** has a rounded suit, a visor, a pack with tanks, and arms and legs that swing when walking.
+- **O hides the interface** for taking pictures.
+- Terrain skirts no longer hang into dug tunnels as curtains.
+- `tools/promo` holds the photo-scene capture and grading scripts used for promotional stills.
+
 ## Coming next
 
 - Wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a projector for
@@ -90,8 +104,8 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 
 ## Files
 
-- `src/core`: the split-depth camera-relative engine, input, touch, noise.
-- `src/world`: the sectors and home system (`universe.js`), planets, dug voxels, trees, asteroids, sky,
+- `src/core`: the split-depth camera-relative engine, the finishing pass, input, touch, noise.
+- `src/world`: the sectors and home system (`universe.js`), planets, dug voxels, clouds, trees, asteroids, sky,
   haze shader.
 - `src/grid`: block catalogue and shapes, the texture atlas, rotations, grids, flight control, physics.
 - `src/game`: the game loop, world, building, items and recipes, survival rules, ready-made designs, sound.

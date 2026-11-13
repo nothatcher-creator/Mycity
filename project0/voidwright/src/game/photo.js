@@ -8,7 +8,7 @@ const lookQ = (from, to, up) => new THREE.Quaternion().setFromRotationMatrix(new
 
 export class Photo {
   constructor(game) { this.game = game; this.grids = []; this.on = false; this.n = -1 }
-  clear() { for (const g of this.grids) this.game.world.removeGrid(g); this.grids = []; this.burn = []; this.pin = null; this.digs = null }
+  clear() { for (const g of this.grids) this.game.world.removeGrid(g); this.grids = []; this.burn = []; this.pin = null; this.pinVel = null; this.digs = null }
   // a design placed as a frozen grid: centre of mass at `at`, nose toward `fwd`
   ship(id, at, fwd, up, burn = 'main') {
     const G = this.game, q = lookQ(V(0, 0, 0), fwd, up)
@@ -85,11 +85,11 @@ export class Photo {
     } else if (sc === 'planet' || sc === 'thessa' || sc === 'moon') {
       const base = W.grids.find(g => g.static), pl = U.nearestPlanet(base.pos)
       const c = base.comWorld(), d = c.clone().sub(pl.center).normalize()
-      const s = this.sunAt(d, [0.2, 0.55, 0.16, 0.5][n % 4], n % 4 === 2 ? -1 : 1)
+      const s = this.sunAt(d, [0.2, 0.55, 0.16, 0.5, 0.45][n % 5], n % 5 === 2 ? -1 : 1)
       const sf = s.clone().addScaledVector(d, -s.dot(d)).normalize() // the star's side, along the ground
       const r = V().crossVectors(sf, d).normalize()
       const ground = (a, b) => { const q = c.clone().addScaledVector(sf, a).addScaledVector(r, b).sub(pl.center).normalize(); return pl.center.clone().addScaledVector(q, pl.R + pl.height(q.x, q.y, q.z)) }
-      if (n % 4 === 0) {
+      if (n % 5 === 0) {
         // golden hour at the outpost: a cruiser coming in over the trees
         const lp = ground(20, -34).addScaledVector(d, 30)
         this.ship('lancer', lp, sf.clone().multiplyScalar(-0.3).addScaledVector(r, 1).normalize(), d, 'down')
@@ -98,7 +98,7 @@ export class Photo {
         tgt = c.clone().addScaledVector(d, 13).addScaledVector(sf, 12).addScaledVector(r, -16)
         up = d; this.fov = 52
         this.pin = ground(-24.5, 18.5).addScaledVector(d, 1.0); this.pinQ = lookQ(V(0, 0, 0), sf.clone().addScaledVector(r, -0.5).normalize(), d); this.model = true
-      } else if (n % 4 === 1) {
+      } else if (n % 5 === 1) {
         // midday: the hauler lifting off beside the base
         const mp = ground(-8, 70).addScaledVector(d, 24)
         this.ship('mule', mp, r.clone().multiplyScalar(-1).addScaledVector(sf, 0.4).normalize(), d.clone().addScaledVector(r, 0.06).normalize(), 'down')
@@ -106,13 +106,21 @@ export class Photo {
         tgt = mp.clone().addScaledVector(d, -6).addScaledVector(sf, 10)
         up = d; this.fov = 60
         this.pin = ground(-70, 10).addScaledVector(d, 1)
-      } else if (n % 4 === 2) {
+      } else if (n % 5 === 2) {
         // dusk from above: the valley, the base lights, a scout banking past
         this.ship('sparrow', c.clone().addScaledVector(d, 46).addScaledVector(sf, 10).addScaledVector(r, 24), r.clone().multiplyScalar(-1).addScaledVector(sf, 0.6).normalize(), d.clone().addScaledVector(sf, 0.35).normalize())
         cam = c.clone().addScaledVector(d, 58).addScaledVector(sf, -52).addScaledVector(r, 60)
         tgt = c.clone().addScaledVector(d, 16).addScaledVector(sf, 30)
         up = d; this.fov = 62
         this.pin = c.clone().addScaledVector(d, 300)
+      } else if (n % 5 === 4) {
+        // the engineer, close: a walk past the outpost
+        const at = ground(-30, 14)
+        this.pin = at.clone().addScaledVector(d, 1.0); this.pinQ = lookQ(V(0, 0, 0), r.clone().multiplyScalar(-1).addScaledVector(sf, 0.3).normalize(), d); this.model = true
+        this.pinVel = V(0, 0, 0).addScaledVector(r, -3.2)
+        cam = at.clone().addScaledVector(sf, -2.6).addScaledVector(r, -2.2).addScaledVector(d, 1.5)
+        tgt = at.clone().addScaledVector(d, 1.15)
+        up = d; this.fov = 50
       } else {
         // a mine: looking out of a shaft cut into the ground, the miner at its mouth
         const s0 = this.sunAt(d, 0.2, 1), sf0 = s0.clone().addScaledVector(d, -s0.dot(d)).normalize(), r0 = V().crossVectors(sf0, d).normalize()
@@ -167,7 +175,7 @@ export class Photo {
         b.out = mode === 'main' ? (d.z > 0.5 ? 0.9 : 0) : mode === 'down' ? (d.y < -0.5 ? 0.75 : d.z > 0.5 ? 0.25 : 0) : 0
       }
     }
-    if (this.pin && !P.seat) { P.pos.copy(this.pin); P.vel.set(0, 0, 0); if (this.pinQ) { P.quat.copy(this.pinQ); P.pitch = 0 } }
+    if (this.pin && !P.seat) { P.pos.copy(this.pin); P.vel.set(0, 0, 0); if (this.pinVel) { P.vel.copy(this.pinVel); P.onGround = true } if (this.pinQ) { P.quat.copy(this.pinQ); P.pitch = 0 } }
     G.view = this.model || this.ui ? 'tp' : 'fp'
     if (this.sparkAt && Math.random() < 0.6) W.sparks.burst(this.sparkAt.clone().add(V(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(5)), 10, 6)
     if (this.cam) { G.camPos.copy(this.cam.pos); G.camQuat.copy(this.cam.quat) }

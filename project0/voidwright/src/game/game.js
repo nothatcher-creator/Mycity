@@ -23,7 +23,7 @@ import { netPut } from './survival.js'
 import { Photo } from './photo.js'
 
 const pause = () => new Promise(r => setTimeout(r, 0))
-const DEFAULTS = { quality: 'medium', resScale: 1, fov: 70, sens: 1, invertY: false, volume: 0.8 }
+const DEFAULTS = { quality: 'medium', resScale: 1, fov: 70, sens: 1, invertY: false, volume: 0.8, post: true }
 let DEBUG = false
 
 class Save {
@@ -61,6 +61,7 @@ export class Game {
     const e = this.engine = new Engine(p0)
     e.resScale = this.settings.resScale
     e.setQuality(this.settings.quality)
+    this.applyPost()
     e.detailTex = detailTexture()
     e.spaceUniforms = {
       uPC: { value: new THREE.Vector3() }, uPR: { value: 1 }, uAR: { value: 1 }, uDen: { value: 0 }, uSunD: { value: new THREE.Vector3(0, 1, 0) },
@@ -111,6 +112,7 @@ export class Game {
     await this.warm()
     if (this.debug) this.p0.log('dbg boot: terrain', Math.round(tb - tw), 'warm', Math.round(performance.now() - tb), 'icons+', Math.round(tw - t0))
     p0.log('boot', Math.round(performance.now() - t0), 'ms')
+    if (this.debug) { const r = this.engine.renderer, gl = r.getContext(); p0.log('dbg renderer', JSON.stringify({ tone: r.toneMapping, exp: r.toneMappingExposure, out: r.outputColorSpace, aa: gl.getContextAttributes?.().antialias, gl2: !!r.capabilities?.isWebGL2, f: r.extensions?.has('EXT_color_buffer_float'), hf: r.extensions?.has('EXT_color_buffer_half_float'), pr: p0.pixelRatio, clear: r.getClearColor(new THREE.Color()).getHexString(), ca: r.getClearAlpha() })) }
     L(1, 'ready')
     this.state = 'menu'
     this.menus.open('title')
@@ -159,12 +161,15 @@ export class Game {
     p0.on('wheel', e => { if (this.menus.visible) { this.input.mouse.wheel = 0; this.menus.wheel(e.dy ?? e.deltaY ?? 0) } })
   }
   get ui_blocking() { return this.menus.visible }
-  setQuality(q) { this.settings.quality = q; this.engine.setQuality(q) }
+  setQuality(q) { this.settings.quality = q; this.engine.setQuality(q); this.applyPost() }
+  // bloom and colour are for Medium and High; Low keeps every frame it can
+  applyPost() { this.engine.postOn = !!this.settings.post && this.settings.quality !== 'low' && !this.postSlow }
   // ---- worlds ----
   clearWorld() {
     for (const g of [...this.world.grids]) this.world.removeGrid(g)
     this.builder.cancelPaste()
-    if (this.photo) { this.photo.grids = []; this.photo.on = false; this.photo.n = -1; this.engine.noUI = false }
+    if (this.photo) { this.photo.grids = []; this.photo.on = false; this.photo.n = -1 }
+    this.hideUi = false
     this.player = null; this.jump = null
     if (this.pmodel) this.pmodel.visible = false
   }
@@ -397,6 +402,7 @@ export class Game {
     if (e.code === 'F10' && P.seat) { const U = this.world.universe, pl = e.shiftKey || this.dbgJ ? U.signals(P.pos)[0] : U.places().find(x => x.id === 'ket'); this.dbgJ = true; if (pl) { this.planJump(pl); this.jump.t = 0.15 } }
     if (e.code === 'F7') { this.world.universe.time += 600; this.hud.toast('+10 min') }
     if (e.code === 'Numpad0') { this.engine.resScale = this.engine.resScale === 2 ? 0.4 : 2; this.engine.resize() }
+    if (e.code === 'NumpadAdd') { this.engine.postOn = !this.engine.postOn; this.p0.log('dbg post', this.engine.postOn, this.engine.post.ok) }
     if (e.code === 'Numpad9') { this.photo = this.photo || new Photo(this); this.photoWant = (this.photoWant ?? this.photo.n) + 1 }
   }
   // ---- the frame ----
@@ -432,6 +438,14 @@ export class Game {
     this.sfx.update(dt)
     this.ui.update()
     mk()
+    if (!ph) e.noUI = !!this.hideUi && this.state === 'play' && !this.menus.visible
+    // if the game runs slowly for a long stretch with the finishing pass on, it is switched off for this visit
+    if (this.state === 'play' && !ph && e.postOn && !this.postKeep && !this.menus.visible) {
+      const now = performance.now(), d = now - (this.ftLast || now)
+      this.ftLast = now
+      if (d > 0 && d < 1000) { this.ftAvg = (this.ftAvg ?? 16) * 0.98 + d * 0.02; this.ftN = (this.ftN || 0) + 1 }
+      if (this.ftN > 300 && this.ftAvg > 42) { this.postSlow = true; this.applyPost(); this.hud.toast('Bloom and colour switched off to keep the game smooth (Settings turns them back on)') }
+    } else this.ftLast = null
     e.render(false)
     if (this.debug) { const gl = e.renderer.getContext(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this._px || (this._px = new Uint8Array(4))) }
     mk()
@@ -466,6 +480,7 @@ export class Game {
       if (inp.hit('terminal')) { this.terminalGrid = P.seat?.grid || B.hit?.grid || P.ground; this.menus.open('terminal') }
       if (inp.hit('blueprints')) { if (W.creative) this.menus.open('blueprints'); else this.hud.toast('Blueprints are for creative mode (a projector arrives in the next update)') }
       if (inp.hit('map')) this.menus.open('map')
+      if (inp.hit('hideUi')) { this.hideUi = !this.hideUi; if (!this.hideUi) this.hud.toast('Interface back') }
       if (inp.hit('inventory')) { this.invGrid = P.seat?.grid || (B.hit?.grid && B.hit.dist < 6 ? B.hit.grid : null) || this.nearGrid(P.pos, 8); this.menus.open('inventory') }
     }
     let piloted = null, ctl = null
@@ -631,30 +646,66 @@ export class Game {
     this.engine.rel(P.pos, m.position)
     m.quaternion.copy(P.quat)
     m.children.find(c => c.name === 'flame').visible = P.jetpack && P.thrusting > 0.05
+    // walking swings the limbs; in flight they trail a little
+    const L = m.userData.limbs, v = P.vel.length()
+    const walk = P.onGround ? Math.min(1, v / 4.5) : 0, fly = P.onGround ? 0 : 1
+    this.stride = (this.stride || 0) + (this.time - (this.strideT ?? this.time)) * (2.5 + v * 1.5) * (walk > 0.05 ? 1 : 0)
+    this.strideT = this.time
+    const sw = Math.sin(this.stride) * 0.65 * walk
+    L.legs[0].rotation.x = sw + fly * 0.22; L.legs[1].rotation.x = -sw + fly * 0.3
+    L.arms[0].rotation.x = -sw * 0.7 - fly * 0.12; L.arms[1].rotation.x = sw * 0.7 - fly * 0.12
+    L.arms[0].rotation.z = -0.07 - fly * 0.16; L.arms[1].rotation.z = 0.07 + fly * 0.16
   }
 }
 
-// the engineer: a suit, a helmet with a teal visor, a jetpack
+// the engineer: a rounded suit with orange trim, a helmet with a teal visor, a pack with two tanks and a
+// jetpack; arms and legs hang from pivots so they can swing
 function makeEngineerModel(engine) {
   const g = new THREE.Group()
-  const suit = new THREE.MeshStandardMaterial({ color: 0xd8dde2, roughness: 0.7, metalness: 0.1 })
-  const dark = new THREE.MeshStandardMaterial({ color: 0x30353a, roughness: 0.6, metalness: 0.3 })
-  const accent = new THREE.MeshStandardMaterial({ color: 0xe08a2a, roughness: 0.6 })
-  const visor = new THREE.MeshStandardMaterial({ color: 0x1a4a4c, roughness: 0.1, metalness: 0.8, emissive: 0x0a3a38, emissiveIntensity: 0.6 })
-  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m }
-  add(new THREE.BoxGeometry(0.46, 0.62, 0.28), suit, 0, 1.18, 0)
-  add(new THREE.BoxGeometry(0.48, 0.12, 0.3), accent, 0, 1.0, 0)
-  add(new THREE.SphereGeometry(0.17, 16, 12), suit, 0, 1.62, 0)
-  add(new THREE.SphereGeometry(0.135, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), visor, 0, 1.63, -0.06).rotation.x = -Math.PI / 2
+  const suit = new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.62, metalness: 0.08 })
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2b3036, roughness: 0.55, metalness: 0.35 })
+  const accent = new THREE.MeshStandardMaterial({ color: 0xe8862a, roughness: 0.55 })
+  const metal = new THREE.MeshStandardMaterial({ color: 0x9aa3ab, roughness: 0.35, metalness: 0.8 })
+  const visor = new THREE.MeshStandardMaterial({ color: 0x123c40, roughness: 0.08, metalness: 0.9, emissive: 0x1fb6a8, emissiveIntensity: 0.55 })
+  const lamp = new THREE.MeshBasicMaterial({ color: 0x7ffff0 })
+  const add = (parent, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m }
+  // body
+  add(g, new THREE.CapsuleGeometry(0.2, 0.3, 4, 12), suit, 0, 1.2, 0).scale.set(1.18, 1, 0.82)
+  add(g, new THREE.BoxGeometry(0.3, 0.2, 0.06), dark, 0, 1.3, -0.165)
+  add(g, new THREE.BoxGeometry(0.16, 0.03, 0.02), lamp, 0, 1.33, -0.2)
+  add(g, new THREE.CylinderGeometry(0.215, 0.215, 0.09, 14), accent, 0, 0.98, 0).scale.set(1.12, 1, 0.8)
+  add(g, new THREE.CylinderGeometry(0.2, 0.19, 0.16, 14), suit, 0, 0.88, 0).scale.set(1.1, 1, 0.8)
+  // helmet
+  add(g, new THREE.CylinderGeometry(0.12, 0.15, 0.06, 14), dark, 0, 1.47, 0)
+  add(g, new THREE.SphereGeometry(0.185, 20, 14), suit, 0, 1.64, 0)
+  add(g, new THREE.SphereGeometry(0.15, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), visor, 0, 1.645, -0.062).rotation.x = -Math.PI / 2
+  for (const s of [-1, 1]) add(g, new THREE.CylinderGeometry(0.045, 0.045, 0.03, 10), dark, s * 0.185, 1.64, 0).rotation.z = Math.PI / 2
+  // arms and legs on pivots
+  const limbs = { arms: [], legs: [] }
   for (const s of [-1, 1]) {
-    add(new THREE.BoxGeometry(0.15, 0.5, 0.16), suit, s * 0.32, 1.17, 0)
-    add(new THREE.BoxGeometry(0.17, 0.82, 0.19), suit, s * 0.12, 0.45, 0)
-    add(new THREE.BoxGeometry(0.18, 0.1, 0.27), dark, s * 0.12, 0.05, -0.03)
+    const arm = new THREE.Group(); arm.position.set(s * 0.31, 1.39, 0); g.add(arm); limbs.arms.push(arm)
+    add(arm, new THREE.SphereGeometry(0.095, 12, 8), accent, 0, 0, 0)
+    add(arm, new THREE.CapsuleGeometry(0.068, 0.2, 3, 10), suit, 0, -0.17, 0)
+    add(arm, new THREE.CapsuleGeometry(0.06, 0.18, 3, 10), suit, 0, -0.42, -0.02)
+    add(arm, new THREE.SphereGeometry(0.068, 10, 8), dark, 0, -0.58, -0.03)
+    const leg = new THREE.Group(); leg.position.set(s * 0.115, 0.84, 0); g.add(leg); limbs.legs.push(leg)
+    add(leg, new THREE.CapsuleGeometry(0.09, 0.24, 3, 10), suit, 0, -0.2, 0)
+    add(leg, new THREE.BoxGeometry(0.13, 0.1, 0.06), dark, 0, -0.4, -0.075)
+    add(leg, new THREE.CapsuleGeometry(0.078, 0.24, 3, 10), suit, 0, -0.56, 0)
+    add(leg, new THREE.BoxGeometry(0.17, 0.11, 0.29), dark, 0, -0.785, -0.04)
   }
-  add(new THREE.BoxGeometry(0.38, 0.5, 0.2), dark, 0, 1.2, 0.24)
-  for (const s of [-1, 1]) add(new THREE.CylinderGeometry(0.06, 0.08, 0.22, 10), dark, s * 0.12, 0.88, 0.28)
-  const fl = add(new THREE.ConeGeometry(0.07, 0.5, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0x8adfff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 0.55, 0.28)
+  // the pack: frame, two tanks, nozzles, an aerial with a light
+  add(g, new THREE.BoxGeometry(0.36, 0.5, 0.17), dark, 0, 1.22, 0.23)
+  for (const s of [-1, 1]) {
+    add(g, new THREE.CapsuleGeometry(0.07, 0.3, 3, 10), metal, s * 0.1, 1.24, 0.34)
+    add(g, new THREE.CylinderGeometry(0.055, 0.075, 0.14, 10), dark, s * 0.12, 0.93, 0.27)
+  }
+  add(g, new THREE.BoxGeometry(0.2, 0.05, 0.02), accent, 0, 1.43, 0.32)
+  add(g, new THREE.CylinderGeometry(0.008, 0.008, 0.34, 6), metal, 0.15, 1.62, 0.26)
+  add(g, new THREE.SphereGeometry(0.018, 8, 6), lamp, 0.15, 1.8, 0.26)
+  const fl = add(g, new THREE.ConeGeometry(0.11, 0.6, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0x8adfff, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 0.58, 0.27)
   fl.rotation.x = Math.PI; fl.name = 'flame'
+  g.userData.limbs = limbs
   engine.scene.add(g)
   return g
 }

@@ -6,6 +6,7 @@
 //    three slices (far, middle, near), each with its own near and far planes, the depth cleared between them.
 //    The far slice also draws the sky.
 import * as THREE from 'three'
+import { Post } from './post.js'
 
 export const ANCHOR = new THREE.Vector3(0, 14, 0)
 
@@ -15,7 +16,7 @@ export const QUALITY = {
   high: { name: 'High', pixel: 1, dpr: 2, detail: 1.45, rocks: 1.3, lights: 4 },
 }
 // the slices: far to near (each slightly overlapping the next)
-const SLICES = [{ near: 40000, far: 8e7 }, { near: 600, far: 41000 }, { near: 0.04, far: 610 }]
+export const SLICES = [{ near: 40000, far: 8e7 }, { near: 600, far: 41000 }, { near: 0.04, far: 610 }]
 
 export class Engine {
   constructor(p0) {
@@ -54,6 +55,8 @@ export class Engine {
     this.renderer.autoClear = false
     this.camera.position.copy(ANCHOR)
     this.background = null
+    this.post = new Post(this.renderer)
+    this.postOn = true
     this.resize()
     p0.on('resize', () => this.resize())
   }
@@ -107,9 +110,11 @@ export class Engine {
   }
   render(drawViewmodel) {
     const r = this.renderer, cam = this.camera, sc = this.scene
-    r.setRenderTarget(null)
+    if (this.uiOnly) { r.setRenderTarget(null); r.clear(true, true, true); r.render(this.uiScene, this.uiCamera); return }
+    // with the finishing pass on, the scene goes into its picture first and reaches the screen through it
+    const post = this.post && this.postOn && this.post.ready()
+    r.setRenderTarget(post ? this.post.rt : null)
     r.clear(true, true, true)
-    if (this.uiOnly) { r.render(this.uiScene, this.uiCamera); return }
     for (let i = 0; i < SLICES.length; i++) {
       const s = SLICES[i]
       cam.near = s.near; cam.far = s.far; cam.updateProjectionMatrix()
@@ -119,6 +124,7 @@ export class Engine {
     }
     sc.background = this.background
     if (drawViewmodel) { r.clearDepth(); r.render(this.vmScene, this.vmCamera) }
+    if (post) { this.post.finish(); r.setRenderTarget(null) }
     if (this.noUI) return
     r.clearDepth()
     r.render(this.uiScene, this.uiCamera)

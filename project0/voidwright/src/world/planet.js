@@ -8,6 +8,7 @@ import { clamp, smooth } from '../core/noise.js'
 import { lin } from '../core/color.js'
 import { patchMaterial, ATMO_UNIFORMS } from './atmo-glsl.js'
 import { PlanetVoxels } from './voxels.js'
+import { makeClouds } from './clouds.js'
 
 const SEG = 32
 const VEG = [0.34, 0.41, 0.22], VEG2 = [0.24, 0.33, 0.18]
@@ -199,6 +200,8 @@ export class Planet {
     this.ores = def.ores || []
     this.tmp = [0, 0, 0]
     if (this.atmo) this.makeSky()
+    this.clouds = makeClouds(this, def)
+    if (this.clouds) this.group.add(this.clouds.mesh)
   }
   node(face, level, a0, b0, size) { return { face, level, a0, b0, size, children: null, mesh: null, want: false, lastUsed: 0, queued: false, center: null } }
   // ---- the ground ----
@@ -436,6 +439,7 @@ export class Planet {
     // the uniforms the shaders use (scene coordinates)
     this.engine.rel(this.center, this.uniforms.uPC.value)
     if (this.sky) { this.sky.u.uPC.value.copy(this.uniforms.uPC.value); this.sky.u.uSunD.value.copy(this.uniforms.uSunD.value) }
+    if (this.clouds) { this.clouds.u.uSunD.value.copy(this.uniforms.uSunD.value); this.clouds.u.uTime.value = (now * 0.00035) % 1 }
   }
   visit(nd, lc) {
     nd.lastUsed = this.now

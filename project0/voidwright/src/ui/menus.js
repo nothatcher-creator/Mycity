@@ -66,7 +66,7 @@ export class Menus {
     B('new', 'NEW WORLD', 'Creative or survival, five places to start', () => this.open('new'))
     B('settings', 'SETTINGS', 'Graphics, controls, sound', () => this.open('settings'))
     B('controls', 'CONTROLS', 'Keys for flying and building', () => this.open('controls'))
-    if (k > 0.8) text(c, 'Round two of three: wheels, rotors, pistons, docking and saved worlds come next.', 8, y + 14, { size: 11, weight: 500, color: C.dim, shadow: true, max: p.w - 16 })
+    if (k > 0.8) text(c, 'Still to come: wheels, rotors, pistons, docking and saved worlds.', 8, y + 14, { size: 11, weight: 500, color: C.dim, shadow: true, max: p.w - 16 })
   }
   // ---- choosing a start ----
   page_new(c, p) {
@@ -126,6 +126,7 @@ export class Menus {
     }
     row('Graphics', [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], s.quality, v => g.setQuality(v))
     row('Resolution', [[0.6, '60%'], [0.8, '80%'], [1, '100%']], s.resScale, v => { s.resScale = v; g.engine.resScale = v; g.engine.resize() })
+    row('Bloom and colour', [[false, 'Off'], [true, 'On']], s.quality === 'low' ? false : !!s.post, v => { s.post = v; g.postSlow = false; g.postKeep = v; g.ftN = 0; g.applyPost(); if (v && s.quality === 'low') g.hud.toast('Bloom and colour need Medium or High graphics') })
     row('Field of view', [[60, '60'], [70, '70'], [80, '80'], [90, '90']], s.fov, v => { s.fov = v })
     row('Mouse speed', [[0.5, 'Slow'], [0.8, ''], [1, 'Normal'], [1.4, ''], [2, 'Fast']], s.sens, v => { s.sens = v; g.input.sens = v })
     row('Invert look', [[false, 'Off'], [true, 'On']], s.invertY, v => { s.invertY = v; g.input.invertY = v })
@@ -138,7 +139,7 @@ export class Menus {
     const groups = [
       ['ON FOOT', ['forward', 'back', 'left', 'right', 'up', 'down', 'sprint', 'jetpack', 'dampeners', 'rollL', 'rollR', 'use', 'light', 'view']],
       ['BUILDING', ['catalog', 'size', 'gridType', 'palette', 'blueprints', 'rotYawL', 'rotYawR', 'rotPitchU', 'rotPitchD', 'rotRollL', 'rotRollR']],
-      ['SHIPS AND SCREENS', ['dampeners', 'park', 'jump', 'terminal', 'inventory', 'map', 'freeLook', 'pause', 'help']],
+      ['SHIPS AND SCREENS', ['dampeners', 'park', 'jump', 'terminal', 'inventory', 'map', 'freeLook', 'hideUi', 'pause', 'help']],
     ]
     const cw = (p.w - 36) / 3
     groups.forEach(([t, list], gi) => {

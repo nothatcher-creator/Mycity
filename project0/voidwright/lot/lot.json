@@ -1,8 +1,0 @@
-{
-  "materials": {
-    "Glow": { "surface": "glow.glsl", "glow": 1.7 },
-    "Air": { "surface": "air.glsl", "transparent": true, "glow": 0.6 },
-    "Sign": { "surface": "sign.glsl", "doubleSided": true, "glow": 1.1 },
-    "Map": { "glow": 0 }
-  }
-}

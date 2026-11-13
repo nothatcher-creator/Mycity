@@ -1,20 +1,23 @@
-// Glow: the yard's lights. The mesh's uv says what each piece is: uv.x = type + phase, uv.y = its kind.
-// 0 engine flame (kind 0 ion blue, 1 fuel orange, 2 the Mule's fans: lit only while it flies),
-// 1 running lights up the frame (kind 1: amber), 2 a blinking beacon, 3 the jump gate (kind 1: the flash
-// across its mouth as a ship goes through, twice a loop), 4 sparks at the rock, 5 a steady lamp
-// (kind 1: teal strip). Timing runs on the world clock, in step with the 60 s animation loop.
+// The yard's lights. Each piece's uv says what it is: uv.x = type + phase, uv.y = its kind.
+// 0 fire (kind 0: the fighter's engines, lit from ignition until it has gone; 1: its lift jets, until it runs;
+// 2: the engineer's jetpack, always), 1 running lights up the frame (kind 1: amber), 2 a blinking beacon,
+// 3 the flash where the fighter jumps, 4 the welding torch (kind 0 sparks, 1 the beam, 2 the white point), lit
+// only while a piece is being welded, 5 a steady lamp (kind 1: a teal strip). Time is the world clock, in step
+// with the 60 s animation.
 void p0Surface(inout P0Surface s) {
   float type = floor(s.uv.x + 0.001);
   float ph = fract(s.uv.x);
   float kind = s.uv.y;
   float T = p0Time;
+  float L = mod(T, 60.00);
   vec3 col = vec3(0.2, 0.9, 0.85);
   float on = 1.0;
   if (type < 0.5) {
-    float fl = 0.75 + 0.25 * sin(T * 31.0 + ph * 40.0);
-    col = kind < 0.5 ? vec3(0.35, 0.7, 1.0) : vec3(1.0, 0.55, 0.2);
-    if (kind > 1.5) { float c = fract(T / 60.0); on = step(8.0 / 60.0, c) * step(c, 46.0 / 60.0); col = vec3(1.0, 0.8, 0.5); }
-    col *= fl * 2.4;
+    float fl = 0.72 + 0.28 * sin(T * 31.0 + ph * 40.0);
+    if (kind < 0.5) { on = step(29.50, L) * step(L, 42.50); col = mix(vec3(1.0, 0.5, 0.25), vec3(1.0, 0.85, 0.75), smoothstep(37.00, 42.20, L)) * (1.6 + 2.2 * smoothstep(29.50, 38.50, L)); }
+    else if (kind < 1.5) { on = step(29.80, L) * step(L, 38.20); col = vec3(1.0, 0.75, 0.45) * 2.0; }
+    else col = vec3(0.45, 0.8, 1.0) * 2.2;
+    col *= fl;
   } else if (type < 1.5) {
     float band = pow(0.5 + 0.5 * sin(s.position.y * 1.1 - T * 2.6 + ph * 6.283), 8.0);
     col = mix(vec3(0.1, 0.9, 0.85), vec3(1.0, 0.45, 0.1), kind) * (0.3 + band * 2.6);
@@ -22,15 +25,16 @@ void p0Surface(inout P0Surface s) {
     on = step(0.6, fract(T * 0.8 + ph));
     col = vec3(1.0, 0.4, 0.15) * 2.6;
   } else if (type < 3.5) {
-    float c = fract(T / 30.0);
-    float flash = exp(-min(c, 1.0 - c) * 36.0);
-    if (kind > 0.5) { on = step(0.06, flash); col = vec3(0.6, 1.0, 0.95) * flash * 3.0; }
-    else { float chase = pow(0.5 + 0.5 * sin(ph * 18.85 - T * 5.0), 4.0); col = vec3(0.2, 0.95, 0.9) * (0.5 + chase * 1.7 + flash * 4.0); }
+    float f = exp(-abs(L - 42.20) * 5.0);
+    on = step(0.05, f);
+    col = vec3(0.7, 0.95, 1.0) * f * 5.0;
   } else if (type < 4.5) {
-    on = step(0.5, fract(sin(floor(T * 14.0) + ph * 91.0) * 437.5));
-    col = vec3(1.0, 0.75, 0.35) * 3.0;
+    float st = mod(L, 3.60);
+    on = step(L, 25.20) * step(1.10, st) * step(st, 3.00);
+    if (kind < 0.5) on *= step(0.45, fract(sin(floor(T * 16.0) + ph * 91.0) * 437.5));
+    col = kind < 0.5 ? vec3(1.0, 0.75, 0.35) * 3.2 : kind < 1.5 ? vec3(0.5, 0.85, 1.0) * (1.6 + 0.8 * sin(T * 40.0)) : vec3(1.0, 0.97, 0.9) * (3.0 + 1.5 * sin(T * 53.0));
   } else {
-    col = kind > 0.5 ? vec3(0.2, 0.9, 0.85) * (1.2 + 0.5 * sin(T * 2.0 + s.position.x + s.position.z)) : vec3(1.0, 0.95, 0.85) * 1.6;
+    col = kind > 0.5 ? vec3(0.2, 0.9, 0.85) * (1.2 + 0.5 * sin(T * 2.0 + s.position.x + s.position.z)) : vec3(1.0, 0.95, 0.85) * 1.8;
   }
   if (on < 0.5) discard;
   s.color = vec3(0.02);

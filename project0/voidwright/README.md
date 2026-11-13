@@ -80,8 +80,7 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
   finned ion, two-stage bell).
 - **Designs rebuilt** with bevelled hulls: Sparrow, Pick, Mule, Lancer, the Kestrel station, the Foothold
   outpost, and a new large-grid miner, the Mole.
-- **The lot's exterior** (`lot/gen.mjs`): a shipyard with Halvor turning in the middle, its moon, a rock
-  belt, the Kestrel in orbit, and the game's own ships lapping through a jump gate.
+- **The lot's exterior** (`lot/gen.mjs`) was first an orrery in a shipyard frame; round six replaced it.
 
 ## Round four: the look
 
@@ -111,6 +110,15 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - `src/game/bpkit.js` is the blueprint kit (cells, skin, bevelled roofs, discs, struts);
   `tools/bpcheck.mjs` checks every design for blocks that do not fit, loose pieces and thrust.
 
+## Round six: the exterior is a story
+
+- The lot's street view (`lot/gen.mjs`) is now one 60 s loop: an engineer with a jetpack and a welding torch
+  builds the Crossguard over a blueprint of light in seven pieces, climbs in, lifts off, turns toward
+  Halvor in the sky and jumps away in a flash; the pad stands empty, then it starts again.
+- The fighter's pieces are separate animated parts that swell into place; flames, the torch, the jump flash
+  and the blueprint are lit by the lot's shaders on the same clock as the animation. The generator writes
+  the shaders and `lot.json` itself, so the two cannot drift apart.
+
 ## Coming next
 
 - Wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a projector for
@@ -128,4 +136,4 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
   checks the designs (block overlaps, lift/weight); `tools/bench.mjs` times terrain and rock building; `tools/survivaltest.mjs`, `tools/weldtest.mjs` and
   `tools/digtest.mjs` check mining, production and welding without the renderer; `tools/voxtest.mjs` checks
   tunnels.
-- `lot/`: the exterior generator, its shaders and the three built levels of detail in `lot/out`.
+- `lot/`: the exterior generator and what it builds in `lot/out` (three levels of detail, shaders, `lot.json`).

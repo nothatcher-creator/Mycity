@@ -12,11 +12,12 @@ import { ITEMS, PART_LIST, fmtAmount } from '../game/items.js'
 import { netItems, netVolume, netTake, netPut, gasTotal, gasMax } from '../game/survival.js'
 
 export const SCENARIOS = [
-  { id: 'planet', name: 'Halvor: Landing Site', sub: 'On the home world, 1 g and air', desc: 'Start on the grass of Halvor beside a small outpost, a Sparrow scout and a Mule hauler. Fly them, take them apart, build your own.' },
+  { id: 'planet', name: 'Halvor: Landing Site', sub: 'On the home world, 1 g and air', desc: 'Start on the grass of Halvor beside a small outpost, a Sparrow scout, a Mule hauler, a buggy and a drilling rig on pistons. Fly them, take them apart, build your own.' },
   { id: 'orbit', name: 'Kestrel Station', sub: 'High orbit over Halvor', desc: 'A station in orbit with the Lancer explorer docked beside it. The Halvor Shoal asteroid field is close by; the jump drive reaches the whole system.' },
   { id: 'ship', name: 'Aboard the Ardent', sub: 'A carrier in orbit, yours', desc: 'Start on the bridge of a big ship over Halvor: two decks, cabins, a workshop, and a Sparrow in the hangar astern. Sit in the command chair to fly her; V in the seat looks out through the ship\'s cameras.' },
-  { id: 'moon', name: 'Ket: Crater Base', sub: 'The moon, a quarter g, no air', desc: 'A base on the grey moon. Low gravity makes for easy flying; atmos thrusters do nothing here.' },
+  { id: 'moon', name: 'Ket: Crater Base', sub: 'The moon, a quarter g, no air', desc: 'A base on the grey moon, with a rover and the Strider, a lander on piston legs. Low gravity makes for easy flying; atmos thrusters do nothing here.' },
   { id: 'thessa', name: 'Thessa: Violet Woods', sub: 'A purple forest world, 0.84 g', desc: 'Start under a green sky among violet trees, 650 km from home, with an outpost and ships. The air is thick but you cannot breathe it.' },
+  { id: 'void', name: 'Frostbite: Ice in the Void', sub: 'A ball of ice between the stars', desc: 'A camp on a ball of ice far out in the void, thousands of kilometres from any world, with the Lancer (it has a jump drive) and a Sparrow. Mine the ice for air and fuel; the scanner shows the other rocks drifting round you.' },
   { id: 'rocks', name: 'The Drift', sub: 'Deep space among asteroids', desc: 'Between the worlds in the richest rock field, with a scout to explore and an empty station core.' },
   { id: 'empty', name: 'Empty Space', sub: 'Nothing but you', desc: 'Floating in the dark with a jetpack and every block. Build from the first cube.' },
 ]
@@ -253,7 +254,7 @@ export class Menus {
   page_jump(c, p) {
     const g = this.g, P = g.player, gr = P?.seat?.grid, U = g.world.universe
     const range = g.jumpRange(gr)
-    this.title(c, p, 'JUMP DRIVE', `Up to ${Math.round(range / 1000).toLocaleString('en')} km. The drive charges for 10 seconds, then the whole grid jumps; somewhere farther is jumped toward as far as the drive reaches. Unknown signals are groups not yet on your map.`)
+    this.title(c, p, 'JUMP DRIVE', `Up to ${Math.round(range / 1000).toLocaleString('en')} km (farther: jumps part way). Charges for 10 s. Unknown signals are groups not on your map.`)
     if (!gr?.parts.jumpdrives.length) { text(c, 'This grid has no jump drive.', 18, 90, { size: 14 }); this.back(c, p); return }
     const here = gr.comWorld()
     const list = []

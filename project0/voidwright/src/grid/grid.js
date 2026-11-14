@@ -168,7 +168,23 @@ export class Grid {
           A.n.push(w[0], w[1], w[2])
           A.u.push(part.uv[q * 2], part.uv[q * 2 + 1])
           const pk = part.paint[q]
-          A.c.push(part.col[q * 3] * (pk ? PC[0] : 1) * tint, part.col[q * 3 + 1] * (pk ? PC[1] : 1) * tint, part.col[q * 3 + 2] * (pk ? PC[2] : 1) * tint)
+          // ambient occlusion: the corner a vertex sits in darkens with each block in front of its face
+          // (the eight cells round a point just off the surface; those on the open side count)
+          let ao = 1
+          if (!part.glass) {
+            const qx = b.i + v[0] + w[0] * 0.3, qy = b.j + v[1] + w[1] * 0.3, qz = b.k + v[2] + w[2] * 0.3
+            const fx = Math.floor(qx), fy = Math.floor(qy), fz = Math.floor(qz)
+            let occ = 0
+            for (let a = 0; a < 8; a++) {
+              const cx = fx + (a & 1), cy = fy + ((a >> 1) & 1), cz = fz + (a >> 2)
+              if ((cx - qx) * w[0] + (cy - qy) * w[1] + (cz - qz) * w[2] <= 0.05) continue
+              const nb = this.cells.get(kOf(cx, cy, cz))
+              if (nb && nb !== b && nb.build >= 0.5) occ++
+            }
+            ao = 1 - Math.min(3, occ) * 0.17
+          }
+          const t2 = tint * ao
+          A.c.push(part.col[q * 3] * (pk ? PC[0] : 1) * t2, part.col[q * 3 + 1] * (pk ? PC[1] : 1) * t2, part.col[q * 3 + 2] * (pk ? PC[2] : 1) * t2)
           A.e.push(part.emit[q] * lit)
         }
       }

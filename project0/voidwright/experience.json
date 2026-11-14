@@ -1,7 +1,7 @@
 {
   "entry": "main.js",
   "name": "VOIDWRIGHT",
-  "description": "Build ships, rovers and stations block by block in an open universe: home worlds, then generated planet groups, stars that light and burn, a ringed gas giant, comets and nebulae. Land anywhere, explore caves, dig through planets and asteroids, drive on wheels and tracks. 101 blocks with guns, rockets, turrets and working gravity generators; 21 designs from buggies to huge stations, with previews. Pirates come to rob you; crashed ships wait to be repaired. Creative mode, or survival: mine, refine, assemble and weld every block up from a frame.",
+  "description": "Build ships, rovers, stations and machines block by block in an open universe: groups of worlds thousands of kilometres apart, each with its own star, and the void between them where lone rocks and balls of ice drift and things happen. Land anywhere, explore caves, dig, drive, jump. Guns, turrets, pistons, wheels and gravity generators; 24 designs from buggies and a lander on piston legs to huge stations. Pirates come to rob you; crashed ships wait to be repaired. Creative or survival.",
   "maxPlayers": 16,
   "ui": "minimized",
   "loading": {

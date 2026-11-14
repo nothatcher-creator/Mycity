@@ -147,7 +147,7 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
   every design. New blocks: plants, sofa, shelf, holo table, spherical gravity generator, 101 in all.
 - **Gravity generators that work**: box and sphere fields, powered, felt by you and by loose grids.
 - **Stars are places** (`src/world/cosmos.js`): Vela is a burning ball 560 km across, 7,200 km out, and its
-  orbit makes day and night. Every generated planet group has its own star, 3,200 to 4,800 km out above or below the plane of the groups, circling the group as Vela circles home: it lights that group's worlds and gives them day and night. Lone stars lie farther still. Come
+  orbit makes day and night. Every generated planet group has its own star circling it as Vela circles home: it lights that group's worlds and gives them day and night. Come
   within a few radii and the heat burns your suit and your hull.
 - **More things in space**: the ringed gas giant Toren (its depths crush), comets with tails that point
   away from their star, glowing nebulae, and more of each in generated sectors.
@@ -162,10 +162,34 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
   pieces that held surface); a grid's inverse rotation was cached once and never refreshed, so gyros and
   dampeners worked in a stale frame after a ship had turned (ships now hold attitude and brake properly).
 
+## Round nine: the void, pistons, a wider universe
+
+- **A wider universe**: groups of worlds now lie about 14,000 km apart, high and low as well as across,
+  each with its own star 3,500 to 6,000 km out circling it (its day). Only the star you are at is drawn as a
+  ball of fire; every other star is a point of light, however near.
+- **The void** (`src/world/void.js`): lone rocks, loose drifts and balls of ice float between the groups.
+  The scanner picks them up within 1,500 km (HUD markers, the map, the jump list). Ice rocks are ice right
+  through: water, oxygen and hydrogen.
+- **Events in the void** (`src/game/events.js`): some rocks carry something you find when you arrive: pirates
+  lying in wait, a derelict with cargo aboard, a rich vein, a meteor shower, a supply cache, a distress call.
+  Stay out there and now and then more comes along.
+- **Jump drives**: 16,000 km for a large grid, 5,000 km for the new small size; a place out of range is
+  jumped toward as far as the drive reaches, which can leave you in the void.
+- **Pistons** (`src/grid/pistons.js`): a piston pushes a head (a grid of its own you build on) up to 10 m
+  (large) or 2 m (small). F on a piston or its head, N in a seat, the terminal, or the PISTONS button on
+  touch. Heads stand on the ground for the grid they ride; drills on heads dig into the seat grid's hold.
+  Three new designs show them off: the **Piston Lift**, the **Strider** (a lander on four piston legs) and
+  the **Bore Rig** (two pistons in a row push a drill 20 m down).
+- **Gravity generators show which way is down**: arrows on their sides, and their field (the box, or the
+  ball of a spherical one) with arrows drifting the way it pulls whenever you hold one or look at one.
+- **Starts**: a new start, **Frostbite: Ice in the Void**, on a ball of ice far from any world; the Halvor and
+  Thessa starts have a Bore Rig, the Ket start a Strider.
+- **Graphics**: blocks are shaded by ambient occlusion (corners and seams between blocks darken).
+
 ## Coming next
 
-- Rotors, hinges and pistons, docking ports that dock, a projector for blueprints in survival, saved
-  worlds, playing together.
+- Rotors and hinges, docking ports that dock, a projector for blueprints in survival, saved worlds,
+  playing together.
 
 ## Files
 

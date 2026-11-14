@@ -261,6 +261,9 @@ export class Game {
       // a buggy to drive, and a wreck a few hundred metres off to find and repair
       if (id !== 'moon') { const s4 = at(-30, -6, 1.9); const bg = this.spawnGrid('buggy', s4.p.clone().addScaledVector(s4.up, 3), s4.q, { static: false }); this.settle(bg, -1.0) }
       else { const s4 = at(-40, 26, 2.6); const rv = this.spawnGrid('rover', s4.p.clone().addScaledVector(s4.up, 6), s4.q, { static: false }); this.settle(rv, -2.2) }
+      // a machine on pistons to try: a drilling rig on Halvor and Thessa, a lander on its legs on Ket
+      if (id === 'moon') { const s5 = at(-12, -64, 0.8); this.spawnGrid('strider', s5.p.clone().addScaledVector(s5.up, 4), s5.q, { static: false }) }
+      else { const s5 = at(62, 34, -0.6); this.spawnGrid('borer', s5.p.clone().addScaledVector(s5.up, 1.5), s5.q, { static: true, ground: true, sink: 0.6 }) }
       { const wd = f.dir.clone().addScaledVector(fr.east, 260 / pl.R).addScaledVector(fr.north, -330 / pl.R).normalize(); this.wrecks.crash(id === 'moon' ? 'lancer' : 'mule', pl, wd, 4242) }
       const sp = at(-4, -36, 0); spawn = { pos: sp.p.clone().addScaledVector(sp.up, 1.2), quat: sp.q }
     } else if (id === 'orbit') {
@@ -283,6 +286,27 @@ export class Game {
       const lock = W.tryLock(sp, 1.5)
       if (DEBUG) this.p0.log('dbg ardent', big.blocks.size, 'blocks; sparrow', lock)
       spawn = { pos: big.toWorld(cap === 'ardent' ? new THREE.Vector3(0, 18.85, -1.5) : new THREE.Vector3(0, 1.3, 0)), quat: q }
+    } else if (id === 'void') {
+      // a ball of ice adrift in the void, thousands of kilometres from any world, lit by a far star
+      const V = U.voids, near = new THREE.Vector3(-4e6, -3e6, 9.9e6)
+      const list = V.scan(near), site = list.filter(s => s.def.kind === 'ice' && !s.def.event).sort((a, b) => a.pos.distanceTo(near) - b.pos.distanceTo(near))[0] || list[0]
+      V.manage(site.pos); this.events.done.add(site.def.id)
+      const f = site.field; f.make()
+      const a = f.list[f.list.length - 1], st = U.cosmos.nearestStar(site.pos)
+      const dir = st.pos.clone().sub(a.pos).normalize(), p = a.pos.clone().addScaledVector(dir, a.r * 2.5)
+      for (let i = 0; i < 200; i++) { const d = a.sdf(p); if (d < 0.3) break; p.addScaledVector(dir, -Math.max(0.2, d * 0.7)) }
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
+      const base = W.newGrid('large', p.clone().addScaledVector(dir, 0.6), q, { static: true, name: 'Frostbite Camp' })
+      for (let i = -3; i <= 3; i++) for (let k = -3; k <= 3; k++) base.add(Math.abs(i) === 3 || Math.abs(k) === 3 ? 'hull_hazard' : 'heavy_cube', i, 0, k, 0, 2)
+      base.add('survival_kit', -2, 1, -2, 0, 3); base.add('medbay', 2, 1, -2, 0, 3); base.add('o2h2', -2, 1, 1, 0, 1); base.add('cargo_s', 2, 1, 2, 0, 7)
+      base.add('battery', 0, 1, 2); base.add('core_small', 1, 1, 2); base.add('beacon', -1, 1, 2, 0); base.add('lamp', 0, 1, -2); base.add('flood', 2, 1, 0, 0)
+      base.updateMass(); base.rebuild()
+      const side = new THREE.Vector3(1, 0, 0).applyQuaternion(q)
+      this.spawnGrid('lancer', p.clone().addScaledVector(dir, 22).addScaledVector(side, 44), q, { static: false })
+      this.spawnGrid('sparrow', p.clone().addScaledVector(dir, 6).addScaledVector(side, -18), q, { static: false })
+      const look = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2)
+      spawn = { pos: p.clone().addScaledVector(dir, 3.2).addScaledVector(side, -5), quat: q.clone().multiply(look) }; jet = true
+      if (!W.creative) base.parts.invs.forEach(b => b.inv?.add('ore_ice', 200))
     } else if (id === 'rocks') {
       const f = U.field('belt'); f.make()
       const a = f.list[f.list.length - 1]
@@ -438,6 +462,7 @@ export class Game {
     const P = this.player
     if (e.code === 'F3' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'rocks'][this.dbgV = ((this.dbgV ?? -1) + 1) % 3], 'survival'); return }
     if ((e.code === 'F5' || e.code === 'F6') && this.state === 'menu') { this.dbgCap = e.code === 'F6' ? 'vagrant' : null; this.startWorld('ship'); return }
+    if (e.code === 'Minus' && this.state === 'menu') { this.startWorld('void'); return }
     if (e.code === 'F9' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'moon', 'rocks', 'empty'][this.dbgS = ((this.dbgS ?? -1) + 1) % 5]); return }
     if (!P) return
     if (e.code === 'F8') { this.quitToTitle(); return }

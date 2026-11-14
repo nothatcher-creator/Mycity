@@ -68,6 +68,13 @@ n = noise(0.18); S['step'] = fade(norm(lp(n, 500) * env(len(n), 0.002, 0.04) + s
 S['land'] = fade(norm(echo(lp(noise(0.5), 400) * env(int(0.5 * SR), 0.002, 0.1) + sine(60, 0.5) * env(int(0.5 * SR), 0.002, 0.12), 0.3), 0.8))
 x = sine(np.linspace(600, 1200, int(0.25 * SR)), 0.25) * env(int(0.25 * SR), 0.005, 0.15); S['gear'] = fade(norm(np.concatenate([x, clunk(110, 0.1, 0.8)[:int(0.3 * SR)]]), 0.6))
 
+# the eighth round: weapons, an alarm, a motor
+n = noise(0.32); S['gun'] = fade(norm(echo(bp(n, 300, 5000) * env(len(n), 0.0005, 0.035) * 1.0 + sine(np.linspace(180, 70, len(n)), 0.32) * env(len(n), 0.001, 0.06) * 0.8, 0.2)))
+n = noise(1.1); S['rocket'] = fade(norm(lp(n, 2500) * env(len(n), 0.01, 0.35) * 0.7 + bp(n, 1500, 6000) * env(len(n), 0.002, 0.08) * 0.5 + sine(np.linspace(220, 90, len(n)), 1.1) * env(len(n), 0.005, 0.2) * 0.3), 150)
+n = noise(2.4); S['boom'] = fade(norm(echo(lp(n, 900) * env(len(n), 0.003, 0.55) + lp(n, 160) * env(len(n), 0.002, 0.9) * 1.4 + sine(np.linspace(70, 30, len(n)), 2.4) * env(len(n), 0.002, 0.5) * 0.8, 0.45)), 250)
+tt = t(1.2); S['alarm'] = fade(norm(np.sign(np.sin(2 * np.pi * np.where((tt * 4).astype(int) % 2 == 0, 880, 660) * tt)) * 0.35 * np.clip(np.sin(np.pi * tt / 1.2) * 3, 0, 1), 0.5))
+tt = t(4.0); S['loop_motor'] = norm(loop(sine(46 + 3 * np.sin(2 * np.pi * 0.5 * tt), 4.0) * 0.5 + sine(92, 4.0) * 0.25 + sine(138.5, 4.0) * 0.1 + lp(noise(4.0), 300) * 0.35 * (0.7 + 0.3 * np.sin(2 * np.pi * 23 * tt))), 0.55)
+
 os.makedirs(OUT, exist_ok=True)
 for name, x in S.items():
     x = np.clip(x, -1, 1)

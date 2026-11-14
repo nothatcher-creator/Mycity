@@ -227,6 +227,7 @@ export class Grid {
     let r2 = 0
     for (const [key, b] of this.cells) {
       const k = key % 2048 - 1024, j = Math.floor(key / 2048) % 2048 - 1024, i = Math.floor(key / 2048 / 2048) - 1024
+      if (b.def.noContact) continue
       const open = !this.cells.has(kOf(i + 1, j, k)) || !this.cells.has(kOf(i - 1, j, k)) || !this.cells.has(kOf(i, j + 1, k)) || !this.cells.has(kOf(i, j - 1, k)) || !this.cells.has(kOf(i, j, k + 1)) || !this.cells.has(kOf(i, j, k - 1))
       const x = i * cs, y = j * cs, z = k * cs
       r2 = Math.max(r2, (x - c.x) ** 2 + (y - c.y) ** 2 + (z - c.z) ** 2)
@@ -238,7 +239,7 @@ export class Grid {
   }
   // the working blocks, by kind
   scan() {
-    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], cameras: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [], detectors: [] }
+    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], cameras: [], guns: [], turrets: [], wheels: [], warheads: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [], detectors: [] }
     for (const b of this.blocks) {
       const f = b.def.func
       if (!f) continue
@@ -246,6 +247,10 @@ export class Grid {
       if (f.gyro) L.gyros.push(b)
       if (f.cockpit) L.cockpits.push(b)
       if (f.camera) L.cameras.push(b)
+      if (f.gun) L.guns.push(b)
+      if (f.turret) L.turrets.push(b)
+      if (f.wheel || f.track) L.wheels.push(b)
+      if (f.warhead) L.warheads.push(b)
       if (f.power) L.power.push(b)
       if (f.light) L.lights.push(b)
       if (f.medbay) L.medbays.push(b)
@@ -365,7 +370,7 @@ export function shapeSdf(b, size, x, y, z) {
     case 'round': return Math.max(box(lx, ly, lz, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5), Math.hypot(ly + 0.5, lz - 0.5) - 1)
     case 'roundcorner': return Math.max(box(lx, ly, lz, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5), Math.hypot(lx - 0.5, ly + 0.5, lz - 0.5) - 1)
     case 'hdoor': return b.open ? box(lx, ly, lz, -0.5, 0.42, 0.34, 0.5, 0.5, 0.5) : box(lx, ly, lz, -0.5, -0.5, 0.36, 0.5, 0.5, 0.5)
-    case 'boxes': { let d = Infinity; for (const q of b.def.boxes) d = Math.min(d, box(lx, ly, lz, q[0], q[1], q[2], q[3], q[4], q[5])); return d }
+    case 'boxes': { let d = Infinity; for (const q of (size === 'small' && b.def.boxesS) || b.def.boxes) d = Math.min(d, box(lx, ly, lz, q[0], q[1], q[2], q[3], q[4], q[5])); return d }
     default: return box(lx, ly, lz, -0.5, -0.5, -0.5, S[0] - 0.5, S[1] - 0.5, S[2] - 0.5)
   }
 }

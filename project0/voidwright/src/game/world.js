@@ -3,7 +3,7 @@
 // this ray, what is near this point).
 import * as THREE from 'three'
 import { Universe } from '../world/universe.js'
-import { Grid } from '../grid/grid.js'
+import { Grid, works } from '../grid/grid.js'
 import { Physics } from '../grid/physics.js'
 import { ShipControl } from '../grid/ship.js'
 import { makeAtlas } from '../grid/atlas.js'
@@ -14,6 +14,7 @@ import { lin } from '../core/color.js'
 import { blockRecipe } from './items.js'
 import { apply, INV, QUATS } from '../grid/rot.js'
 import { Survival, netCount, netTake, netPut, gasTotal, gasTake, gasPut } from './survival.js'
+import { Combat } from './combat.js'
 
 function envTexture() {
   const W = 256, H = 128, cv = new OffscreenCanvas(W, H), c = cv.getContext('2d')
@@ -48,6 +49,7 @@ export class World {
     this.sparks = new Sparks(e)
     this.spinners = new Spinners(e, this)
     this.survival = new Survival(this)
+    this.combat = new Combat(this)
     this.tmp = new THREE.Vector3()
   }
   recipeOf(id, size) { return blockRecipe(BLOCKS[id], size) }
@@ -62,14 +64,21 @@ export class World {
   // ---- what is where ----
   gravityAt(p, out = new THREE.Vector3()) { return this.universe.gravity(p, out) }
   // gravity felt by someone on foot: natural, plus any gravity generator whose field they stand in
-  gravityFelt(p, out = new THREE.Vector3()) {
+  gravityFelt(p, out = new THREE.Vector3(), skip = null) {
     this.universe.gravity(p, out)
     for (const g of this.grids) {
-      if (!g.parts?.gravgens.length) continue
-      if (p.distanceTo(g.pos) > g.radius + 30) continue
+      if (g === skip || !g.parts?.gravgens.length) continue
+      if (p.distanceTo(g.pos) > g.radius + 80) continue
+      if (g.power && g.power.ratio < 0.1) continue
       for (const b of g.parts.gravgens) {
-        if (!b.on) continue
+        if (!works(b)) continue
         const f = b.def.func.gravgen, c = g.toWorld(g.blockCenter(b, this.tmp), new THREE.Vector3())
+        if (f.sphere) {
+          // a spherical field: toward the generator, full strength out to its edge
+          const d = c.sub(p), L = d.length()
+          if (L < f.sphere && L > 0.5) out.addScaledVector(d, f.g / L)
+          continue
+        }
         const l = g.dirToLocal(new THREE.Vector3().subVectors(p, c))
         const lb = new THREE.Vector3(), v = [0, 0, 0]
         // into the generator's own axes
@@ -163,7 +172,13 @@ export class World {
   damage(g, b, amount) {
     if (!g.blocks.has(b)) return
     b.hp -= amount
-    if (b.hp <= 0) { g.remove(b); this.sparks.burst(g.toWorld(g.blockCenter(b)), 30, 2) }
+    if (b.hp <= 0) {
+      const at = g.toWorld(g.blockCenter(b))
+      g.remove(b); this.sparks.burst(at, 30, 2)
+      // a warhead goes off when it breaks
+      const wf = b.def.func?.warhead
+      if (wf && b.build >= 0.99) { const w = wf[g.size]; this.combat.blast(at, w.r, w.dmg, g) }
+    }
     else g.touch(b)
   }
   // landing clamps
@@ -199,20 +214,23 @@ export class World {
       g.frozen = g !== piloted?.grid && g.pos.distanceTo(this.engine.camPos) > 30000
       if (g.frozen) { g.updateMass(); continue }
       if (g.static) { g.updateMass(); this.ships.update(g, null, null, dt); continue }
-      const cp = g === piloted?.grid ? piloted.block : null
-      this.ships.update(g, cp, cp ? ctl : null, dt)
+      const mine = g === piloted?.grid, ai = !mine && g.ai?.ctl
+      const cp = mine ? piloted.block : ai ? g.ai.cockpit : null
+      this.ships.update(g, cp, mine ? ctl : ai ? g.ai.ctl : null, dt)
     }
     // physics in two half steps
     const n = dt > 1 / 45 ? 3 : 2
     for (let i = 0; i < n; i++) this.physics.step(dt / n)
     this.splitGrids()
     this.survival.update(dt)
+    this.combat.update(dt)
     for (const g of this.grids) g.rebuild(6)
   }
   draw(dt) {
     this.spinners.update(dt, this.grids, this.engine)
     this.flames.update(this.grids, this.engine)
     this.sparks.update(dt, this.engine)
+    this.combat.draw()
   }
 }
 const v = new THREE.Vector3()
@@ -358,17 +376,33 @@ class Spinners {
     const mat = patchMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.6, roughness: 0.45, envMap: world.env, envMapIntensity: 0.5 }), engine.spaceUniforms, {})
     this.heads = new THREE.InstancedMesh(drillHeadGeo(), mat, 96)
     this.rolls = new THREE.InstancedMesh(rollerGeo(), mat, 192)
-    for (const m of [this.heads, this.rolls]) { m.frustumCulled = false; m.count = 0; engine.scene.add(m) }
-    this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.s = new THREE.Vector3(); this.p = new THREE.Vector3(); this.spin = new THREE.Quaternion()
+    this.tyres = new THREE.InstancedMesh(tyreGeo(), mat, 160)
+    for (const m of [this.heads, this.rolls, this.tyres]) { m.frustumCulled = false; m.count = 0; engine.scene.add(m) }
+    this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.s = new THREE.Vector3(); this.p = new THREE.Vector3(); this.spin = new THREE.Quaternion(); this.spin2 = new THREE.Quaternion()
     this.t = 0
   }
   update(dt, grids, engine) {
     this.t += dt
     let nh = 0, nr = 0
     const cam = engine.camPos
+    let nt = 0
     for (const g of grids) {
-      const D = g.parts?.drills
-      if (!D || !D.length || g.pos.distanceTo(cam) > 1500 + g.radius) continue
+      if (!g.parts || g.pos.distanceTo(cam) > 1500 + g.radius) continue
+      // tyres where their springs put them
+      for (const b of g.parts.wheels || []) {
+        const f = b.def.func.wheel
+        if (!f || b.build < 1 || nt >= 160) continue
+        const S = b.def.sizes[g.size], rad = f.r[g.size], s = b.susp ?? f.smax[g.size] * 0.7
+        const cen = g.toWorld(g.blockPoint(b, (S[0] - 1) / 2, (S[1] - 1) / 2, (S[2] - 1) / 2))
+        const up = g.dirToWorld(g.blockDir(b, 0, 1, 0))
+        engine.rel(cen.addScaledVector(up, -s), this.p)
+        const bq = this.q.copy(g.quat).multiply(QUATS[b.rot]).multiply(this.spin.setFromAxisAngle(Y, b.steer || 0)).multiply(this.spin2.setFromAxisAngle(X, b.spin || 0))
+        const wdt = S[0] * g.cs * 0.42
+        this.s.set(wdt, rad, rad)
+        this.m.compose(this.p, bq, this.s); this.tyres.setMatrixAt(nt++, this.m)
+      }
+      const D = g.parts.drills
+      if (!D || !D.length) continue
       for (const b of D) {
         if (b.build < 1) continue
         const S = b.def.sizes[g.size], f = b.def.func, cs = g.cs
@@ -391,8 +425,21 @@ class Spinners {
         }
       }
     }
-    this.heads.count = nh; this.rolls.count = nr
-    this.heads.instanceMatrix.needsUpdate = true; this.rolls.instanceMatrix.needsUpdate = true
+    this.heads.count = nh; this.rolls.count = nr; this.tyres.count = nt
+    this.heads.instanceMatrix.needsUpdate = true; this.rolls.instanceMatrix.needsUpdate = true; this.tyres.instanceMatrix.needsUpdate = true
   }
 }
-const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1)
+const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1)
+// a tyre: unit radius, unit width across X; tread blocks round a dark rubber band, a grey hub with spokes
+function tyreGeo() {
+  const parts = [], col = (g, c) => { g = g.toNonIndexed(); g.deleteAttribute('uv'); const a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) a.set(c, i); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); parts.push(g) }
+  col(new THREE.CylinderGeometry(0.86, 0.86, 1, 24, 1, true).rotateZ(Math.PI / 2), [0.07, 0.07, 0.075])
+  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; col(new THREE.BoxGeometry(0.98, 0.16, 0.24).translate(0, 0.92, 0).rotateX(a), [0.09, 0.09, 0.1]) }
+  for (const sx of [-1, 1]) {
+    col(new THREE.RingGeometry(0.5, 0.86, 24).rotateY(sx * Math.PI / 2).translate(sx * 0.5, 0, 0), [0.08, 0.08, 0.085])
+    col(new THREE.CircleGeometry(0.5, 20).rotateY(sx * Math.PI / 2).translate(sx * 0.46, 0, 0), [0.62, 0.64, 0.67])
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; col(new THREE.BoxGeometry(0.06, 0.44, 0.1).translate(0, 0.25, 0).rotateX(a).translate(sx * 0.48, 0, 0), [0.32, 0.33, 0.35]) }
+    col(new THREE.CylinderGeometry(0.14, 0.14, 0.12, 10).rotateZ(Math.PI / 2).translate(sx * 0.52, 0, 0), [0.86, 0.55, 0.16])
+  }
+  const g = mergeGeometries(parts); g.computeVertexNormals(); return g
+}

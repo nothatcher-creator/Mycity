@@ -3,6 +3,7 @@
 // impulses (bounce, friction, push-out); hard hits damage the blocks they land on; a grid at rest sleeps.
 import * as THREE from 'three'
 import { MAX_SPEED } from './ship.js'
+import { wheelStep } from './wheels.js'
 
 const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), v3 = new THREE.Vector3(), n0 = new THREE.Vector3()
 const q0 = new THREE.Quaternion()
@@ -22,12 +23,13 @@ export class Physics {
       if (g.sleep > 1.5) continue
       g._iw = this.invIWorld(g, g._iw || new THREE.Matrix3())
       const com = g.comWorld(v1)
-      const grav = W.gravityAt(com, v2)
+      const grav = W.gravityFelt(com, v2, g)
       g.vel.addScaledVector(grav, dt)
       if (g.force) g.vel.addScaledVector(g.dirToWorld(g.force, v3), dt / g.mass)
       if (g.torque) { const T = g.dirToWorld(g.torque, v3); g.angVel.add(T.applyMatrix3(g._iw).multiplyScalar(dt)) }
       // a little drag in air (so a ship with its dampeners off still slows in the atmosphere)
       if (g.air > 0) { g.vel.multiplyScalar(1 - Math.min(0.5, g.air * 0.02 * dt)); g.angVel.multiplyScalar(1 - Math.min(0.5, g.air * 0.3 * dt)) }
+      if (g.parts?.wheels?.length) wheelStep(W, g, dt)
     }
     // contacts
     this.contacts.length = 0

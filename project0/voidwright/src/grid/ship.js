@@ -50,6 +50,11 @@ export class ShipControl {
     grid.gravity = this.g.length()
     let move = [0, 0, 0]
     if (ctl && cockpit) apply(cockpit.rot, ctl.move[0], ctl.move[1], ctl.move[2], move)
+    // wheels and tracks: W/S drive, A/D steer (in the seat's own frame)
+    if (P.wheels?.length) {
+      grid.drive = { throttle: ctl && cockpit ? -ctl.move[2] : 0, steer: ctl && cockpit ? ctl.move[0] : 0, seat: cockpit }
+      if (Math.abs(grid.drive.throttle) + Math.abs(grid.drive.steer) > 0.05) grid.sleep = 0
+    }
     const want = [0, 0, 0]
     for (let a = 0; a < 3; a++) {
       const u = move[a], vv = [vloc.x, vloc.y, vloc.z][a], gg = [gl.x, gl.y, gl.z][a]
@@ -87,6 +92,8 @@ export class ShipControl {
       let tgt = [0, 0, 0]
       if (ctl && cockpit) apply(cockpit.rot, ctl.turn[0], ctl.turn[1], ctl.turn[2], tgt)
       else if (!grid.dampeners && !ctl) tgt = null
+      // on its wheels a grid follows the ground: the gyros only roll it when asked
+      if (grid.wheelContacts > 0 && tgt && ctl && !ctl.turn[2]) tgt = null
       if (tgt) {
         const e = new THREE.Vector3(tgt[0] - wl.x, tgt[1] - wl.y, tgt[2] - wl.z).divideScalar(0.18)
         const T = e.applyMatrix3(grid.I)

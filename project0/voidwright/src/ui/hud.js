@@ -237,6 +237,18 @@ export class HUD {
       mark(pl.center, pl.name, fmtDist(d), 'rgba(166,255,245,0.85)')
     }
     for (const f of U.fields) { const d = eye.distanceTo(f.center); if (d > f.radius * 1.2) mark(f.center, f.name, fmtDist(d), 'rgba(255,190,110,0.85)') }
+    // stars, gas giants, nebulae
+    const C2 = U.cosmos
+    if (C2) {
+      for (const st of [C2.home, ...C2.far(eye).slice().sort((a, b) => a.pos.distanceTo(eye) - b.pos.distanceTo(eye)).slice(0, 2)]) { const d = eye.distanceTo(st.pos) - st.R; mark(st.pos, st.name, fmtDist(d), d < st.R * 4 ? 'rgba(255,90,60,0.95)' : 'rgba(255,224,150,0.85)') }
+      for (const gg of C2.giants) { const d = eye.distanceTo(gg.center) - gg.R; if (d > gg.R * 0.4) mark(gg.center, gg.name, fmtDist(d), 'rgba(166,255,245,0.85)') }
+      for (const n of C2.nebulae) { const d = eye.distanceTo(n.center); if (d > n.R) mark(n.center, n.name, fmtDist(d - n.R), 'rgba(200,170,255,0.75)') }
+    }
+    // pirates, and the distress beacons of wrecks
+    for (const gr of g.world.grids) {
+      if (gr.faction === 'pirate') { const d = eye.distanceTo(gr.comWorld()); if (d > 25) mark(gr.comWorld(), gr.name, fmtDist(d), 'rgba(255,90,70,0.95)') }
+      else if (gr.distress && gr.blocks.size) { const d = eye.distanceTo(gr.comWorld()); if (d > 30 && d < 8000) mark(gr.comWorld(), 'Distress: ' + gr.name.replace('Wreck of the ', ''), fmtDist(d), 'rgba(255,200,80,0.9)') }
+    }
     // groups of worlds not yet found (the two nearest), and your waypoints
     this.sigT = (this.sigT || 0) + 1
     if (this.sigT % 20 === 1) this.sigs = U.signals(eye).slice(0, 2)

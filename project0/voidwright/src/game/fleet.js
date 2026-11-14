@@ -69,7 +69,7 @@ function talon() {
   skin(b, s, 'light', { solid: false })
   glaze(b, 0, 5, -14, P)
   for (const x of [-1, 1]) b.over('porthole', x, 4, -16 + 1, R([0, 0, -1]), P)
-  for (const sd of [-1, 1]) { const x = sd > 0 ? 12 : -13; b.set('flood', x, 0, -11, 0).set('flood', x + 1, 1, -11, 0).set('warnlight', x, 2, -6, 0) }
+  for (const sd of [-1, 1]) { const x = sd > 0 ? 12 : -13; b.set('gun_rocket', x, 0, -13, F, A).set('gun_auto', x + 1, 1, -13, F, A).set('warnlight', x, 2, -6, 0) }
   for (const z of [-2, 1, 4]) b.over('hull_vent', -3, 4, z, 0, A).over('hull_vent', 3, 4, z, 0, A)
   // inside the body
   b.set('core_small', -1, 3, 0).set('core_small', 1, 3, 0).set('core_small', -1, 4, 0).set('core_small', 1, 4, 0).set('core_small', 0, 3, 0).set('core_small', 0, 4, 0)
@@ -129,6 +129,7 @@ function crossguard() {
   // struts and feet below the lower barrels
   for (const sd of [-1, 1]) { const x0 = sd > 0 ? 2 : -3; for (const z of [1, 8]) { for (const y of [-3, -4]) for (const dx of [0, 1]) for (const dz of [0, 1]) b.set('light_cube', x0 + dx, y, z + dz, 0, D); b.set('gear', x0, -5, z, 0) } }
   b.set('flood', 0, 0, -22, 0)
+  for (const sd of [-1, 1]) for (const y of [6, -4]) b.set('gun_auto', sd * 14, y, -10, F, D)
   for (const sd of [-1, 1]) b.set('lightstrip', sd * 6, 5, 5, 0)
   return b.bp
 }
@@ -161,6 +162,7 @@ function bastion() {
   }
   for (const z of [-8, -4]) b.set('flood', 0, 4, z, 0)
   for (const [x, z] of [[-5, 4], [5, 4], [-3, -6], [3, -6]]) b.set('warnlight', x, 4, z, 0)
+  b.set('turret_gatling', 5, 4, -1, 0, G).set('turret_gatling', -5, 4, -1, 0, G).set('turret_missile', 0, 7, 4, 0, G).set('turret_gatling', 2, 4, -8, 0, G).set('turret_gatling', -2, 4, -8, 0, G)
   // inside, under the terraces
   b.over('core_big', -1, 1, 6, 0).over('jumpdrive', -1, 1, 0, 0, 0).over('tank_h2', -1, 0, -3, 0, 1)
   for (const x of [-3, 3]) for (const z of [0, 2, 4]) b.over('gyro', x, 2, z).over('gyro', x, 3, z)

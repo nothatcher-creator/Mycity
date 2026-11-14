@@ -22,9 +22,12 @@ import { works } from '../grid/grid.js'
 import { ITEMS } from './items.js'
 import { netPut } from './survival.js'
 import { Photo } from './photo.js'
+import { Pirates } from './pirates.js'
+import { Previews } from '../ui/previews.js'
+import { Wrecks } from './wrecks.js'
 
 const pause = () => new Promise(r => setTimeout(r, 0))
-const DEFAULTS = { quality: 'medium', resScale: 1, fov: 70, sens: 1, invertY: false, volume: 0.8, post: true }
+const DEFAULTS = { quality: 'medium', resScale: 1, fov: 70, sens: 1, invertY: false, volume: 0.8, post: true, pirates: 'rare' }
 let DEBUG = false
 
 class Save {
@@ -73,6 +76,8 @@ export class Game {
     this.sky = new Sky(e); bm()
     L(0.2, 'raising the worlds'); await pause()
     this.world = new World(this)
+    this.pirates = new Pirates(this)
+    this.wrecks = new Wrecks(this)
     this.world.trees = new Trees(e)
     // the map: what has been found, and waypoints (kept between visits; the universe itself is always the same)
     const U0 = this.world.universe
@@ -88,6 +93,7 @@ export class Game {
     this.builder = new Builder(this)
     L(0.3, 'drawing the blocks'); await pause()
     this.icons = new Icons(e, this.world.atlas.tex)
+    this.previews = new Previews(e, this.world)
     bm(); this.icons.prepare(); bm()
     if (this.debug) this.p0.log('dbg boot sky/world/misc/icons', B.slice(1).map((t, i) => Math.round(t - B[i])).join(' '))
     this.hud = new HUD(this)
@@ -245,6 +251,10 @@ export class Game {
       const s1 = at(36, 6, 0.4); this.spawnGrid('sparrow', s1.p.clone().addScaledVector(s1.up, 3), s1.q, { ground: true, sleep: true, static: false })
       if (id !== 'moon') { const s2 = at(-14, 58, -0.3); this.spawnGrid('mule', s2.p.clone().addScaledVector(s2.up, 10), s2.q, { ground: true, sleep: true, static: false }) }
       const s3 = at(40, -30, 1.2); this.spawnGrid('pick', s3.p.clone().addScaledVector(s3.up, 3), s3.q, { ground: true, sleep: true, static: false })
+      // a buggy to drive, and a wreck a few hundred metres off to find and repair
+      if (id !== 'moon') { const s4 = at(-30, -6, 1.9); const bg = this.spawnGrid('buggy', s4.p.clone().addScaledVector(s4.up, 3), s4.q, { static: false }); this.settle(bg, -1.0) }
+      else { const s4 = at(-40, 26, 2.6); const rv = this.spawnGrid('rover', s4.p.clone().addScaledVector(s4.up, 6), s4.q, { static: false }); this.settle(rv, -2.2) }
+      { const wd = f.dir.clone().addScaledVector(fr.east, 260 / pl.R).addScaledVector(fr.north, -330 / pl.R).normalize(); this.wrecks.crash(id === 'moon' ? 'lancer' : 'mule', pl, wd, 4242) }
       const sp = at(-4, -36, 0); spawn = { pos: sp.p.clone().addScaledVector(sp.up, 1.2), quat: sp.q }
     } else if (id === 'orbit') {
       const c = new THREE.Vector3(-9000, 21000, 72000)
@@ -298,6 +308,7 @@ export class Game {
   stock() {
     for (const g of this.world.grids) {
       g.updateMass()
+      if (g.parts.guns.length || g.parts.turrets.length) { netPut(g, 'ammo', 12); netPut(g, 'rocket', 16) }
       for (const b of g.parts.tanks) b.gas = b.gasMax * (b.def.func.tank.gas === 'o2' ? 1 : 0.6)
       if (g.parts.power.some(b => b.def.func.power.out && !b.def.func.power.store && !b.def.func.power.solar)) netPut(g, 'ing_uranium', g.static ? 20 : 4)
       if (g.static && g.parts.kits.length) {
@@ -375,7 +386,7 @@ export class Game {
     // arrive outside the target: above the near side of a world, at the edge of a rock field, short of a
     // waypoint, well out from an unknown group's centre
     const from = gr.comWorld(), dir = from.clone().sub(pl.pos).normalize()
-    const dist = pl.kind === 'planet' ? pl.r + Math.max(6000, pl.r * 0.55) : pl.kind === 'field' ? pl.r + 2500 : pl.kind === 'signal' ? 140000 : 300
+    const dist = pl.kind === 'planet' ? pl.r + Math.max(6000, pl.r * 0.55) : pl.kind === 'field' ? pl.r + 2500 : pl.kind === 'comet' ? pl.r + 3000 : pl.kind === 'signal' ? 140000 : pl.kind === 'star' ? pl.r * 7 : pl.kind === 'giant' ? pl.r * 2.6 : pl.kind === 'nebula' ? pl.r * 0.4 : 300
     const to = pl.pos.clone().addScaledVector(dir, dist)
     this.world.universe.ensure(to)
     const d = to.clone().sub(from)
@@ -385,6 +396,30 @@ export class Game {
     this.sfx.play('jump', 0.9)
     this.flash = 1
     this.hud.toast(`Arrived at ${pl.name}`, C.gold2)
+  }
+  // ---- too close to a star (or too deep in a gas giant): the suit and the hull burn ----
+  heat(dt) {
+    const P = this.player, W = this.world, U = W.universe
+    if (!P || P.dead) return
+    const h = U.heatAt(P.seat ? P.seat.grid.comWorld() : P.pos)
+    this.heatNow = h.heat
+    if (h.heat > 0.02) {
+      P.hurt(h.heat * (P.seat ? 18 : 30) * dt, h.by?.g ? 'crushed' : 'heat')
+      this.heatT = (this.heatT || 0) - dt
+      if (this.heatT <= 0) { this.heatT = 6; this.hud.toast(h.by?.g ? `${h.by.name}: the pressure is crushing you, climb out` : `Too close to ${h.by?.name || 'the star'}: everything is burning, turn back`, C.red); this.sfx.play('alarm', 0.5) }
+      this.shake = Math.max(this.shake || 0, h.heat * 0.4)
+    }
+    // the hulls of grids in the heat
+    this.burnT = (this.burnT || 0) + dt
+    if (this.burnT < 0.5) return
+    this.burnT = 0
+    for (const g of W.grids) {
+      if (g.frozen || !g.blocks.size) continue
+      const hh = U.heatAt(g.comWorld()).heat
+      if (hh < 0.15) continue
+      const list = [...g.blocks]
+      for (let i = 0; i < Math.ceil(hh * 6); i++) { const b = list[Math.floor(Math.random() * list.length)]; if (b) W.damage(g, b, b.maxHp * hh * 0.5) }
+    }
   }
   // ---- debug keys (local dev kit only) ----
   debugKey(e) {
@@ -420,12 +455,21 @@ export class Game {
     if (e.code === 'Numpad5') { const st = this.world.grids.find(g => g.static && g.parts?.kits.length); if (st) { this.terminalGrid = st; this.menus.open('production'); st.queue = [{ id: 'plate', n: 3 }, { id: 'motor', n: 1 }] } }
     if (e.code === 'Numpad4') { this.p0.log('dbg surv', JSON.stringify({ o2: P.oxygen.toFixed(1), h2: P.fuel.toFixed(1), en: P.energy.toFixed(1), inv: [...P.inv.items].map(([k, n]) => k + ':' + n.toFixed(1)), grids: this.world.grids.map(g => g.name + (g.static ? '(st)' : '') + ' pw' + (g.power ? g.power.ratio.toFixed(2) + '/' + g.power.supply.toFixed(1) : '-') + ' q' + (g.queue || []).length + ' ' + [...(g.parts?.refineries || []), ...(g.parts?.assemblers || [])].map(b => b.status).join('|')) })) }
     if (e.code === 'F2') this.p0.log('dbg', JSON.stringify({ pos: P.pos.toArray().map(v => Math.round(v)), vel: P.vel.length().toFixed(2), ground: P.onGround, g: P.gravity.toFixed(2), jet: P.jetpack, seat: !!P.seat, grids: this.world.grids.length, prog: this.engine.renderer.info.programs?.length, calls: this.engine.renderer.info.render.calls, tris: this.engine.renderer.info.render.triangles, pending: this.world.universe.planets.map(p => p.pending).join() }))
-    if (e.code === 'F4') { const gr = this.world.grids.find(g => g.parts?.cockpits.length && !g.static); if (gr) { P.enterSeat(gr, gr.parts.cockpits[0]); this.p0.log('dbg seat', gr.name) } }
+    if (e.code === 'F4') { const gr = this.world.grids.find(g => g.parts?.cockpits.length && !g.static && !g.wreck && (!e.shiftKey || g.parts.wheels.length)); if (gr) { P.enterSeat(gr, gr.parts.cockpits[0]); this.p0.log('dbg seat', gr.name) } }
     if (e.code === 'F6' && P.seat) { const g = P.seat.grid; this.p0.log('dbg ship', JSON.stringify({ v: g.vel.toArray().map(v => v.toFixed(2)), w: g.angVel.toArray().map(v => v.toFixed(3)), mass: Math.round(g.mass), max: [...g.thrustMax].map(v => Math.round(v / 1000)), out: [...g.thrustOut].map(v => v.toFixed(2)), sleep: g.sleep.toFixed(2), touch: g.touching, air: g.air?.toFixed(2), grav: g.gravity?.toFixed(2), power: g.power, locked: !!g.locked })) }
     if (e.code === 'F10' && P.seat) { const U = this.world.universe, pl = e.shiftKey || this.dbgJ ? U.signals(P.pos)[0] : U.places().find(x => x.id === 'ket'); this.dbgJ = true; if (pl) { this.planJump(pl); this.jump.t = 0.15 } }
     if (e.code === 'F7') { this.world.universe.time += 600; this.hud.toast('+10 min') }
+    if (e.code === 'Pause') { // to the nearest cave mouth, looking in
+      const pl = this.world.universe.nearestPlanet(P.pos), L = pl?.caves?.list || []
+      let best = null, bd = Infinity; for (const c of L) { const w = c.mouth.clone().add(pl.center), d = w.distanceTo(P.pos); if (d < bd) { bd = d; best = w } }
+      if (best) { if (P.seat) P.leaveSeat(); const up = best.clone().sub(pl.center).normalize(); P.pos.copy(best).addScaledVector(up, 6).add(new THREE.Vector3(1, 0, 0).cross(up).normalize().multiplyScalar(9)); P.vel.set(0, 0, 0); this.p0.log('dbg cave', Math.round(bd), L.length) } else this.p0.log('dbg no cave yet', L.length)
+    }
+    if (e.code === 'NumpadMultiply') { const gr = this.pirates.spawn(e.shiftKey ? 'reaver' : 'marauder'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
+    if (e.code === 'NumpadDivide') this.p0.log('dbg combat', JSON.stringify({ shots: this.world.combat.shots.length, rockets: this.world.combat.rockets.length, pirates: this.pirates.list.map(x => [x.grid.name, x.grid.ai.state, Math.round(x.grid.comWorld().distanceTo(P.pos)), x.grid.blocks.size, x.grid.ai.disabled ? 'off' : 'on']), health: Math.round(P.health), heat: this.heatNow?.toFixed(2), star: this.world.universe.star?.name, starD: Math.round(this.world.universe.star?.pos.distanceTo(P.pos) / 1000), wrecks: this.world.grids.filter(g => g.wreck).map(g => g.name), caves: this.world.universe.nearestPlanet(P.pos)?.caves?.list.length, wheels: P.seat?.grid.parts.wheels.map(w => [w.contact, (w.susp || 0).toFixed(2)]), v: P.seat ? P.seat.grid.vel.length().toFixed(1) : P.vel.length().toFixed(1) }))
+    if (e.code === 'NumpadDecimal' && P.seat) { const gr = P.seat.grid, st = this.world.universe.cosmos.home, to = st.pos.clone().add(gr.comWorld().sub(st.pos).normalize().multiplyScalar(st.R * (e.shiftKey ? 2.2 : 6))); gr.pos.add(to.sub(gr.comWorld())); gr.vel.set(0, 0, 0); this.p0.log('dbg near star', Math.round(st.R * (e.shiftKey ? 2.2 : 6) / 1000), 'km') }
+    if (e.code === 'NumpadAdd' && e.shiftKey) { const big = this.world.universe.cosmos.giants[0]; if (big && P.seat) { const gr = P.seat.grid, to = big.center.clone().add(new THREE.Vector3(0.3, 0.5, 1).normalize().multiplyScalar(big.R * 2.4)); gr.pos.add(to.sub(gr.comWorld())); gr.vel.set(0, 0, 0); this.p0.log('dbg giant', big.name) } }
     if (e.code === 'Numpad0') { this.engine.resScale = this.engine.resScale === 2 ? 0.4 : 2; this.engine.resize() }
-    if (e.code === 'NumpadAdd') { this.engine.postOn = !this.engine.postOn; this.p0.log('dbg post', this.engine.postOn, this.engine.post.ok) }
+    if (e.code === 'NumpadAdd' && !e.shiftKey) { this.engine.postOn = !this.engine.postOn; this.p0.log('dbg post', this.engine.postOn, this.engine.post.ok) }
     if (e.code === 'NumpadSubtract') { // a tour of the carrier's rooms: each press stands you in the next
       const big = this.world.grids.find(g => g.name === 'Ardent' || g.name === 'Vagrant')
       const T = big?.name === 'Vagrant' ? [[0, 1, 0, 0], [0, 2, -3, 0], [-1, 1, 4, 1.57], [2, 1, 5, 0], [0, 1, 9, Math.PI], [0, 1, 12, 0]] : [[0, 8, 0, 0], [0, 5, -4, 0], [0, 5, 8, 0], [-2, 5, 0, 1.2], [0, 5, 11, Math.PI], [0, 1, 13, Math.PI], [0, 1, -2, 0], [-2, 1, 3, 2.2], [2, 1, 4, -2.2], [0, 1, 8, 0], [3, 5, 1, 0.9]]
@@ -459,6 +503,7 @@ export class Game {
     W.draw(dt)
     e.sync()
     this.syncPlayerModel()
+    if (this.menus.visible && this.menus.page === 'blueprints' && this.previews.step()) this.menus.panel.dirty = true
     if (this.icons.step(this.state === 'play' ? 3 : 8, this.state === 'play' ? 2 : 4)) { this.hud.bar.dirty = true; if (this.menus.page === 'catalog') this.menus.panel.dirty = true }
     this.hud.update(dt)
     this.menus.update()
@@ -534,7 +579,7 @@ export class Game {
       }
       if (P.seat) {
         // free look holds the ship's attitude and turns only your head
-        const free = inp.down('freeLook') || this.view !== 'fp' && inp.mouse.right
+        const free = inp.down('freeLook') || this.view !== 'fp' && inp.mouse.right || gr.wheelContacts > 0
         const k = gr.size === 'large' ? 0.9 : 1.6
         const rate = v => Math.max(-k, Math.min(k, v / Math.max(dt, 1 / 120) * 0.45))
         if (free) { this.freeLook = this.freeLook || { yaw: 0, pitch: 0 }; this.freeLook.yaw += look.yaw; this.freeLook.pitch = Math.max(-1.4, Math.min(1.4, this.freeLook.pitch + look.pitch)) }
@@ -554,8 +599,15 @@ export class Game {
       P.look(look.yaw, look.pitch)
       P.crouch = inp.down('down') && !P.jetpack
     }
-    // ships move, then the engineer (on what moved)
+    // pirates think, ships move, then the engineer (on what moved)
+    this.pirates.update(dt)
     W.update(dt, piloted, ctl)
+    // weapons: the pilot's trigger, the pirates' triggers, the engineer's rifle
+    if (P.seat && !menu && inp.mouse.left) W.combat.fireGuns(P.seat.grid, dt, true)
+    for (const gr of W.grids) if (gr.ai?.fire && !gr.ai.disabled) W.combat.fireGuns(gr, dt, true)
+    if (!P.seat && !menu && B.tool === 'rifle' && inp.mouse.left && !P.dead) W.combat.rifle(P, this.camPos, new THREE.Vector3(0, 0, -1).applyQuaternion(this.camQuat), dt)
+    this.wrecks.update(dt)
+    this.heat(dt)
     if (P.seat) { const n = W.survival.shipDrill(P.seat.grid, dt, !menu && inp.mouse.left && P.seat.grid.parts.drills.length > 0); if (n) this.shake = Math.max(this.shake || 0, 0.15) }
     this.oreT = (this.oreT || 0) + dt
     if (this.oreT > 2) { this.oreT = 0; this.oreMarks = this.scanOre(P) }

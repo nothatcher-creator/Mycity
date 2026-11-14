@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import { Planet } from './planet.js'
 import { AsteroidField } from './asteroid.js'
 import { rng } from '../core/noise.js'
+import { Cosmos, STAR_CELL, starsNear } from './cosmos.js'
 
 export const SECTOR = 1800000
 const WAKE = 1050000, SLEEP = 1300000, SENSE = 3400000
@@ -49,6 +50,13 @@ const HOME_FIELDS = [
   { id: 'belt', name: 'The Drift', center: [-150000, 6000, 150000], radius: 14000, count: 70, seed: 13, anchor: 420, flat: 0.35, ores: ['iron', 'nickel', 'cobalt', 'gold', 'platinum', 'uranium', 'ice'],
     blurb: 'Deep space between the worlds: gold, platinum and uranium.' },
 ]
+const HOME_GIANTS = [
+  { id: 'toren', name: 'Toren', R: 140000, g: 14, seed: 77, center: [980000, -60000, 420000], tilt: 0.38, rings: [190000, 330000], cols: [[0.86, 0.66, 0.42], [0.62, 0.42, 0.28], [0.95, 0.9, 0.8]],
+    blurb: 'A gas giant with rings: no ground, only cloud getting thicker the deeper you go, until it crushes. 1.4 g at the cloud tops.' },
+]
+const HOME_NEBULAE = [{ id: 'veil', name: 'The Veil', center: [-1500000, 380000, 900000], radius: 380000, seed: 5, cols: [[0.55, 0.3, 0.95], [0.2, 0.75, 0.95]], blurb: 'A cloud of glowing gas hundreds of kilometres across.' }]
+HOME_FIELDS.push({ id: 'ishu', name: 'Comet Ishu', center: [-420000, 150000, -120000], radius: 900, count: 0, seed: 21, anchor: 320, comet: true, tail: 70000, ores: ['ice', 'ice', 'cobalt', 'silver'],
+  blurb: 'A comet: a mountain of dirty ice trailing a tail of light away from the star.' })
 export const BODIES = HOME_BODIES, FIELDS = HOME_FIELDS
 
 // ---- worlds made from a sector's number ----
@@ -72,7 +80,7 @@ function makeBody(r, id, name, kind, R, center, far, isMoon) {
   return d
 }
 export function sectorDef(i, k) {
-  if (i === 0 && k === 0) return { key: '0,0', i, k, name: 'Home', center: [0, 0, 0], bodies: HOME_BODIES, fields: HOME_FIELDS, home: true }
+  if (i === 0 && k === 0) return { key: '0,0', i, k, name: 'Home', center: [0, 0, 0], bodies: HOME_BODIES, fields: HOME_FIELDS, giants: HOME_GIANTS, nebulae: HOME_NEBULAE, home: true }
   const r = rng(hash2i(i, k))
   if (r() > 0.66 && !(Math.abs(i) + Math.abs(k) === 1)) return { key: i + ',' + k, i, k, empty: true }
   const far = Math.min(1, Math.hypot(i, k) / 6)
@@ -89,7 +97,13 @@ export function sectorDef(i, k) {
   if (r() < 0.5) { const n2 = makeName(r), R1 = 9000 + r() * 16000; bodies.push(makeBody(r, `s${key}b`, n2, kinds[Math.floor(r() * kinds.length)], R1, at(c, dir(), 250000 + r() * 150000), far, false)) }
   const nf = 1 + Math.floor(r() * 2)
   for (let f = 0; f < nf; f++) fields.push({ id: `s${key}f${f}`, name: `${name} ${['Reef', 'Scatter', 'Shoal', 'Belt'][Math.floor(r() * 4)]}`, center: at(c, dir(), R0 * 2.6 + 30000 + r() * 110000), radius: 4000 + r() * 6000, count: 22 + Math.floor(r() * 30), seed: Math.floor(r() * 1e5) + 3, anchor: r() < 0.5 ? 250 + r() * 200 : 0, ores: pickOres(r, far), blurb: 'A field of drifting rock.' })
-  return { key, i, k, name, center: c, bodies, fields }
+  // sometimes a gas giant, a comet, a nebula
+  const giants = [], nebulae = []
+  if (r() < 0.38) { const R = 90000 + r() * 110000, h = r(); giants.push({ id: `s${key}g`, name: makeName(r), R, g: 9 + r() * 12, seed: Math.floor(r() * 1e5), center: at(c, dir(), 520000 + r() * 300000), tilt: (r() - 0.5) * 0.9, rings: r() < 0.6 ? [R * 1.35, R * (2 + r() * 0.6)] : null,
+    cols: h < 0.33 ? [[0.86, 0.66, 0.42], [0.62, 0.42, 0.28], [0.95, 0.9, 0.8]] : h < 0.66 ? [[0.42, 0.62, 0.86], [0.26, 0.38, 0.66], [0.85, 0.92, 1]] : [[0.7, 0.8, 0.55], [0.45, 0.55, 0.36], [0.92, 0.95, 0.8]], blurb: 'A gas giant: no ground, only cloud that crushes the deeper you go.' }) }
+  if (r() < 0.3) fields.push({ id: `s${key}c`, name: `Comet ${makeName(r)}`, center: at(c, dir(), 300000 + r() * 300000), radius: 900, count: 0, seed: Math.floor(r() * 1e6), anchor: 220 + r() * 180, comet: true, tail: 40000 + r() * 50000, ores: ['ice', 'ice', ...pickOres(r, far).slice(0, 2)], blurb: 'A comet: dirty ice with a tail of light.' })
+  if (r() < 0.25) { const h = r(); nebulae.push({ id: `s${key}n`, name: `${makeName(r)} Nebula`, center: at(c, dir(), 900000 + r() * 400000), radius: 200000 + r() * 250000, seed: Math.floor(r() * 1e5), cols: h < 0.5 ? [[0.95, 0.35, 0.45], [0.95, 0.65, 0.3]] : [[0.3, 0.9, 0.7], [0.3, 0.5, 0.95]], blurb: 'A cloud of glowing gas.' }) }
+  return { key, i, k, name, center: c, bodies, fields, giants, nebulae }
 }
 
 const DAY = 60 * 60 // seconds for the star to go round once
@@ -103,6 +117,9 @@ export class Universe {
     this.sunDir = new THREE.Vector3(0.62, 0.42, 0.66).normalize()
     this.time = 0.18 * DAY
     this.tmpG = new THREE.Vector3()
+    this.cosmos = new Cosmos(engine, this)
+    this.homeDir = new THREE.Vector3().copy(this.sunDir)
+    this.cam = new THREE.Vector3()
     this.wake(this.sector(0, 0))
   }
   sector(i, k) {
@@ -116,6 +133,7 @@ export class Universe {
     if (!s.planets) { s.planets = s.def.bodies.map(d => new Planet(d, this.engine)); s.fields = s.def.fields.map(d => new AsteroidField(d, this.engine)) }
     else for (const p of s.planets) p.wake()
     for (const p of s.planets) p.setSun(this.sunDir)
+    if (this.cosmos) { for (const g of s.def.giants || []) this.cosmos.addGiant(g); for (const n of s.def.nebulae || []) this.cosmos.addNebula(n); for (const f of s.fields) if (f.def.comet) this.cosmos.addComet(f) }
     s.awake = true
     const fresh = !this.known.has(s.key)
     this.known.add(s.key)
@@ -126,6 +144,9 @@ export class Universe {
     if (!s.awake) return
     for (const p of s.planets) p.sleep()
     for (const f of s.fields) f.sleep()
+    for (const g of s.def.giants || []) this.cosmos.removeGiant(g.id)
+    for (const n of s.def.nebulae || []) this.cosmos.removeNebula(n.id)
+    for (const f of s.fields) if (f.def.comet) this.cosmos.removeComet(f)
     s.awake = false
     this.refresh()
   }
@@ -160,16 +181,25 @@ export class Universe {
   }
   updateSun(dt) {
     this.time += dt
+    this.lastDt = dt
     const a = this.time / DAY * Math.PI * 2
     const ax = new THREE.Vector3(0.18, 1, -0.12).normalize()
-    this.sunDir.set(Math.cos(a), 0.18, Math.sin(a)).normalize().applyAxisAngle(ax, 0.3)
-    for (const p of this.planets) p.setSun(this.sunDir)
+    // Vela circles the home system (this is the day); light comes from the nearest star
+    this.homeDir.set(Math.cos(a), 0.18, Math.sin(a)).normalize().applyAxisAngle(ax, 0.3)
+    const C = this.cosmos
+    C.place(this.homeDir)
+    const st = C.nearestStar(this.cam)
+    this.sunDir.copy(st.pos).sub(this.cam).normalize()
+    this.star = st
+    for (const p of this.planets) p.setSun(this.tmpG.copy(C.nearestStar(p.center).pos).sub(p.center).normalize())
     return this.sunDir
   }
+  heatAt(p) { return this.cosmos.heatAt(p) }
   gravity(p, out = new THREE.Vector3()) {
     out.set(0, 0, 0)
     let best = null, bg = 0
     for (const pl of this.planets) { const g = pl.gravity(p, out); if (g > bg) { bg = g; best = pl } }
+    this.cosmos?.gravity(p, out)
     this.strongest = best
     return out
   }
@@ -190,6 +220,8 @@ export class Universe {
     return d
   }
   update(cam, now, quality) {
+    this.cam.copy(cam)
+    this.cosmos.update(this.lastDt || 0.016, cam, this.sunDir)
     this.acc = (this.acc || 0) + 1
     if (this.acc % 30 === 1) this.manage(cam)
     for (const p of this.planets) p.update(cam, now, quality.detail)
@@ -211,7 +243,15 @@ export class Universe {
       const [i, k] = key.split(',').map(Number), d = this.sector(i, k).def
       if (d.empty) continue
       for (const b of d.bodies) out.push({ id: b.id, name: b.name, pos: new THREE.Vector3(...b.center), r: b.R, kind: 'planet', ptype: b.kind, blurb: b.blurb, sector: key, group: d.name, air: !!b.atmo, g: b.g })
-      for (const f of d.fields) out.push({ id: f.id, name: f.name, pos: new THREE.Vector3(...f.center), r: f.radius, kind: 'field', blurb: f.blurb, sector: key, group: d.name })
+      for (const f of d.fields) out.push({ id: f.id, name: f.name, pos: new THREE.Vector3(...f.center), r: f.comet ? f.anchor : f.radius, kind: f.comet ? 'comet' : 'field', blurb: f.blurb, sector: key, group: d.name })
+      for (const g of d.giants || []) out.push({ id: g.id, name: g.name, pos: new THREE.Vector3(...g.center), r: g.R, kind: 'giant', blurb: g.blurb, sector: key, group: d.name, g: g.g })
+      for (const n of d.nebulae || []) out.push({ id: n.id, name: n.name, pos: new THREE.Vector3(...n.center), r: n.radius, kind: 'nebula', blurb: n.blurb, sector: key, group: d.name })
+    }
+    // the stars: Vela always, and the nearest others
+    const C = this.cosmos
+    if (C) {
+      out.push({ id: 'vela', name: 'Vela', pos: C.home.pos.clone(), r: C.home.R, kind: 'star', blurb: 'The home star. It burns anything that comes within a few of its radii.', group: 'Home' })
+      for (const st of C.far(this.cam).slice().sort((a, b) => a.pos.distanceTo(this.cam) - b.pos.distanceTo(this.cam)).slice(0, 4)) out.push({ id: st.id, name: st.name, pos: st.pos.clone(), r: st.R, kind: 'star', blurb: 'A star far beyond the home system.', group: 'Deep space' })
     }
     return out
   }

@@ -2,7 +2,7 @@
 // p0.sound. In vacuum you hear only what reaches you through your suit and the hull you touch: the ship you
 // sit in, your jetpack, your tools. Air carries wind and nearby thrusters. A loop restarts at a new level
 // when its level moves enough (the platform cannot change a playing sound's volume).
-const FILES = ['door', 'gear', 'grind_end', 'impact', 'jump', 'jump_charge', 'land', 'loop_atmo', 'loop_drill', 'loop_grind', 'loop_h2', 'loop_hum', 'loop_ion', 'loop_jetpack', 'loop_weld', 'loop_wind', 'paint', 'place', 'seat', 'step', 'ui_click', 'ui_error', 'ui_on']
+const FILES = ['gun', 'rocket', 'boom', 'alarm', 'loop_motor', 'door', 'gear', 'grind_end', 'impact', 'jump', 'jump_charge', 'land', 'loop_atmo', 'loop_drill', 'loop_grind', 'loop_h2', 'loop_hum', 'loop_ion', 'loop_jetpack', 'loop_weld', 'loop_wind', 'paint', 'place', 'seat', 'step', 'ui_click', 'ui_error', 'ui_on']
 const SET = new Set(FILES)
 
 export class SFX {
@@ -38,6 +38,7 @@ export class SFX {
     if (gr) add(gr, 1)
     else if (air > 0.1) for (const o of g.world.grids) { const d = o.comWorld().distanceTo(P.pos); if (d < 300) add(o, air * Math.max(0, 1 - d / 300)) }
     const lvl = v => Math.min(0.75, 0.12 + Math.sqrt(v) * 0.25)
+    { const dr = gr?.drive, wh = gr?.parts?.wheels?.length; const k2 = wh ? Math.min(1, Math.abs(dr?.throttle || 0) * 0.6 + (gr.vel.length() / 30)) : 0; if (k2 > 0.05) this.loop('motor', 'loop_motor', 0.15 + k2 * 0.4); else this.stopLoop('motor') }
     for (const k of ['atmo', 'ion', 'h2']) { if (kinds[k] > 0.02) this.loop('thr_' + k, 'loop_' + k, lvl(kinds[k])); else this.stopLoop('thr_' + k) }
     if (gr) this.loop('hum', 'loop_hum', 0.18); else this.stopLoop('hum')
     // the jetpack

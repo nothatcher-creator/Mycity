@@ -11,14 +11,15 @@ import { Grid } from '../grid/grid.js'
 import { ITEMS, recipeTotal } from './items.js'
 
 export const DEFAULT_BAR = [
-  { block: 'light_cube' }, { block: 'light_slope' }, { block: 'light_corner' }, { block: 'thr_h2_small' }, { block: 'gyro' },
-  { block: 'cockpit' }, { tool: 'drill' }, { tool: 'welder' }, { tool: 'grinder' },
+  { block: 'light_cube' }, { block: 'light_slope' }, { block: 'light_corner' }, { block: 'thr_h2_small' },
+  { block: 'cockpit' }, { tool: 'drill' }, { tool: 'welder' }, { tool: 'grinder' }, { tool: 'rifle' },
 ]
 export const TOOLS = {
   welder: { name: 'Welder', desc: 'Hold the left button on a block to build it up from your parts and repair it.' },
   grinder: { name: 'Grinder', desc: 'Hold the left button on a block to cut it apart; its parts go to your inventory.' },
   drill: { name: 'Hand Drill', desc: 'Hold the left button on rock to dig; the ore goes to your inventory.' },
   paint: { name: 'Paint Gun', desc: 'Left button paints a block; P picks the colour.' },
+  rifle: { name: 'Rifle', desc: 'Left button fires. Uses ammo boxes from your inventory in survival.' },
 }
 const GHOST_GEO = new Map()
 

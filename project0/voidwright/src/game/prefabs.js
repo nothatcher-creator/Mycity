@@ -5,6 +5,7 @@
 import { R, F, BK, UPR, DNR, LF, RT, UPSIDE, BP, Shape, skin, roof } from './bpkit.js'
 import { FLEET, FLEET_LIST } from './fleet.js'
 import { CAPITAL, CAPITAL_LIST } from './capital.js'
+import { ARSENAL, ARSENAL_LIST, STATION_LIST } from './arsenal.js'
 
 // ---- Sparrow: a small-grid scout that flies on Halvor and in space ----
 function sparrowHull(P, A) {
@@ -255,7 +256,7 @@ function foothold() {
   return b.bp
 }
 
-export const PREFABS = { sparrow, pick, mule, mole, lancer, kestrel, foothold, ...FLEET, ...CAPITAL }
-export const PREFAB_LIST = ['sparrow', 'pick', 'mule', 'mole', 'lancer', ...FLEET_LIST, ...CAPITAL_LIST, 'kestrel', 'foothold']
+export const PREFABS = { sparrow, pick, mule, mole, lancer, kestrel, foothold, ...FLEET, ...CAPITAL, ...ARSENAL }
+export const PREFAB_LIST = ['sparrow', 'pick', 'mule', 'mole', 'lancer', ...FLEET_LIST, ...CAPITAL_LIST, ...ARSENAL_LIST, 'kestrel', 'foothold', ...STATION_LIST]
 const cache = {}
 export function prefab(id) { return cache[id] || (cache[id] = PREFABS[id]()) }

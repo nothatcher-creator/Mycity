@@ -21,6 +21,9 @@ export const SCENARIOS = [
   { id: 'empty', name: 'Empty Space', sub: 'Nothing but you', desc: 'Floating in the dark with a jetpack and every block. Build from the first cube.' },
 ]
 
+const KIND = { planet: 'World', field: 'Rock field', comet: 'Comet', star: 'Star', giant: 'Gas giant', nebula: 'Nebula', signal: 'Unknown', grid: 'Grid' }
+const MAPCOL = { star: '#ffd890', giant: '#e0b080', nebula: '#c8a8ff', comet: '#a8e8ff' }
+
 export class Menus {
   constructor(game) {
     this.g = game
@@ -132,6 +135,7 @@ export class Menus {
     row('Mouse speed', [[0.5, 'Slow'], [0.8, ''], [1, 'Normal'], [1.4, ''], [2, 'Fast']], s.sens, v => { s.sens = v; g.input.sens = v })
     row('Invert look', [[false, 'Off'], [true, 'On']], s.invertY, v => { s.invertY = v; g.input.invertY = v })
     row('Volume', [[0, 'Off'], [0.4, '40%'], [0.7, '70%'], [1, '100%']], s.volume, v => { s.volume = v })
+    row('Pirates', [['off', 'Off'], ['rare', 'Rare'], ['often', 'Often']], s.pirates || 'rare', v => { s.pirates = v })
     this.back(c, p, g.state === 'menu' ? 'title' : 'pause')
   }
   page_controls(c, p) {
@@ -224,14 +228,21 @@ export class Menus {
     this.title(c, p, 'BLUEPRINTS', 'Pick a design: it appears in front of you; left button places it. Ctrl + C on any grid copies it here.')
     const list = PREFAB_LIST.map(id => ({ id, bp: prefab(id) }))
     if (g.builder.clip) list.unshift({ id: 'clip', bp: g.builder.clip })
-    // two columns where there is room; the wheel or the arrows page through when the list is long
-    const cols = p.w >= 640 ? 2 : 1, bw = (p.w - 36 - (cols - 1) * 8) / cols, rows = Math.max(1, Math.floor((p.h - 74 - 62) / 62))
+    // two columns where there is room, a picture of each design; the wheel or the arrows page through
+    const cols = p.w >= 640 ? 2 : 1, bw = (p.w - 36 - (cols - 1) * 8) / cols, RH = 90, rows = Math.max(1, Math.floor((p.h - 74 - 62) / (RH + 6)))
     const total = Math.ceil(list.length / cols), off = Math.min(Math.max(0, total - rows), Math.round(this.scroll / 60))
     this.scroll = off * 60
+    const pv = g.previews
     list.slice(off * cols, (off + rows) * cols).forEach(({ id, bp }, n) => {
-      const x = 18 + (n % cols) * (bw + 8), y = 74 + Math.floor(n / cols) * 62
-  p.button(c, 'bp' + id, x, y, bw, 56, (id === 'clip' ? 'COPIED: ' : '') + bp.name.toUpperCase(), () => { this.close(); g.builder.startPaste(bp) }, { sub: `${bp.size === 'large' ? 'Large' : 'Small'} grid ${bp.static ? 'station' : 'ship'} · ${bp.blocks.length} blocks${bp.desc ? ' · ' + bp.desc : ''}`, arrow: true })
+      const x = 18 + (n % cols) * (bw + 8), y = 74 + Math.floor(n / cols) * (RH + 6)
+      const tw = Math.round((RH - 12) * 240 / 136)
+      p.button(c, 'bp' + id, x, y, bw, RH, (id === 'clip' ? 'COPIED: ' : '') + bp.name.toUpperCase(), () => { this.close(); g.builder.startPaste(bp) }, { sub: `${bp.size === 'large' ? 'Large' : 'Small'} grid ${bp.static ? 'station' : 'ship'} · ${bp.blocks.length} blocks${bp.desc ? ' · ' + bp.desc : ''}`, arrow: true, indent: tw + 8, wrapSub: true })
+      const pic = id === 'clip' ? null : pv?.get(id, bp)
+      c.fillStyle = 'rgba(4,10,13,0.85)'; c.fillRect(x + 8, y + 6, tw, RH - 12)
+      if (pic) c.drawImage(pic, x + 8, y + 6, tw, RH - 12)
+      else { c.strokeStyle = 'rgba(63,224,208,0.35)'; c.strokeRect(x + 8.5, y + 6.5, tw - 1, RH - 13); text(c, id === 'clip' ? 'COPY' : '…', x + 8 + tw / 2, y + RH / 2 + 4, { size: 12, weight: 700, color: C.dim, align: 'center' }) }
     })
+    if (pv?.todo.length) this.panel.dirty = true
     if (total > rows) {
       p.button(c, 'bpUp', p.w - 250, p.h - 54, 50, 38, '\u25B2', () => { this.scroll = Math.max(0, this.scroll - 60); this.panel.dirty = true }, { align: 'center' })
       p.button(c, 'bpDn', p.w - 194, p.h - 54, 50, 38, '\u25BC', () => { this.scroll += 60; this.panel.dirty = true }, { align: 'center' })
@@ -255,7 +266,7 @@ export class Menus {
     const off = Math.min(max, Math.round(this.scroll / 60))
     rows.slice(off * cols, (off + per) * cols).forEach((pl, i) => {
       const x = 18 + (i % cols) * (cw + 10), y = 78 + Math.floor(i / cols) * (rh + 6), ok = pl.d < 2000000
-      p.button(c, 'j' + pl.id, x, y, cw, rh, pl.name.toUpperCase(), () => { this.close(); g.planJump(pl) }, { sub: `${pl.kind === 'planet' ? 'World' : pl.kind === 'field' ? 'Rock field' : pl.kind === 'signal' ? 'Unknown' : 'Waypoint'} · ${(pl.d / 1000).toFixed(0)} km${ok ? '' : ' · out of range'} · ${pl.blurb || ''}`, disabled: !ok, arrow: true })
+      p.button(c, 'j' + pl.id, x, y, cw, rh, pl.name.toUpperCase(), () => { this.close(); g.planJump(pl) }, { sub: `${KIND[pl.kind] || 'Waypoint'} · ${(pl.d / 1000).toFixed(0)} km${ok ? '' : ' · out of range'} · ${pl.blurb || ''}`, disabled: !ok, arrow: true })
     })
     if (max > 0) text(c, `Scroll for more (${rows.length} places)`, 18, p.h - 30, { size: 11, weight: 600, color: C.dim })
     this.back(c, p, null, 'CLOSE')
@@ -285,7 +296,8 @@ export class Menus {
     for (const pl of U.places()) {
       const x = sx(pl.pos.x), y = sy(pl.pos.z), r = Math.max(pl.kind === 'planet' ? 4 : 3, pl.r / V.scale)
       if (x < mx - 60 || x > mx + mw + 60 || y < my - 60 || y > my + mh + 60) continue
-      if (pl.kind === 'planet') { c.fillStyle = COL[pl.ptype] || '#aaa'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); if (pl.air) { c.strokeStyle = 'rgba(160,210,255,0.6)'; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, r + 2, 0, 7); c.stroke() } }
+      if (MAPCOL[pl.kind]) { c.fillStyle = MAPCOL[pl.kind]; c.globalAlpha = pl.kind === 'nebula' ? 0.35 : 1; c.beginPath(); c.arc(x, y, pl.kind === 'star' ? Math.max(5, r) : r, 0, 7); c.fill(); c.globalAlpha = 1; if (pl.kind === 'star') { c.strokeStyle = 'rgba(255,120,60,0.5)'; c.lineWidth = 1; c.beginPath(); c.arc(x, y, Math.max(8, r * 5), 0, 7); c.stroke() } }
+      else       if (pl.kind === 'planet') { c.fillStyle = COL[pl.ptype] || '#aaa'; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); if (pl.air) { c.strokeStyle = 'rgba(160,210,255,0.6)'; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, r + 2, 0, 7); c.stroke() } }
       else { c.strokeStyle = 'rgba(255,190,110,0.8)'; c.setLineDash([3, 3]); c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, Math.max(5, r), 0, 7); c.stroke(); c.setLineDash([]) }
       if (r > 3.5 || V.scale < 3000) text(c, pl.name, x + r + 5, y + 4, { size: 11, weight: 700, color: pl.kind === 'planet' ? C.text : 'rgba(255,190,110,0.9)', shadow: true })
       items.push({ ...pl, sx: x, sy: y, sr: Math.max(8, r) })
@@ -320,7 +332,7 @@ export class Menus {
       box(c, x0, y, side, 150, { ticks: false })
       text(c, sel.name.toUpperCase(), x0 + 12, y + 22, { size: 14, weight: 700, color: C.gold2, max: side - 24 })
       const d = here.distanceTo(sel.pos) - (sel.kind === 'signal' ? 0 : sel.r)
-      text(c, `${sel.kind === 'planet' ? 'World' : sel.kind === 'field' ? 'Rock field' : sel.kind === 'signal' ? 'Unknown' : sel.kind === 'grid' ? 'Grid' : 'Waypoint'} · ${d >= 1000 ? (d / 1000).toFixed(d > 100000 ? 0 : 1) + ' km' : Math.round(d) + ' m'}${sel.g ? ' · ' + (sel.g / 9.81).toFixed(2) + ' g' : ''}`, x0 + 12, y + 40, { size: 11, weight: 700, color: C.dim })
+      text(c, `${KIND[sel.kind] || 'Waypoint'} · ${d >= 1000 ? (d / 1000).toFixed(d > 100000 ? 0 : 1) + ' km' : Math.round(d) + ' m'}${sel.g ? ' · ' + (sel.g / 9.81).toFixed(2) + ' g' : ''}`, x0 + 12, y + 40, { size: 11, weight: 700, color: C.dim })
       wrap(c, sel.blurb || '', x0 + 12, y + 58, side - 24, 15, { size: 11, weight: 500 })
       const on = g.tracked && g.tracked.id === sel.id
       p.button(c, 'trk', x0 + 10, y + 112, (side - 30) / 2, 30, on ? 'TRACKING' : 'TRACK', () => { g.tracked = on ? null : { id: sel.id, name: sel.name, pos: sel.pos.clone(), r: sel.kind === 'signal' ? 0 : sel.r, kind: sel.kind, wp: sel.wp }; this.panel.dirty = true }, { align: 'center', selected: on, font: FONT(11, 700) })

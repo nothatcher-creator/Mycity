@@ -319,7 +319,7 @@ def({ id: 'antenna', name: 'Antenna Mast', cat: 'Utility', sizes: { large: [1, 4
     g.cyl('z', 0, h - 0.4, -0.35, 0.3, 0.05, { r2: 0.05, tile: T.PLAIN, seg: 12, paint: false, double: true })
   } })
 def({ id: 'gravgen', name: 'Gravity Generator', cat: 'Utility', sizes: { large: [1, 1, 1] }, shape: 'cube', full: 63, mass: { large: 2600 }, hp: { large: 1800 },
-  desc: 'Artificial gravity in a 30 x 20 x 30 m box round it (pointing to its base), so you can walk inside a ship.', func: { gravgen: { half: [15, 10, 15], g: 9.81 }, power: { use: { large: 0.5 } } },
+  desc: 'Artificial gravity in a 60 x 40 x 60 m box round it, pointing to its base: walk the decks of a ship or station, and loose ships parked inside settle to the floor. Needs power.', func: { gravgen: { half: [30, 20, 30], g: 9.81 }, power: { use: { large: 0.5 } } },
   geo(g) { g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.RING, nx: T.RING, pz: T.RING, nz: T.RING, py: T.CORE, ny: T.METAL }, emits: { py: 0.9 } }) } })
 def({ id: 'jumpdrive', name: 'Jump Drive', cat: 'Utility', sizes: { large: [3, 3, 2] }, shape: 'box', mass: { large: 22000 }, hp: { large: 6000 },
   desc: 'Charges, then folds space: jump the whole grid up to 2,000 km. J in a seat.', func: { jumpdrive: { range: 2000000, charge: 10 }, power: { use: { large: 32 } } },
@@ -560,6 +560,103 @@ export function sizesOf(id) { const d = BLOCKS[id]; return Object.keys(d.sizes) 
 export function hasSize(id, size) { return !!BLOCKS[id]?.sizes[size] }
 // a block's geometry, built once per block, size and variant
 const CACHE = new Map()
+// ---------- the eighth round: weapons, wheels and tracks, a sphere of gravity, furnishings ----------
+CATS.splice(CATS.indexOf('Production'), 0, 'Weapons', 'Wheels')
+def({ id: 'gun_auto', name: 'Autocannon', cat: 'Weapons', sizes: { large: [1, 1, 3], small: [1, 1, 3] }, shape: 'box', mass: { large: 1400, small: 110 }, hp: { large: 1600, small: 160 },
+  desc: 'Fires along its front while you hold the left button in a seat on the same grid. Uses ammo boxes from the grid\'s cargo in survival.',
+  func: { gun: { kind: 'bullet', rate: 8, dmg: { large: 160, small: 45 }, speed: 720, range: 1400, spread: 0.0035, ammo: 'ammo', per: 0.02, muzzle: [0, 0.02, -0.62] }, power: { use: { large: 0.02, small: 0.004 } } },
+  geo(g) {
+    g.box(-0.45, -0.5, 0.45, 0.45, -0.24, 2.45, { tile: T.METAL })
+    g.box(-0.3, -0.24, 0.55, 0.3, 0.3, 2.3, { tiles: { px: T.PANEL, nx: T.PANEL, py: T.VENT, pz: T.METAL, nz: T.DARK }, col: DARKC, paint: false })
+    g.box(-0.31, 0.05, 0.9, 0.31, 0.12, 2.0, { tile: T.STRIPE })
+    g.cyl('x', 0, 0.02, 1.65, 0.27, 0.72, { tile: T.PIPE, seg: 12, col: STEEL, paint: false })
+    g.cyl('z', 0, 0.02, 0.05, 0.1, 1.05, { tile: T.PIPE, seg: 10, col: DARKC, paint: false })
+    g.cyl('z', 0, 0.02, -0.42, 0.15, 0.2, { tile: T.NOZZLE, seg: 10, col: DARKC, paint: false })
+    g.cyl('z', 0, 0.02, -0.53, 0.07, 0.02, { tile: T.GLOW, seg: 8, col: [0.4, 0.3, 0.25], paint: false })
+  } })
+def({ id: 'gun_rocket', name: 'Rocket Launcher', cat: 'Weapons', sizes: { large: [1, 1, 3], small: [1, 1, 3] }, shape: 'box', mass: { large: 2600, small: 220 }, hp: { large: 2200, small: 220 },
+  desc: 'Four tubes of rockets that burst on what they hit, breaking blocks and blasting rock. Left button in a seat. Uses rockets from the cargo in survival.',
+  func: { gun: { kind: 'rocket', rate: 1.4, dmg: { large: 2600, small: 900 }, blast: { large: 4.5, small: 2.2 }, speed: 140, accel: 160, max: 330, range: 1800, spread: 0.002, ammo: 'rocket', per: 1, muzzle: [0, 0, -0.6], tubes: [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]] }, power: { use: { large: 0.02, small: 0.004 } } },
+  geo(g) {
+    g.box(-0.46, -0.46, -0.42, 0.46, 0.44, 2.45, { tiles: { px: T.HAZARD, nx: T.HAZARD, py: T.PANEL, ny: T.METAL, pz: T.VENT, nz: T.DARK }, cols: { px: [1, 1, 1], nx: [1, 1, 1] } })
+    for (const [x, y] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) g.cyl('z', x, y, -0.46, 0.14, 0.1, { tile: T.NOZZLE, seg: 10, col: DARKC, paint: false, capA: false })
+    g.box(-0.5, -0.5, 0.4, 0.5, -0.44, 2.5, { tile: T.METAL })
+  } })
+def({ id: 'turret_gatling', name: 'Gatling Turret', cat: 'Weapons', sizes: { large: [1, 1, 1], small: [3, 3, 3] }, shape: 'box', mass: { large: 2800, small: 260 }, hp: { large: 2600, small: 240 },
+  desc: 'Turns by itself to shoot pirates in reach (900 m). Needs power; uses ammo boxes from the cargo in survival.',
+  func: { turret: { kind: 'bullet', rate: 14, dmg: { large: 110, small: 40 }, speed: 820, range: 900, spread: 0.006, turn: 2.6, ammo: 'ammo', per: 0.02, head: 'gatling' }, power: { use: { large: 0.15, small: 0.02 } } },
+  geo(g, S) {
+    const k = S[0], o = (k - 1) / 2
+    g.box(-0.5, -0.5, -0.5, k - 0.5, -0.5 + 0.18 * k, k - 0.5, { tiles: { py: T.HAZARD, ny: T.METAL, px: T.METAL, nx: T.METAL, pz: T.METAL, nz: T.METAL }, cols: { py: [1, 1, 1] }, cull: k === 1, cullPartial: true })
+    g.cyl('y', o, -0.5 + 0.26 * k, o, 0.36 * k, 0.16 * k, { tile: T.RING, seg: 16, col: DARKC, paint: false })
+  } })
+def({ id: 'turret_missile', name: 'Missile Turret', cat: 'Weapons', sizes: { large: [1, 1, 1], small: [3, 3, 3] }, shape: 'box', mass: { large: 3400, small: 300 }, hp: { large: 2800, small: 260 },
+  desc: 'Turns by itself and fires rockets that steer onto pirates up to 1.5 km away. Needs power; uses rockets from the cargo in survival.',
+  func: { turret: { kind: 'rocket', rate: 0.9, dmg: { large: 2200, small: 800 }, blast: { large: 4, small: 2 }, speed: 150, accel: 150, max: 340, range: 1500, spread: 0.004, turn: 1.6, ammo: 'rocket', per: 1, head: 'missile', homing: true }, power: { use: { large: 0.15, small: 0.02 } } },
+  geo(g, S) {
+    const k = S[0], o = (k - 1) / 2
+    g.box(-0.5, -0.5, -0.5, k - 0.5, -0.5 + 0.18 * k, k - 0.5, { tiles: { py: T.HAZARD, ny: T.METAL, px: T.METAL, nx: T.METAL, pz: T.METAL, nz: T.METAL }, cols: { py: [1, 1, 1] }, cull: k === 1, cullPartial: true })
+    g.cyl('y', o, -0.5 + 0.26 * k, o, 0.4 * k, 0.16 * k, { tile: T.RING, seg: 16, col: DARKC, paint: false })
+  } })
+def({ id: 'warhead', name: 'Warhead', cat: 'Weapons', shape: 'cube', full: 63, mass: { large: 1600, small: 120 }, hp: { large: 500, small: 60 },
+  desc: 'Blows up when it is destroyed: 10 m across on a large grid, 4 m on a small one. Handle with care.',
+  func: { warhead: { large: { r: 10, dmg: 14000 }, small: { r: 4, dmg: 3000 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { py: T.HAZARD, ny: T.METAL, px: T.HAZARD, nx: T.HAZARD, pz: T.PANEL, nz: T.PANEL }, cols: { py: [1, 1, 1], px: [1, 1, 1], nx: [1, 1, 1] } })
+    g.box(-0.08, 0.5, -0.08, 0.08, 0.56, 0.08, { tile: T.GLOW, col: [1, 0.2, 0.15], paint: false, emit: 1.4 })
+  } })
+// wheels hang under their block on a spring: the tyre is drawn by the game where the spring puts it
+const wheelMount = (g, S) => {
+  const k = S[0], o = (k - 1) / 2, top = k - 0.5
+  g.box(-0.5, top - 0.14 * k, -0.5, k - 0.5, top, k - 0.5, { tiles: { py: T.METAL, ny: T.METAL, px: T.HAZARD, nx: T.HAZARD, pz: T.METAL, nz: T.METAL }, cols: { px: [1, 1, 1], nx: [1, 1, 1] }, cull: k === 1, cullPartial: true })
+  g.cyl('y', o, o + 0.08 * k, o, 0.2 * k, 0.5 * k, { tile: T.COIL, seg: 10, col: STEEL, paint: false })
+  g.cyl('y', o, o - 0.25 * k, o, 0.09 * k, 0.5 * k, { tile: T.PIPE, seg: 8, col: DARKC, paint: false })
+}
+def({ id: 'wheel', name: 'Wheel and Suspension', cat: 'Wheels', sizes: { large: [1, 1, 1], small: [3, 3, 3] }, shape: 'boxes', boxes: [[-0.5, 0.25, -0.5, 0.5, 0.5, 0.5]], boxesS: [[-0.5, 1.5, -0.5, 2.5, 2.5, 2.5]], noContact: true, mass: { large: 900, small: 70 }, hp: { large: 1400, small: 140 },
+  desc: 'A sprung wheel that hangs below its block. W and S drive, A and D steer the wheels ahead of the seat. Brakes hold whenever the dampeners are on and you are not driving.',
+  func: { wheel: { r: { large: 1.05, small: 0.62 }, smin: { large: 0.25, small: 0.15 }, smax: { large: 1.6, small: 0.9 }, force: { large: 90000, small: 9000 }, grip: 1.1 }, power: { use: { large: 0.02, small: 0.002 } }, spinner: 'tyre' },
+  geo: wheelMount })
+def({ id: 'wheel_big', name: 'Large Wheel', cat: 'Wheels', sizes: { large: [2, 2, 2], small: [5, 5, 5] }, shape: 'box', noContact: true, mass: { large: 3200, small: 240 }, hp: { large: 3200, small: 320 },
+  desc: 'A big sprung wheel for heavy rovers and rough ground.',
+  func: { wheel: { r: { large: 2.0, small: 1.15 }, smin: { large: 0.4, small: 0.25 }, smax: { large: 2.8, small: 1.6 }, force: { large: 260000, small: 26000 }, grip: 1.2 }, power: { use: { large: 0.05, small: 0.005 } }, spinner: 'tyre' },
+  geo: wheelMount })
+def({ id: 'track', name: 'Track Unit', cat: 'Wheels', sizes: { large: [1, 1, 3], small: [3, 3, 9] }, shape: 'box', noContact: true, mass: { large: 3600, small: 300 }, hp: { large: 3600, small: 300 },
+  desc: 'A sprung caterpillar track. Tracks do not steer: A and D drive the two sides against each other, so a tracked machine turns on the spot.',
+  func: { track: { r: { large: 0.7, small: 0.42 }, rays: 3, force: { large: 160000, small: 16000 }, grip: 1.3 }, power: { use: { large: 0.05, small: 0.005 } }, spinner: 'tread' },
+  geo(g, S) {
+    const k = S[0], L = S[2], o = (k - 1) / 2, y0 = -0.5, y1 = k - 0.5, z0 = -0.5, z1 = L - 0.5, r = 0.36 * k
+    g.box(-0.5 + 0.06 * k, y0 + r * 0.7, z0 + r, k - 0.5 - 0.06 * k, y1 - 0.12 * k, z1 - r, { tiles: { px: T.PANEL, nx: T.PANEL, py: T.METAL, ny: T.METAL, pz: T.METAL, nz: T.METAL } })
+    g.box(-0.5, y0, z0 + r, k - 0.5, y0 + 0.12 * k, z1 - r, { tile: T.RUBBER, col: [0.16, 0.16, 0.17], paint: false })
+    g.box(-0.5, y1 - 0.12 * k, z0 + r, k - 0.5, y1, z1 - r, { tile: T.RUBBER, col: [0.16, 0.16, 0.17], paint: false })
+    for (const z of [z0 + r, z1 - r]) { g.cyl('x', o, y0 + r * 1.05, z, r, k * 0.98, { tile: T.RUBBER, seg: 14, col: [0.16, 0.16, 0.17], paint: false }); g.cyl('x', o, y0 + r * 1.05, z, r * 0.6, k * 1.02, { tile: T.GEAR, seg: 10, col: DARKC, paint: false }) }
+  } })
+def({ id: 'gravgen_sphere', name: 'Spherical Gravity Generator', cat: 'Utility', sizes: { large: [1, 1, 1] }, shape: 'cube', full: 63, mass: { large: 3200 }, hp: { large: 1800 },
+  desc: 'Pulls everything within 70 m toward itself: for round stations and spinning-free habitats. Needs power.',
+  func: { gravgen: { sphere: 70, g: 9.81 }, power: { use: { large: 0.8 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tile: T.METAL })
+    g.ball(0, 0, 0, 0.42, { tile: T.CORE, seg: 8, paint: false, emit: 0.9, col: [0.5, 0.9, 1] })
+  } })
+const fit = (id, name, boxes, desc, geo, o = {}) => def({ id, name, cat: 'Interior', shape: 'boxes', boxes, mass: { large: 150, small: 10 }, hp: { large: 300, small: 30 }, desc, geo, ...o })
+fit('plant', 'Potted Plant', [[-0.3, -0.5, -0.3, 0.3, 0.4, 0.3]], 'Something green on board.', g => {
+  g.cyl('y', 0, -0.32, 0, 0.26, 0.36, { r2: 0.3, tile: T.PANEL, seg: 10 })
+  for (const [x, z, h, s] of [[0, 0, 0.15, 0.28], [0.12, -0.08, 0.02, 0.2], [-0.12, 0.1, 0.05, 0.22]]) g.ball(x, h, z, s, { tile: T.PLAIN, seg: 5, col: [0.28, 0.55, 0.26], paint: false })
+})
+fit('sofa', 'Sofa', [[-0.5, -0.5, -0.4, 0.5, -0.05, 0.5]], 'A soft seat for the crew room (to sit on, not to fly from).', g => {
+  const S2 = { tile: T.PLAIN, col: [0.42, 0.3, 0.5] }
+  g.box(-0.5, -0.5, -0.35, 0.5, -0.22, 0.45, { tile: T.DARK, col: DARKC, paint: false }); g.box(-0.48, -0.22, -0.32, 0.48, -0.08, 0.3, S2); g.box(-0.48, -0.22, 0.28, 0.48, 0.35, 0.45, S2)
+  g.box(-0.5, -0.22, -0.32, -0.38, 0.05, 0.45, S2); g.box(0.38, -0.22, -0.32, 0.5, 0.05, 0.45, S2)
+})
+fit('shelf', 'Storage Shelf', [[-0.5, -0.5, 0.1, 0.5, 0.5, 0.5]], 'Racks of crates against a wall; holds 300 litres as part of the cargo.', g => {
+  for (const y of [-0.48, -0.08, 0.32]) g.box(-0.48, y, 0.12, 0.48, y + 0.04, 0.5, { tile: T.METAL })
+  for (const x of [-0.46, 0.42]) g.box(x, -0.5, 0.12, x + 0.04, 0.5, 0.5, { tile: T.METAL })
+  for (const [x, y, w, c] of [[-0.4, -0.44, 0.3, [0.86, 0.55, 0.16]], [0.0, -0.44, 0.34, [0.2, 0.44, 0.72]], [-0.36, -0.04, 0.36, [0.48, 0.5, 0.53]], [0.08, -0.04, 0.26, [0.86, 0.55, 0.16]], [-0.2, 0.36, 0.4, [0.2, 0.44, 0.72]]]) g.box(x, y, 0.18, x + w, y + 0.32, 0.46, { tile: T.CARGO, col: c, paint: false })
+}, { func: { inv: { large: 300, small: 60 }, cargo: { large: 0.3, small: 0.06 } } })
+fit('holotable', 'Holo Table', [[-0.5, -0.5, -0.5, 0.5, -0.05, 0.5]], 'A map table with a turning globe of light over it.', g => {
+  g.cyl('y', 0, -0.3, 0, 0.42, 0.4, { r2: 0.3, tile: T.PANEL, seg: 14 }); g.cyl('y', 0, -0.08, 0, 0.46, 0.06, { tile: T.SCREEN, seg: 16, paint: false, emit: 0.9 })
+  g.ball(0, 0.25, 0, 0.22, { tile: T.GLOW, seg: 6, col: [0.3, 0.95, 0.9], paint: false, emit: 0.8, double: true })
+}, { func: { light: { color: [0.3, 0.95, 0.88], range: 6, at: [0, 0.25, 0] } } })
+
 export function blockGeo(id, size, variant = '') {
   const k = id + '|' + size + '|' + variant
   let g = CACHE.get(k)

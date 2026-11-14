@@ -9,6 +9,7 @@ import { lin } from '../core/color.js'
 import { patchMaterial, ATMO_UNIFORMS } from './atmo-glsl.js'
 import { PlanetVoxels } from './voxels.js'
 import { makeClouds } from './clouds.js'
+import { Caves } from './caves.js'
 
 const SEG = 32
 const VEG = [0.34, 0.41, 0.22], VEG2 = [0.24, 0.33, 0.18]
@@ -195,6 +196,7 @@ export class Planet {
     this.built = 0
     this.digs = []; this.digHash = new Map()
     this.vox = new PlanetVoxels(this)
+    this.caves = def.caves === false ? null : new Caves(this)
     this.rock = def.rock || [0.4, 0.37, 0.34]
     this.tint = def.tint || null
     this.ores = def.ores || []
@@ -225,7 +227,7 @@ export class Planet {
     return g - this.R
   }
   digKey(x, y, z) { return Math.floor(x / 48) + ',' + Math.floor(y / 48) + ',' + Math.floor(z / 48) }
-  dig(p, r) {
+  dig(p, r, cave = false) {
     const x = p.x - this.center.x, y = p.y - this.center.y, z = p.z - this.center.z
     const d = { x, y, z, r }
     this.digs.push(d)
@@ -235,6 +237,8 @@ export class Planet {
       if (!L.includes(d)) L.push(d)
     }
     this.vox.add(d)
+    // a cave bite deep in the rock does not touch the height map (its chunk re-cuts the ground when built)
+    if (cave) { const L = Math.hypot(x, y, z), depth = this.R + this.height(x, y, z) - L; if (depth > r + 3) return }
     this.markDirty(new THREE.Vector3(x, y, z), r + 2)
   }
   // the height-map patches round a planet-local point are rebuilt (the old ones stay on screen meanwhile)
@@ -436,6 +440,7 @@ export class Planet {
     this.now = now; this.detailK = 2.25 * detail
     for (const r of this.roots) this.visit(r, lc)
     this.vox.update(lc)
+    if (this.caves && !this.asleep) this.caves.update(lc)
     // the uniforms the shaders use (scene coordinates)
     this.engine.rel(this.center, this.uniforms.uPC.value)
     if (this.sky) { this.sky.u.uPC.value.copy(this.uniforms.uPC.value); this.sky.u.uSunD.value.copy(this.uniforms.uSunD.value) }

@@ -103,6 +103,7 @@ function ardent() {
     for (const z of [-6, 8, 24]) b.set('gear', sd * 4, -1, z, 0)
     b.set('warnlight', sd * 7, 8, 22, 0).set('lightstrip', sd * 9, 4, 20, 0)
   }
+  b.over('gravgen', 4, 1, 24).set('turret_gatling', 0, 9, 13, 0, P).set('turret_missile', 0, 9, 20, 0, P).set('turret_gatling', 0, 6, -14, 0, P)
   b.set('dish', -1, 9, 10, 0, 0).set('antenna', 0, 9, 16, 0).set('beacon', 0, 11, -2, 0).set('flood', 0, 3, -17, 0).set('flood', 0, 4, -17, 0)
   return b.bp
 }
@@ -153,6 +154,7 @@ function vagrant() {
     b.set('gear', sd * 3, -1, -5, 0).set('gear', sd * 3, -1, 13, 0)
     b.set('warnlight', sd * 3, 6, 13, 0)
   }
+  b.set('turret_gatling', 0, 5, 10, 0, P)
   b.set('gear', 0, -1, 5, 0).set('antenna', 0, 5, 7, 0).set('beacon', 0, 4, 2, 0).set('flood', 0, 0, -11, 0)
   return b.bp
 }

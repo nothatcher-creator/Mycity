@@ -150,9 +150,9 @@ export class Panel {
     c.font = o.font || FONT(Math.min(18, h * 0.42), 700)
     c.textBaseline = 'middle'
     c.textAlign = o.align || 'left'
-    const tx = o.align === 'center' ? x + w / 2 : x + 16
-    c.fillText(label, tx, o.sub ? y + h * 0.37 : y + h / 2 + 1, w - (o.arrow ? 44 : 22))
-    if (o.sub) { c.fillStyle = C.dim; c.font = FONT(Math.min(12.5, h * 0.25), 500); c.fillText(o.sub, tx, y + h * 0.71, w - (o.arrow ? 44 : 22)) }
+    const tx = o.align === 'center' ? x + w / 2 : x + 16 + (o.indent || 0), tw = w - (o.arrow ? 44 : 22) - (o.indent || 0)
+    c.fillText(label, tx, o.sub ? y + h * 0.37 : y + h / 2 + 1, tw)
+    if (o.sub) { c.fillStyle = C.dim; c.font = FONT(Math.min(12.5, h * 0.25), 500); if (o.wrapSub) { const words = o.sub.split(' '); let line = '', ly = y + h * 0.62; for (const wd of words) { const t2 = line ? line + ' ' + wd : wd; if (c.measureText(t2).width > tw && line) { c.fillText(line, tx, ly, tw); line = wd; ly += 14; if (ly > y + h - 6) { line = ''; break } } else line = t2 } if (line) c.fillText(line, tx, ly, tw) } else c.fillText(o.sub, tx, y + h * 0.71, tw) }
     c.textAlign = 'left'
     const b = { id, x, y, w, h, fn: o.disabled ? null : fn, data: o.data }
     this.buttons.push(b)

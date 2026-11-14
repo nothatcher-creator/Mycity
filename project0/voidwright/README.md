@@ -195,6 +195,12 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - Rotors and hinges, docking ports that dock, a projector for blueprints in survival, saved worlds,
   playing together.
 
+## Playing it outside Project 0 (itch.io and other hosts)
+
+`tools/itch.sh` builds `build/voidwright-itch.zip`: the game with a stand-in for the Project 0 runtime
+(`itch/runtime.js`: renderer, frame loop, keyboard, mouse and touch, pointer lock, Web Audio sound, the save
+in local storage) and three.js. Upload the zip to itch.io as an HTML game (index.html is at its root).
+
 ## Files
 
 - `src/core`: the split-depth camera-relative engine, the finishing pass, input, touch, noise.

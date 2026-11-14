@@ -68,10 +68,10 @@ export class Menus {
     text(c, 'BUILD SHIPS. LAND ANYWHERE. A WHOLE STAR SYSTEM.', 8, 100 * k, { size: 12, weight: 700, color: C.gold2, shadow: true })
     let y = 128 * k
     const B = (id, label, sub, fn) => { p.button(c, id, 6, y, p.w - 12, bh, label, fn, { sub: k > 0.8 ? sub : null, arrow: true }); y += gap }
-    B('new', 'NEW WORLD', 'Creative or survival, five places to start', () => this.open('new'))
+    B('new', 'NEW WORLD', `Creative or survival, ${SCENARIOS.length} places to start`, () => this.open('new'))
     B('settings', 'SETTINGS', 'Graphics, controls, sound', () => this.open('settings'))
     B('controls', 'CONTROLS', 'Keys for flying and building', () => this.open('controls'))
-    if (k > 0.8) text(c, 'Still to come: wheels, rotors, pistons, docking and saved worlds.', 8, y + 14, { size: 11, weight: 500, color: C.dim, shadow: true, max: p.w - 16 })
+    if (k > 0.8) text(c, 'Still to come: rotors, hinges, docking and saved worlds.', 8, y + 14, { size: 11, weight: 500, color: C.dim, shadow: true, max: p.w - 16 })
   }
   // ---- choosing a start ----
   page_new(c, p) {

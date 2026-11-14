@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>VOIDWRIGHT</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #03080b; color: #e4f2f2; font: 600 14px/1.4 system-ui, sans-serif; }
+  #view { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; outline: none; }
+  #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #03080b; transition: opacity 0.5s; z-index: 2; }
+  #loading h1 { margin: 0; font-size: 34px; letter-spacing: 0.32em; font-weight: 800; color: #e4f2f2; }
+  #track { width: min(360px, 70vw); height: 4px; background: #0e2226; border-radius: 2px; overflow: hidden; }
+  #bar { width: 0; height: 100%; background: #3fe0d0; transition: width 0.2s; }
+  #label { color: #7fa9a8; font-size: 12px; letter-spacing: 0.06em; min-height: 16px; text-align: center; padding: 0 16px; }
+  #hud { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); max-width: 90vw; padding: 6px 12px; background: rgba(3, 8, 11, 0.72); border: 1px solid rgba(63, 224, 208, 0.35); border-radius: 4px; font-size: 12px; color: #cfe6e4; opacity: 0; transition: opacity 1.2s; pointer-events: none; z-index: 1; text-align: center; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="view" tabindex="0"></canvas>
+<div id="hud"></div>
+<div id="loading"><h1>VOIDWRIGHT</h1><div id="track"><div id="bar"></div></div><div id="label">Loading</div></div>
+<script type="module" src="./runtime.js"></script>
+</body>
+</html>

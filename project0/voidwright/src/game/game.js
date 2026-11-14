@@ -50,6 +50,7 @@ export class Game {
   constructor(p0) {
     this.p0 = p0
     try { DEBUG = /\/\/(127\.0\.0\.1|localhost)[:/]/.test(p0.asset('main.js')) } catch {}
+    if (DEBUG) globalThis.__vw = this
     this.debug = DEBUG
     this.state = 'boot'
     this.save = new Save(p0)
@@ -618,7 +619,7 @@ export class Game {
     mk()
     inp.endFrame()
     const tot = T[T.length - 1] - T[0]
-    if (this.debug && tot > 120 && (this.slowLogged = (this.slowLogged || 0) + 1) < 40) this.p0.log('dbg slow frame', Math.round(tot), 'play/update/work/rest/render', T.slice(1).map((t, i) => Math.round(t - T[i])).join(' '), 'progs', e.renderer.info.programs?.length)
+    if (this.debug && tot > (this.slowMs || 120) && (this.slowLogged = (this.slowLogged || 0) + 1) < (this.slowMax || 40)) this.p0.log('dbg slow frame', Math.round(tot), 'play/update/work/rest/render', T.slice(1).map((t, i) => Math.round(t - T[i])).join(' '), 'progs', e.renderer.info.programs?.length)
   }
   loading(dt) {
     this.loadT += dt
@@ -732,7 +733,7 @@ export class Game {
     const FV = this.fieldView || (this.fieldView = new FieldView(this.engine))
     let fv = false
     if (!P.seat && !menu && B.blockId && BLOCKS[B.blockId]?.func?.gravgen && B.ghostCenter) { FV.show(B.ghostCenter, B.ghostQuat, BLOCKS[B.blockId], dt); fv = true }
-    else if (!P.seat && !menu && B.hit?.block?.def.func.gravgen && B.hit.dist < 14) { FV.showBlock(B.hit.grid, B.hit.block, dt); fv = true }
+    else if (!P.seat && !menu && B.hit?.block?.def.func?.gravgen && B.hit.dist < 14) { FV.showBlock(B.hit.grid, B.hit.block, dt); fv = true }
     if (!fv) FV.hide()
     if (!P.seat) {
       if (!menu) B.update(dt); else { B.mesh.visible = B.edges.visible = false }

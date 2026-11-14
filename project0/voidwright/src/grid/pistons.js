@@ -55,7 +55,7 @@ export class Pistons {
     h.add('piston_top', 0, 0, 0, 0, b.color || 0)
     for (const [id, i, j, k, rot, col] of b.headBlocks || []) h.add(id, i, j, k, rot || 0, col || 0)
     // a piston on this head with its own head to come
-    if (b.headSub) { const pb = h.at(...b.headSub.at); if (pb?.def.func.piston) { pb.headBlocks = b.headSub.blocks; pb.headSub = b.headSub.sub || null; pb.startExt = b.headSub.ext || 0 } }
+    if (b.headSub) { const pb = h.at(...b.headSub.at); if (pb?.def.func?.piston) { pb.headBlocks = b.headSub.blocks; pb.headSub = b.headSub.sub || null; pb.startExt = b.headSub.ext || 0 } }
     b.headBlocks = null; b.headSub = null
     h.updateMass(); h.rebuild()
     h.locked = { grid: g, relPos: headLocal(g, b, ext), relQuat: QUATS[b.rot].clone() }

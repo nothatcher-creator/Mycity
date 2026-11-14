@@ -359,7 +359,7 @@ export function load(g, bp) {
   // makes its head (grid/pistons.js)
   if (bp.heads?.length) {
     if (g.ghost) for (const [id, i, j, k, rot, color] of flattenHeads(bp, g.cs)) g.add(id, i, j, k, rot, color)
-    else for (const h of bp.heads) { const b = g.at(h.at[0], h.at[1], h.at[2]); if (b?.def.func.piston) { b.headBlocks = h.blocks; b.headSub = h.sub || null; b.startExt = h.ext || 0 } }
+    else for (const h of bp.heads) { const b = g.at(h.at[0], h.at[1], h.at[2]); if (b?.def.func?.piston) { b.headBlocks = h.blocks; b.headSub = h.sub || null; b.startExt = h.ext || 0 } }
   }
   return g
 }

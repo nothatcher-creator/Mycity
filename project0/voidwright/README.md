@@ -185,6 +185,10 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - **Starts**: a new start, **Frostbite: Ice in the Void**, on a ball of ice far from any world; the Halvor and
   Thessa starts have a Bore Rig, the Ket start a Strider.
 - **Graphics**: blocks are shaded by ambient occlusion (corners and seams between blocks darken).
+- **Crashes**: a hard hit breaks blocks round the contact on both sides, more the faster it was; a hard
+  enough hit makes the whole hull give way, so the ship comes apart in tumbling pieces. The ground (or the
+  asteroid) takes a crater, the ship you hit takes damage too, and if your cockpit breaks you are thrown
+  clear (hurt, if it was fast). If your cockpit survives on a broken-off piece you stay in it.
 
 ## Coming next
 

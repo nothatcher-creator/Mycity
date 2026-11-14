@@ -373,7 +373,28 @@ export class Game {
     this.menus.close(); this.hud.show(true)
   }
   onGridRemoved(g) { if (this.player?.seat?.grid === g) this.player.seat = null; if (this.player?.ground === g) this.player.ground = null }
-  onBlockRemoved(g, b) { if (this.player?.seat?.block === b) { this.player.seat = null } }
+  // the seat you sit in broke, or was cut off with a piece of the ship: next frame you are seated again on
+  // that piece if it survived, or thrown clear of the wreck
+  onBlockRemoved(g, b) {
+    const P = this.player
+    if (P?.seat?.block !== b) return
+    this.lostSeat = { g, b, at: g.toWorld(g.blockCenter(b)), vel: g.vel.clone(), speed: g.crashT != null && (this.world.time - g.crashT) < 0.6 ? g.crashSpeed || 0 : 0, look: P.seatLook }
+    P.seat = null; P.pos.copy(this.lostSeat.at); P.vel.copy(g.vel)
+  }
+  regainSeat() {
+    const L = this.lostSeat, P = this.player
+    this.lostSeat = null
+    if (!P || P.dead || P.seat) return
+    for (const x of this.world.grids) {
+      if (x === L.g || x.pos.distanceTo(L.g.pos) > 0.01) continue
+      const nb = x.at(L.b.i, L.b.j, L.b.k)
+      if (nb && nb.id === L.b.id && nb.build >= 1) { P.enterSeat(x, nb); P.seatLook = L.look || P.seatLook; return }
+    }
+    // gone: out into the air, flung on with the wreck, and hurt by a hard crash
+    P.pos.copy(L.at); P.vel.copy(L.vel).add(new THREE.Vector3(Math.random() - 0.5, 0.6, Math.random() - 0.5).multiplyScalar(5)); P.jetpack = true
+    if (L.speed > 18) P.hurt(Math.min(90, (L.speed - 18) * 2.2), 'crash')
+    this.hud.toast('Your cockpit broke up: you are thrown clear', C.red)
+  }
   onImpact(c) { if (c.A === this.player?.seat?.grid || c.B === this.player?.seat?.grid) { this.sfx.play('impact', Math.min(1, c.hit / 30)); this.shake = Math.min(1, c.hit / 25) } }
   // with a working ore detector near (on the grid you sit in or stand by): the nearest patch of each ore
   scanOre(P) {
@@ -530,6 +551,12 @@ export class Game {
       else { const v = U.voids.places(gr.comWorld()).sort((a, b) => a.pos.distanceTo(gr.comWorld()) - b.pos.distanceTo(gr.comWorld()))[0]; if (v) { this.planJump(v); this.jump.t = 0.15; this.p0.log('dbg void jump', v.name, v.site.def.event) } }
     }
     if (e.code === 'Numpad0') { const B = this.builder; B.bar[0] = { block: this.dbgGB = this.dbgGB === 'gravgen' ? 'gravgen_sphere' : 'gravgen' }; B.size = 'large'; B.slot = -1; B.select(0); this.p0.log('dbg hold', this.dbgGB); setTimeout(() => { const v = new THREE.Vector3(0, -1, 0).applyQuaternion(this.fieldView.group.quaternion); this.p0.log('dbg fv', B.rot, JSON.stringify(B.ghostQuat?.toArray().map(x => x.toFixed(2))), 'down->', v.toArray().map(x => x.toFixed(2)).join(','), 'grav', this.world.gravityAt(this.player.pos).normalize().toArray().map(x => x.toFixed(2)).join(','), 'arrow0', JSON.stringify([...this.fieldView.arrows.instanceMatrix.array.slice(0, 16)].map(x => +x.toFixed(2)))) }, 1500) }
+    if (e.code === 'F11' && P.seat) { // a crash: the seated ship 90 m up, diving at the ground at 55 m/s
+      const gr = P.seat.grid, pl = this.world.universe.nearestPlanet(gr.comWorld()), up = gr.comWorld().sub(pl.center).normalize()
+      gr.pos.addScaledVector(up, 90); gr.vel.copy(up).multiplyScalar(-55); gr.dampeners = false; gr.sleep = 0; gr.locked = null
+      this.p0.log('dbg crash', gr.name, gr.blocks.size)
+    }
+    if (e.code === 'F12') this.p0.log('dbg wreck', JSON.stringify({ grids: this.world.grids.filter(g => g.pos.distanceTo(P.pos) < 400).map(g => g.name.slice(0, 14) + ':' + g.blocks.size + ':' + g.vel.length().toFixed(1)), seat: !!P.seat, health: Math.round(P.health) }))
     if (e.code === 'Backquote') { this.dbgFast = !this.dbgFast; this.p0.log('dbg fast', this.dbgFast) }
     if (e.code === 'NumpadMultiply') { const gr = this.pirates.spawn('marauder'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
     if (e.code === 'NumpadDivide') this.p0.log('dbg combat', JSON.stringify({ shots: this.world.combat.shots.length, rockets: this.world.combat.rockets.length, pirates: this.pirates.list.map(x => [x.grid.name, x.grid.ai.state, Math.round(x.grid.comWorld().distanceTo(P.pos)), x.grid.blocks.size, x.grid.ai.disabled ? 'off' : 'on']), health: Math.round(P.health), heat: this.heatNow?.toFixed(2), star: this.world.universe.star?.name, starD: Math.round(this.world.universe.star?.pos.distanceTo(P.pos) / 1000), wrecks: this.world.grids.filter(g => g.wreck).map(g => g.name), caves: this.world.universe.nearestPlanet(P.pos)?.caves?.list.length, wheels: P.seat?.grid.parts.wheels.map(w => [w.contact, (w.susp || 0).toFixed(2)]), v: P.seat ? P.seat.grid.vel.length().toFixed(1) : P.vel.length().toFixed(1) }))
@@ -693,6 +720,7 @@ export class Game {
     if (!P.seat) P.update(dt, { move: P.seat ? [0, 0, 0] : mv, sprint: inp.down('sprint'), jump: !P.jetpack && inp.hit('up'), roll })
     else P.update(dt, {})
     if (P.health < 100 && !P.dead) for (const { g, b } of this.respawnPoints()) if (g.toWorld(g.blockCenter(b)).distanceTo(P.pos) < 3) P.health = Math.min(100, P.health + dt * 15)
+    if (this.lostSeat) this.regainSeat()
     if (this.jump) { this.jump.t -= dt; if (this.jump.t <= 0) this.doJump() }
     if (P.lastHealth != null && P.health < P.lastHealth - 1) P.hurtFlash = 0.6
     P.lastHealth = P.health

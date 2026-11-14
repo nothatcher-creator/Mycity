@@ -155,6 +155,13 @@ export class World {
       for (const comp of comps.slice(1)) {
         const n = this.newGrid(g.size, g.pos, g.quat, { static: g.static })
         n.vel.copy(g.vel); n.angVel.copy(g.angVel)
+        // broken off in a crash: the pieces fly apart and tumble
+        if (g.crashT != null && (this.time || 0) - g.crashT < 0.6) {
+          const k = Math.min(9, (g.crashSpeed || 10) * 0.18)
+          n.vel.add(new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.8, Math.random() - 0.5).multiplyScalar(k * 2))
+          n.angVel.add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(1.6))
+          n.crashT = g.crashT; n.crashSpeed = g.crashSpeed * 0.6
+        }
         for (const b of comp) { g.remove(b); const nb = n.add(b.id, b.i, b.j, b.k, b.rot, b.color); if (nb) copyState(b, nb) }
         n.updateMass()
         if (g.static) { n.static = false }
@@ -164,18 +171,51 @@ export class World {
     }
   }
   // a hard landing or crash: blocks near the contact lose health (big hits break them)
+  // a hard landing or a crash. The energy of the hit (half the smaller mass times the speed over 9 m/s,
+  // squared) breaks blocks round the contact on both sides, more the nearer they are, out to a radius that
+  // grows with the speed; what is cut off breaks away as pieces of its own (splitGrids) and tumbles off.
+  // Rock is blown out in a crater. One hit per pair of things every quarter second (the contact solver
+  // reports the same crash at many points).
   impact(c) {
-    const speed = c.hit
-    const e = 0.5 * Math.min(c.A.mass, c.B && !c.B.static ? c.B.mass : Infinity) * (speed - 9) ** 2
+    const speed = c.hit, now = this.time || 0
+    const key = c.A.id + '|' + (c.B ? c.B.id : 'rock')
+    this.hits = this.hits || new Map()
+    if (now - (this.hits.get(key) ?? -9) < 0.25) return
+    this.hits.set(key, now)
+    const over = speed - 9
+    const e = 0.5 * Math.min(c.A.mass, c.B && !c.B.static ? c.B.mass : Infinity) * over * over
     for (const g of [c.A, c.B]) {
-      if (!g) continue
+      if (!g || !g.blocks.size) continue
+      g.crashT = now; g.crashSpeed = speed
       const l = g.toLocal(c.p, new THREE.Vector3()).divideScalar(g.cs)
+      // how far into the hull the hit reaches, in cells
+      const R = Math.min(g.size === 'large' ? 6 : 10, 1.3 + over / (g.size === 'large' ? 11 : 6))
       const near = []
-      for (const b of g.blocks) { const d = Math.hypot(b.i - l.x, b.j - l.y, b.k - l.z); if (d < 2.5) near.push([b, d]) }
-      near.sort((a, b) => a[1] - b[1])
-      let left = e / 1200
-      for (const [b] of near.slice(0, 6)) { const dmg = Math.min(left, b.hp + 1); this.damage(g, b, dmg); left -= dmg; if (left <= 0) break }
+      let sum = 0
+      for (const b of g.blocks) {
+        const d = Math.hypot(b.i - l.x, b.j - l.y, b.k - l.z)
+        if (d < R) { const w = (1 - d / R) ** 2; near.push([b, w]); sum += w }
+      }
+      if (!sum) continue
+      // the budget, shared out by nearness (a nearer block takes more)
+      const budget = e / (g.size === 'large' ? 380 : 220)
+      for (const [b, w] of near) this.damage(g, b, budget * w / sum * (0.7 + Math.random() * 0.6))
+      // a hit hard enough against the whole of the hull: it gives way all through, joints fail here and
+      // there, and the ship comes apart
+      let H = 0; for (const b of g.blocks) H += b.maxHp
+      const ratio = H ? budget / H : 0
+      if (ratio > 0.12) for (const b of [...g.blocks]) { const x = Math.random(); this.damage(g, b, b.maxHp * Math.min(1.6, ratio) * 1.4 * x * x) }
+      g.sleep = 0
     }
+    // the ground (or the asteroid) takes a crater
+    if (c.solid && over > 6) {
+      const r = Math.max(0.8, Math.min(9, over / 10 * Math.cbrt(c.A.mass / 20000)))
+      const down = c.n.clone().negate()
+      for (let k = 0; k < 3; k++) this.survival.dig(c.p.clone().addScaledVector(down, r * (0.2 + k * 0.35)), r * (1 - k * 0.22), 0)
+      this.sparks.burst(c.p, 40, 6, 0xb0a090)
+      this.combat?.flash(c.p, Math.min(3, r * 0.5), 0.25, [1, 0.7, 0.4])
+    }
+    if (over > 14) this.combat?.sound?.('crash' + key, 'boom', Math.min(1, over / 40), c.p)
     this.game.onImpact?.(c)
   }
   damage(g, b, amount) {
@@ -218,6 +258,7 @@ export class World {
     } else { g.vel.set(0, 0, 0); g.angVel.set(0, 0, 0) }
   }
   update(dt, piloted, ctl) {
+    this.time = (this.time || 0) + dt
     for (const g of this.grids) {
       if (!g.blocks.size) continue
       // far from the player nothing moves (and nothing is worked out): it is all as you left it

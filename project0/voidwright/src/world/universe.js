@@ -43,11 +43,11 @@ const HOME_BODIES = [
     blurb: "Sabik's molten moon: black rock and rivers of fire. Rich in rare ore." },
 ]
 const HOME_FIELDS = [
-  { id: 'ring', name: 'Halvor Shoal', center: [0, 21000, 72000], radius: 7000, count: 46, seed: 5, anchor: 340, ores: ['iron', 'nickel', 'silicon', 'cobalt', 'ice'],
+  { id: 'ring', name: 'Halvor Shoal', center: [0, 21000, 72000], radius: 7000, count: 46, seed: 5, anchor: 130, ores: ['iron', 'nickel', 'silicon', 'cobalt', 'ice'],
     blurb: 'Rocks in high orbit over Halvor, just outside its pull.' },
   { id: 'ketdebris', name: 'Ket Debris', center: [96000, 54000, -40000], radius: 4000, count: 26, seed: 9, ores: ['iron', 'magnesium', 'silver', 'ice'],
     blurb: 'Fragments over Ket, rich in magnesium and silver.' },
-  { id: 'belt', name: 'The Drift', center: [-150000, 6000, 150000], radius: 14000, count: 70, seed: 13, anchor: 420, flat: 0.35, ores: ['iron', 'nickel', 'cobalt', 'gold', 'platinum', 'uranium', 'ice'],
+  { id: 'belt', name: 'The Drift', center: [-150000, 6000, 150000], radius: 14000, count: 70, seed: 13, anchor: 150, flat: 0.35, ores: ['iron', 'nickel', 'cobalt', 'gold', 'platinum', 'uranium', 'ice'],
     blurb: 'Deep space between the worlds: gold, platinum and uranium.' },
 ]
 const HOME_GIANTS = [
@@ -55,7 +55,7 @@ const HOME_GIANTS = [
     blurb: 'A gas giant with rings: no ground, only cloud getting thicker the deeper you go, until it crushes. 1.4 g at the cloud tops.' },
 ]
 const HOME_NEBULAE = [{ id: 'veil', name: 'The Veil', center: [-1500000, 380000, 900000], radius: 380000, seed: 5, cols: [[0.55, 0.3, 0.95], [0.2, 0.75, 0.95]], blurb: 'A cloud of glowing gas hundreds of kilometres across.' }]
-HOME_FIELDS.push({ id: 'ishu', name: 'Comet Ishu', center: [-420000, 150000, -120000], radius: 900, count: 0, seed: 21, anchor: 320, comet: true, tail: 70000, ores: ['ice', 'ice', 'cobalt', 'silver'],
+HOME_FIELDS.push({ id: 'ishu', name: 'Comet Ishu', center: [-420000, 150000, -120000], radius: 900, count: 0, seed: 21, anchor: 160, comet: true, tail: 70000, ores: ['ice', 'ice', 'cobalt', 'silver'],
   blurb: 'A comet: a mountain of dirty ice trailing a tail of light away from the star.' })
 export const BODIES = HOME_BODIES, FIELDS = HOME_FIELDS
 
@@ -101,7 +101,7 @@ export function sectorDef(i, k) {
   const giants = [], nebulae = []
   if (r() < 0.38) { const R = 90000 + r() * 110000, h = r(); giants.push({ id: `s${key}g`, name: makeName(r), R, g: 9 + r() * 12, seed: Math.floor(r() * 1e5), center: at(c, dir(), 520000 + r() * 300000), tilt: (r() - 0.5) * 0.9, rings: r() < 0.6 ? [R * 1.35, R * (2 + r() * 0.6)] : null,
     cols: h < 0.33 ? [[0.86, 0.66, 0.42], [0.62, 0.42, 0.28], [0.95, 0.9, 0.8]] : h < 0.66 ? [[0.42, 0.62, 0.86], [0.26, 0.38, 0.66], [0.85, 0.92, 1]] : [[0.7, 0.8, 0.55], [0.45, 0.55, 0.36], [0.92, 0.95, 0.8]], blurb: 'A gas giant: no ground, only cloud that crushes the deeper you go.' }) }
-  if (r() < 0.3) fields.push({ id: `s${key}c`, name: `Comet ${makeName(r)}`, center: at(c, dir(), 300000 + r() * 300000), radius: 900, count: 0, seed: Math.floor(r() * 1e6), anchor: 220 + r() * 180, comet: true, tail: 40000 + r() * 50000, ores: ['ice', 'ice', ...pickOres(r, far).slice(0, 2)], blurb: 'A comet: dirty ice with a tail of light.' })
+  if (r() < 0.3) fields.push({ id: `s${key}c`, name: `Comet ${makeName(r)}`, center: at(c, dir(), 300000 + r() * 300000), radius: 900, count: 0, seed: Math.floor(r() * 1e6), anchor: 110 + r() * 70, comet: true, tail: 40000 + r() * 50000, ores: ['ice', 'ice', ...pickOres(r, far).slice(0, 2)], blurb: 'A comet: dirty ice with a tail of light.' })
   if (r() < 0.25) { const h = r(); nebulae.push({ id: `s${key}n`, name: `${makeName(r)} Nebula`, center: at(c, dir(), 900000 + r() * 400000), radius: 200000 + r() * 250000, seed: Math.floor(r() * 1e5), cols: h < 0.5 ? [[0.95, 0.35, 0.45], [0.95, 0.65, 0.3]] : [[0.3, 0.9, 0.7], [0.3, 0.5, 0.95]], blurb: 'A cloud of glowing gas.' }) }
   return { key, i, k, name, center: c, bodies, fields, giants, nebulae }
 }

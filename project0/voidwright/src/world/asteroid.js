@@ -165,7 +165,8 @@ export class Asteroid {
       const c = this.chunks.get(key)
       if (c && (c.mesh || c.empty) && !c.dirty) { c.used = true; continue }
       // a chunk far from the surface holds nothing: skip it without meshing
-      if (!c) { const s = this.local(cx, cy, cz); if (Math.abs(s) > size * 0.95) { this.chunks.set(key, { empty: true, used: true }); continue } }
+      // (the field is not a true distance: the noise makes it steeper, so the margin is wide)
+      if (!c) { const s = this.local(cx, cy, cz); if (Math.abs(s) > size * 1.7) { this.chunks.set(key, { empty: true, used: true }); continue } }
       out.push({ a: this, key, i, j, k, d })
       if (c) c.used = true
     }
@@ -215,7 +216,7 @@ export class AsteroidField {
       const th = u * Math.PI * 2, ph = Math.acos(2 * v - 1), rr = this.radius * Math.cbrt(w) * (d.flat ? 1 : 1)
       const p = new THREE.Vector3(Math.sin(ph) * Math.cos(th), Math.cos(ph) * (d.flat || 1), Math.sin(ph) * Math.sin(th)).multiplyScalar(rr).add(this.center)
       const big = r() < 0.12
-      const rad = big ? 160 + r() * 220 : 22 + r() ** 2 * 120
+      const rad = big ? 60 + r() * 75 : 14 + r() ** 2 * 55
       const ores = [...d.ores].sort(() => r() - 0.5).slice(0, 1 + Math.floor(r() * 3))
       const t = 0.85 + r() * 0.25
       this.list.push(new Asteroid(this, { id: this.def.id + '-' + i, pos: p, r: rad, seed: this.def.seed * 100 + i, stretch: [0.8 + r() * 0.5, 0.65 + r() * 0.4, 0.8 + r() * 0.6], rot: [r() * 6, r() * 6, r() * 6], ores, tint: [t, t * (0.95 + r() * 0.08), t * (0.9 + r() * 0.1)] }, this.engine, this.mat))

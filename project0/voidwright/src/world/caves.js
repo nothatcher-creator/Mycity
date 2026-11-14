@@ -58,6 +58,15 @@ export class Caves {
     if (r() < 0.55) walk(mid.clone(), new THREE.Vector3(r() - 0.5, -0.2, r() - 0.5).normalize(), 18 + Math.floor(r() * 20), 3.6)
     return spheres
   }
+  // the nearest site round a point, carved at once if it was not (for tests)
+  nearest(lc) {
+    const pl = this.pl
+    let best = null, bd = Infinity
+    for (const st of this.sites(lc)) { const at = st.dir.clone().multiplyScalar(pl.R + pl.height(st.dir.x, st.dir.y, st.dir.z)); const d = at.distanceTo(lc); if (d < bd) { bd = d; best = { st, at } } }
+    if (!best) return null
+    if (!this.done.has(best.st.key)) { this.done.add(best.st.key); const sp = this.worm(best.st); this.list.push({ key: best.st.key, mouth: best.at, n: sp.length }); for (const q of sp) this.queue.push(q) }
+    return best.at
+  }
   // every frame with the camera in planet-local metres
   update(lc) {
     const pl = this.pl

@@ -1,7 +1,7 @@
 {
   "entry": "main.js",
   "name": "VOIDWRIGHT",
-  "description": "Build ships, rovers, stations and machines block by block in an open universe: groups of worlds thousands of kilometres apart, each with its own star, and the void between them where lone rocks and balls of ice drift and things happen. Land anywhere, explore caves, dig, drive, jump. Guns, turrets, pistons, wheels and gravity generators; 24 designs from buggies and a lander on piston legs to huge stations. Pirates come to rob you; crashed ships wait to be repaired. Creative or survival.",
+  "description": "Build ships, rovers, stations and machines block by block in an open universe: groups of worlds thousands of kilometres apart, each with its own star, and the void between them where lone rocks and balls of ice drift and things happen. Land anywhere, explore caves, dig, drive, jump. Guns, turrets, pistons, wheels and gravity generators; 37 designs from buggies and fighters to 18,000-block capital ships. Pirates come to rob you; crashed ships wait to be repaired. Creative or survival.",
   "maxPlayers": 16,
   "ui": "minimized",
   "loading": {

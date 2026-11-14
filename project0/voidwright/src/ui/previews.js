@@ -28,18 +28,24 @@ export class Previews {
     return null
   }
   // draws the next waiting picture; true when one was drawn
+  // (a big design is meshed a few pieces a frame, and drawn when it is all there)
   step() {
+    if (this.cur) {
+      const { id, bp, g } = this.cur
+      try { g.rebuild(10); if (g.meshDirty) return false; this.cur = null; this.draw(id, bp, g) } catch (e) { this.cur = null; this.map.set(id, null); this.world.game.p0.log('preview ' + id + ' failed: ' + e.message) }
+      return true
+    }
     if (!this.todo.length) return false
     const [id, bp] = this.todo.shift()
-    try { this.draw(id, bp) } catch (e) { this.map.set(id, null); this.world.game.p0.log('preview ' + id + ' failed: ' + e.message) }
-    return true
+    try {
+      const g = new Grid(this.world, bp.size, { ghost: true, mat: this.mat, glassMat: this.glass })
+      load(g, bp); g.updateMass()
+      this.cur = { id, bp, g }
+    } catch (e) { this.map.set(id, null); this.world.game.p0.log('preview ' + id + ' failed: ' + e.message) }
+    return false
   }
-  draw(id, bp) {
+  draw(id, bp, g) {
     const r = this.engine.renderer
-    const g = new Grid(this.world, bp.size, { ghost: true, mat: this.mat, glassMat: this.glass })
-    load(g, bp)
-    g.updateMass()
-    g.rebuild(1e6)
     const wrap = new THREE.Group(); wrap.add(g.group)
     g.group.position.copy(g.com).negate()
     this.scene.add(wrap)

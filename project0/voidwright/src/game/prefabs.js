@@ -7,6 +7,7 @@ import { FLEET, FLEET_LIST } from './fleet.js'
 import { CAPITAL, CAPITAL_LIST } from './capital.js'
 import { ARSENAL, ARSENAL_LIST, STATION_LIST } from './arsenal.js'
 import { MACHINES, MACHINE_LIST } from './machines.js'
+import { SHIPYARD, SHIPYARD_SMALL, SHIPYARD_LARGE, SHIPYARD_MASSIVE } from './shipyard.js'
 
 // ---- Sparrow: a small-grid scout that flies on Halvor and in space ----
 function sparrowHull(P, A) {
@@ -257,7 +258,7 @@ function foothold() {
   return b.bp
 }
 
-export const PREFABS = { sparrow, pick, mule, mole, lancer, kestrel, foothold, ...FLEET, ...CAPITAL, ...ARSENAL, ...MACHINES }
-export const PREFAB_LIST = ['sparrow', 'pick', 'mule', 'mole', 'lancer', ...FLEET_LIST, ...CAPITAL_LIST, ...ARSENAL_LIST, ...MACHINE_LIST, 'kestrel', 'foothold', ...STATION_LIST]
+export const PREFABS = { sparrow, pick, mule, mole, lancer, kestrel, foothold, ...FLEET, ...CAPITAL, ...ARSENAL, ...MACHINES, ...SHIPYARD }
+export const PREFAB_LIST = ['sparrow', ...SHIPYARD_SMALL, 'pick', 'mule', 'mole', 'lancer', ...SHIPYARD_LARGE, ...FLEET_LIST, ...CAPITAL_LIST, ...ARSENAL_LIST, ...MACHINE_LIST, ...SHIPYARD_MASSIVE, 'kestrel', 'foothold', ...STATION_LIST]
 const cache = {}
 export function prefab(id) { return cache[id] || (cache[id] = PREFABS[id]()) }

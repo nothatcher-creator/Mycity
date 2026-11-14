@@ -190,6 +190,26 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
   asteroid) takes a crater, the ship you hit takes damage too, and if your cockpit breaks you are thrown
   clear (hurt, if it was fast). If your cockpit survives on a broken-off piece you stay in it.
 
+## The shipyard: thirteen more designs
+
+`src/game/shipyard.js` draws ships as hull profiles (half-width, floor and roof along the length, square or
+round in section, plus wings, pods, towers and rings), skins them, and fits them out by rule: a cockpit at the
+front of the highest deck, decks inside, gyros, power, tanks and holds on the decks, guns, turrets or drills
+for the job, masts, lights and portholes, and last thrusters on all six sides, mirrored, until each way has
+its push. Everything is placed only where it fits and touches the ship. `tools/shipyard-bake.mjs` builds
+them ahead of time into `shipyard-data.js` (a 16,000-block ship takes seconds to fit out; loading it takes
+milliseconds).
+
+- Small grid: **Wasp** interceptor, **Kite** racer, **Hornet** strike craft, **Skiff** hauler.
+- Large grid: **Courier** light freighter, **Pelican** dropship, **Harrow** mining barge, **Sentinel**
+  frigate, **Tortoise** bulk hauler, **Monarch** cruiser (5,000 blocks).
+- Massive: **Leviathan** dreadnought (about 16,700 blocks, fifty turrets), **Ark** colony ship (about
+  18,700 blocks, three rings), **Colossus** super hauler (about 12,200 blocks, sixteen container bays). They fly
+  in space; they are too heavy to hover on a world.
+
+Big grids mesh a few pieces at a time (on a time budget), their blueprint pictures and placement ghosts fill
+in over a few frames, and the physics only tests the hull points that could be touching the ground.
+
 ## Coming next
 
 - Rotors and hinges, docking ports that dock, a projector for blueprints in survival, saved worlds,

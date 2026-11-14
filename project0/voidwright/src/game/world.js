@@ -276,7 +276,11 @@ export class World {
     this.splitGrids()
     this.survival.update(dt)
     this.combat.update(dt)
-    for (const g of this.grids) g.rebuild(6)
+    // meshes of changed blocks: a piece of each grid that needs it, then more while there is time (a huge ship
+    // just placed fills in over a few frames instead of stopping one)
+    const t0 = performance.now()
+    for (const g of this.grids) g.rebuild(1)
+    for (let pass = 0; pass < 12 && performance.now() - t0 < 8; pass++) { let any = false; for (const g of this.grids) if (g.meshDirty) { g.rebuild(1); any = true; if (performance.now() - t0 > 8) break } if (!any) break }
   }
   draw(dt) {
     this.spinners.update(dt, this.grids, this.engine)

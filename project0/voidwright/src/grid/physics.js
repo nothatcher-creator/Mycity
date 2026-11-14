@@ -66,12 +66,25 @@ export class Physics {
     const solids = W.universe.solidsNear(com, reach, this._s || (this._s = []))
     if (!solids.length) return
     const rad = g.cs * 0.5, P = new THREE.Vector3(), found = []
+    const up = this._up || (this._up = new THREE.Vector3()), q = this._q || (this._q = new THREE.Vector3())
     for (const s of solids) {
-      if (s.sdf(com) > reach - 6) continue
+      const d0 = s.sdf(com)
+      if (d0 > reach - 6) continue
+      // which way is out of the ground here: a point can only touch if the ground, followed out from under the
+      // centre (with room for slopes), comes up to it. On a big ship this skips most of its points.
+      const e = 0.5
+      up.set(s.sdf(q.copy(com).setX(com.x + e)) - s.sdf(q.copy(com).setX(com.x - e)), s.sdf(q.copy(com).setY(com.y + e)) - s.sdf(q.copy(com).setY(com.y - e)), s.sdf(q.copy(com).setZ(com.z + e)) - s.sdf(q.copy(com).setZ(com.z - e)))
+      const ok = up.lengthSq() > 1e-8
+      if (ok) up.normalize()
       for (const src of [g, ...heads]) {
         const pts = src.points
         for (let i = 0; i < pts.length; i += 3) {
           P.set(pts[i], pts[i + 1], pts[i + 2]).applyQuaternion(src.quat).add(src.pos)
+          if (ok) {
+            const rx = P.x - com.x, ry = P.y - com.y, rz = P.z - com.z, al = rx * up.x + ry * up.y + rz * up.z
+            const hor = Math.sqrt(Math.max(0, rx * rx + ry * ry + rz * rz - al * al))
+            if (d0 + al > rad + 3 + 0.45 * hor) continue
+          }
           const d = s.sdf(P)
           if (d < rad) found.push({ s, p: P.clone(), pen: rad - d })
         }

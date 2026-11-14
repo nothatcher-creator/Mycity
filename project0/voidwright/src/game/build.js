@@ -317,7 +317,7 @@ export class Builder {
     const W = this.g.world
     const gr = new Grid(W, bp.size, { ghost: true, mat: W.ghostMat, glassMat: W.ghostMat })
     load(gr, bp)
-    gr.updateMass(); gr.rebuild()
+    gr.updateMass(); gr.rebuild(bp.blocks.length > 3000 ? 8 : 999)   // (a huge design fills in over a few frames)
     this.paste = { bp, grid: gr, track: this.g.engine.track(gr.group, gr.pos, gr.quat) }
     this.slot = -1
     this.g.hud.toast(`Placing ${bp.name}: left button to place, right button to cancel`)
@@ -325,6 +325,7 @@ export class Builder {
   cancelPaste() { if (this.paste) { this.g.engine.untrack(this.paste.track); this.paste.grid.dispose(); this.paste = null } }
   updatePaste(eye, dir, inp) {
     const P = this.paste, gr = P.grid, W = this.g.world
+    if (gr.meshDirty) gr.rebuild(8)
     const dist = gr.radius * 1.6 + 4
     const g = W.gravityAt(eye, new THREE.Vector3())
     const q = new THREE.Quaternion()

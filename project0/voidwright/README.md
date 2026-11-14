@@ -119,6 +119,17 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
   and the blueprint are lit by the lot's shaders on the same clock as the animation. The generator writes
   the shaders and `lot.json` itself, so the two cannot drift apart.
 
+## Round seven: big ships you can live in
+
+- **Two big ships with interiors** (`src/game/capital.js`). The **Ardent** is a carrier, 2,400 blocks: a
+  bridge under glass, a mess, four cabins with beds and portholes, a med bay, a workshop, a store,
+  engineering, stairs between two decks, and a hangar the height of both behind a wall of door panels.
+  The **Vagrant** is a corvette: a raised bridge, a bunk room and a bay for one small ship.
+- **A new start, Aboard the Ardent**: on her bridge in orbit over Halvor, a Sparrow clamped down in the hangar.
+- **Command Chair**: a cockpit that can stand anywhere, so a ship can be flown from a bridge deep inside it.
+- **Camera**: a block that looks along its front. From any seat, V steps through first person, third person
+  and each camera on the grid; one hung from a ceiling still shows its picture the right way up.
+
 ## Coming next
 
 - Wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a projector for

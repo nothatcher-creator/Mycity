@@ -70,7 +70,7 @@ export class Pirates {
     const fwd = this.forwardThrust(gr, cp)
     if (!ai.fwd0 && fwd) ai.fwd0 = fwd
     if (!cp || fwd < ai.fwd0 * 0.3 || gr.blocks.size < (ai.blocks0 || (ai.blocks0 = gr.blocks.size)) * 0.45) {
-      ai.disabled = true; ai.ctl = null; gr.name = 'Disabled ' + gr.name; gr.faction = 'derelict'; gr.dampeners = false
+      ai.disabled = true; ai.ctl = null; gr.name = 'Disabled ' + gr.name; gr.faction = 'derelict'; gr.dampeners = true   // what thrust is left brings it to a stop
       this.g.hud.toast(`${gr.name.replace('Disabled ', '')} disabled: grind it, loot it, or weld it up and keep it`, '#3fe0d0')
       return
     }

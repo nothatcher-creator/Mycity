@@ -112,12 +112,13 @@ export class Touch {
       btn('park', 'GEAR', 2, 1, () => g.input.tap('park'), { on: !!P.seat.grid.locked })
       btn('view', 'VIEW', 2, 0, () => g.input.tap('view'))
       if (P.seat.grid.parts.jumpdrives.length) btn('jump', 'JUMP', 2, 3, () => g.input.tap('jump'))
-      if (P.seat.grid.parts.drills.length) btn('place', 'DRILL', 1, 3)
+      const guns = P.seat.grid.parts.guns.length, drills = P.seat.grid.parts.drills.length
+      if (guns || drills) btn('place', guns && drills ? 'FIRE+DRILL' : guns ? 'FIRE' : 'DRILL', 1, 3)
     } else {
       btn('jet', P.jetpack ? 'JET ON' : 'JET', 1, 0, () => g.input.tap('jetpack'), { on: P.jetpack })
       if (g.interactTarget) btn('use', 'USE', 1, 3, () => g.input.tap('use'), { on: true })
       if (B.blockId || B.paste) { btn('place', 'PLACE', 1, 2); btn('remove', 'REMOVE', 1, 1); btn('rot', 'TURN', 2, 2, () => g.builder.rotate('yaw', 1, B.target?.quat || g.engine.camQuat)); btn('tip', 'TIP', 2, 1, () => g.builder.rotate('pitch', 1, B.target?.quat || g.engine.camQuat)); btn('size', B.size === 'large' ? 'LARGE' : 'SMALL', 1, 3, () => g.input.tap('size')) }
-      else if (B.tool) { btn('place', B.tool === 'welder' ? 'WELD' : B.tool === 'grinder' ? 'GRIND' : B.tool === 'drill' ? 'DRILL' : 'PAINT', 1, 2) }
+      else if (B.tool) { btn('place', B.tool === 'welder' ? 'WELD' : B.tool === 'grinder' ? 'GRIND' : B.tool === 'drill' ? 'DRILL' : B.tool === 'rifle' ? 'FIRE' : 'PAINT', 1, 2) }
       else btn('remove', 'REMOVE', 1, 2)
       btn('inv', 'ITEMS', 2, 3, () => g.input.tap('inventory'))
       btn('cat', 'BLOCKS', 2, 0, () => g.menus.open('catalog'))

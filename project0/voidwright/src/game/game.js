@@ -464,6 +464,15 @@ export class Game {
       const m = pl?.caves?.nearest(P.pos.clone().sub(pl.center)), best = m ? m.clone().add(pl.center) : null, bd = best ? best.distanceTo(P.pos) : 0
       if (best) { if (P.seat) P.leaveSeat(); const up = best.clone().sub(pl.center).normalize(); P.pos.copy(best).addScaledVector(up, 3); P.vel.set(0, 0, 0); P.pitch = -1.2; this.p0.log('dbg cave', Math.round(bd), L.length) } else this.p0.log('dbg no cave yet', L.length)
     }
+    if (e.code === 'Numpad0') { const C = this.world.universe.cosmos; this.p0.log('dbg stars', JSON.stringify({ bodies: C.bodies.map(B => [B.m.visible, Math.round(B.m.position.length() / 1000), Math.round(B.m.scale.x / 1000)]), cam: this.engine.camPos.toArray().map(v => Math.round(v / 1000)), home: C.home.pos.toArray().map(v => Math.round(v / 1000)), giants: C.giants.map(g => g.id) })) }
+    if (e.code === 'NumpadDecimal') { // to a few radii from the nearest star, looking at it
+      const C = this.world.universe.cosmos, st = C.nearestStar(P.pos), k = this.dbgK = ((this.dbgK || 0) % 3) + 1, at = [4, 2.2, 1.4][k - 1]
+      if (P.seat) P.leaveSeat()
+      const dir = P.pos.clone().sub(st.pos).normalize(); P.pos.copy(st.pos).addScaledVector(dir, st.R * at); P.vel.set(0, 0, 0); P.jetpack = true
+      P.quat.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), dir.clone().negate(), Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0))); P.pitch = 0
+      this.p0.log('dbg star look', st.name, at)
+    }
+    if (e.code === 'Numpad9') { this.dbgFast = !this.dbgFast; this.p0.log('dbg fast', this.dbgFast) }
     if (e.code === 'NumpadMultiply') { const gr = this.pirates.spawn('marauder'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
     if (e.code === 'NumpadDivide') this.p0.log('dbg combat', JSON.stringify({ shots: this.world.combat.shots.length, rockets: this.world.combat.rockets.length, pirates: this.pirates.list.map(x => [x.grid.name, x.grid.ai.state, Math.round(x.grid.comWorld().distanceTo(P.pos)), x.grid.blocks.size, x.grid.ai.disabled ? 'off' : 'on']), health: Math.round(P.health), heat: this.heatNow?.toFixed(2), star: this.world.universe.star?.name, starD: Math.round(this.world.universe.star?.pos.distanceTo(P.pos) / 1000), wrecks: this.world.grids.filter(g => g.wreck).map(g => g.name), caves: this.world.universe.nearestPlanet(P.pos)?.caves?.list.length, wheels: P.seat?.grid.parts.wheels.map(w => [w.contact, (w.susp || 0).toFixed(2)]), v: P.seat ? P.seat.grid.vel.length().toFixed(1) : P.vel.length().toFixed(1) }))
     if (e.code === 'Backslash') { const gr = this.pirates.spawn('reaver'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
@@ -485,7 +494,7 @@ export class Game {
     const T = [performance.now()], mk = () => T.push(performance.now())
     if (this.state === 'menu') this.titleView(this.time)
     if (this.state === 'loading') this.loading(dt)
-    if (this.state === 'play') this.play(dt)
+    if (this.state === 'play') { this.play(dt); if (DEBUG && this.dbgFast) for (let i = 0; i < 3 && this.state === 'play'; i++) this.play(dt) }
     if (this.photoWant != null && this.state === 'play') { this.photo.set(this.photoWant); this.photoWant = null }
     const ph = this.state === 'play' && this.photo?.on ? this.photo : null
     if (ph) ph.tick(dt)

@@ -130,10 +130,42 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
 - **Camera**: a block that looks along its front. From any seat, V steps through first person, third person
   and each camera on the grid; one hung from a ceiling still shows its picture the right way up.
 
+## Round eight: weapons, wheels, stars, pirates
+
+- **Weapons** (`src/game/combat.js`): an autocannon and a rocket launcher fixed to a grid (left button
+  from the seat, or FIRE on touch), gatling and missile turrets that pick their own targets and lead them,
+  warheads that go off when destroyed, and a hand rifle on the tool bar. Shots are real projectiles; hits
+  break blocks, rockets and warheads blow holes in hulls and rock. Guns draw Ammo Boxes and Rockets from
+  the grid's cargo in survival.
+- **Wheels and tracks** (`src/grid/wheels.js`): sprung wheels in two sizes and tracks, with grip, drive,
+  front-wheel steering, skid steering for tracks and brakes on the dampeners. Three ground vehicles: the
+  **Buggy**, the **Prospector** rover (six wheels and a drill) and the **Crawler** (tracks and a turret).
+  A planet start now has a Buggy parked by the base.
+- **More ships and two huge stations** (`src/game/arsenal.js`): the **Warden** gunship, the pirate
+  **Marauder** and **Reaver**, the ring station **Citadel** (about 2,300 blocks, six gravity generators)
+  and the **Bulwark Yard** shipyard (about 2,200 blocks). Blueprints now show a rendered picture of
+  every design. New blocks: plants, sofa, shelf, holo table, spherical gravity generator, 101 in all.
+- **Gravity generators that work**: box and sphere fields, powered, felt by you and by loose grids.
+- **Stars are places** (`src/world/cosmos.js`): Vela is a burning ball 560 km across, 7,200 km out, and its
+  orbit makes day and night. Every 26,000 km square holds another star that lights what is near it. Come
+  within a few radii and the heat burns your suit and your hull.
+- **More things in space**: the ringed gas giant Toren (its depths crush), comets with tails that point
+  away from their star, glowing nebulae, and more of each in generated sectors.
+- **Caves** (`src/world/caves.js`): worm tunnels carved into planets as you come near, open at the surface.
+- **Pirates** (`src/game/pirates.js`): away from home a Marauder or Reaver may come for you. It closes in,
+  circles and shoots, and if you sit still it comes alongside and siphons ore and ingots out of your hold,
+  then runs. Break its cockpit or most of its thrust and it is disabled: loot it, grind it, or weld it up.
+  Settings: Pirates Off, Rare or Often.
+- **Crashed ships** (`src/game/wrecks.js`): broken ships lie on planets and drift in asteroid fields, some
+  with a distress beacon (amber marker). Weld their broken blocks back and fly them away.
+- **Fixes**: asteroids no longer have holes in their surface and are smaller (the detail mesh skipped
+  pieces that held surface); a grid's inverse rotation was cached once and never refreshed, so gyros and
+  dampeners worked in a stale frame after a ship had turned (ships now hold attitude and brake properly).
+
 ## Coming next
 
-- Wheels and suspension for rovers, rotors, hinges and pistons, docking ports that dock, a projector for
-  blueprints in survival, saved worlds, playing together.
+- Rotors, hinges and pistons, docking ports that dock, a projector for blueprints in survival, saved
+  worlds, playing together.
 
 ## Files
 

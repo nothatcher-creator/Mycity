@@ -16,7 +16,7 @@ for (const id of ids) {
   if (!bp.static) {
     try { new ShipControl(world).update(g, g.parts.cockpits[0], { move: [0, 0, 0], turn: [0, 0, 0] }, 0.016) } catch (e) { line += ' CONTROL ' + e.message }
     const wt = g.mass * 9.81, T = [...(g.thrustMax || [])].map(v => (v / wt).toFixed(2))
-    line += ` thrust/weight [${T.join(' ')}] cockpits ${g.parts.cockpits.length} gyros ${g.parts.gyros.length}`
+    line += ` thrust/weight [${T.join(' ')}] cockpits ${g.parts.cockpits.length} cameras ${g.parts.cameras.length} gyros ${g.parts.gyros.length} power ${g.power ? g.power.supply.toFixed(0) + '/' + g.power.want.toFixed(0) + ' MW' : '-'}`
     let low = Infinity; for (const b of g.blocks) for (const key of b.cells) low = Math.min(low, Math.floor(key / 2048) % 2048 - 1024)
     const lowest = new Set(); for (const b of g.blocks) for (const key of b.cells) if (Math.floor(key / 2048) % 2048 - 1024 === low) lowest.add(b.id)
     line += ` lowest ${low}: ${[...lowest].join(',')}`

@@ -18,6 +18,7 @@ import { Engineer, EYE } from '../actors/engineer.js'
 import { SFX } from './sfx.js'
 import { Trees } from '../world/trees.js'
 import { BLOCKS } from '../grid/blocks.js'
+import { works } from '../grid/grid.js'
 import { ITEMS } from './items.js'
 import { netPut } from './survival.js'
 import { Photo } from './photo.js'
@@ -253,6 +254,18 @@ export class Game {
       this.spawnGrid('lancer', st.toWorld(new THREE.Vector3(0, 30, -70)), q, { static: false })
       this.spawnGrid('sparrow', st.toWorld(new THREE.Vector3(-10, 4, -8)), q, { static: false })
       spawn = { pos: st.toWorld(new THREE.Vector3(0, 1.4, 20)), quat: q }
+    } else if (id === 'ship') {
+      // the carrier a little way from the station, her bow toward the edge of the world below
+      const c = new THREE.Vector3(-9000, 21000, 72000).add(new THREE.Vector3(420, 160, -700))
+      const out = c.clone().sub(halvor.center).normalize(), tan = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), out).normalize()
+      const fwd = out.clone().multiplyScalar(-Math.cos(0.42)).addScaledVector(tan, Math.sin(0.42)).normalize(), up = new THREE.Vector3().crossVectors(new THREE.Vector3().crossVectors(fwd, out), fwd).normalize()
+      const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), fwd, up))
+      const cap = this.dbgCap || 'ardent'; this.dbgCap = null
+      const big = this.spawnGrid(cap, c, q, { static: false })
+      const sp = this.spawnGrid('sparrow', big.toWorld(new THREE.Vector3(0, 2.03, cap === 'ardent' ? 45 : 26)), q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)), { static: false })
+      const lock = W.tryLock(sp, 1.5)
+      if (DEBUG) this.p0.log('dbg ardent', big.blocks.size, 'blocks; sparrow', lock)
+      spawn = { pos: big.toWorld(cap === 'ardent' ? new THREE.Vector3(0, 18.85, -1.5) : new THREE.Vector3(0, 1.3, 0)), quat: q }
     } else if (id === 'rocks') {
       const f = U.field('belt'); f.make()
       const a = f.list[f.list.length - 1]
@@ -377,6 +390,7 @@ export class Game {
   debugKey(e) {
     const P = this.player
     if (e.code === 'F3' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'rocks'][this.dbgV = ((this.dbgV ?? -1) + 1) % 3], 'survival'); return }
+    if ((e.code === 'F5' || e.code === 'F6') && this.state === 'menu') { this.dbgCap = e.code === 'F6' ? 'vagrant' : null; this.startWorld('ship'); return }
     if (e.code === 'F9' && this.state === 'menu') { this.startWorld(['planet', 'orbit', 'moon', 'rocks', 'empty'][this.dbgS = ((this.dbgS ?? -1) + 1) % 5]); return }
     if (!P) return
     if (e.code === 'F8') { this.quitToTitle(); return }
@@ -397,7 +411,7 @@ export class Game {
       P.pos.copy(this.dbgShowAt); P.vel.set(0, 0, 0)
       const n = this.dbgP = (this.dbgP ?? -1) + 1, id = PREFAB_LIST[Math.floor(n / 2) % PREFAB_LIST.length], back = n % 2
       const q = P.viewQuat(), g = this.spawnGrid(id, P.pos.clone(), q.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(back ? -0.42 : 0.38, back ? 2.45 : -0.75, 0, 'YXZ'))), { static: true })
-      g.pos.copy(P.eye()).add(new THREE.Vector3(0, 0, -(g.radius * 1.5 + 3)).applyQuaternion(q)).sub(g.com.clone().applyQuaternion(g.quat))
+      g.pos.copy(P.eye()).add(new THREE.Vector3(0, 0, -(g.radius * 1.25 + 3)).applyQuaternion(q)).sub(g.com.clone().applyQuaternion(g.quat))
       this.dbgShow = g; this.hideUi = true; this.p0.log('dbg show', id, back, g.blocks.size)
     }
     if (e.code === 'Numpad2') P.pitch = -0.9
@@ -412,6 +426,11 @@ export class Game {
     if (e.code === 'F7') { this.world.universe.time += 600; this.hud.toast('+10 min') }
     if (e.code === 'Numpad0') { this.engine.resScale = this.engine.resScale === 2 ? 0.4 : 2; this.engine.resize() }
     if (e.code === 'NumpadAdd') { this.engine.postOn = !this.engine.postOn; this.p0.log('dbg post', this.engine.postOn, this.engine.post.ok) }
+    if (e.code === 'NumpadSubtract') { // a tour of the carrier's rooms: each press stands you in the next
+      const big = this.world.grids.find(g => g.name === 'Ardent' || g.name === 'Vagrant')
+      const T = big?.name === 'Vagrant' ? [[0, 1, 0, 0], [0, 2, -3, 0], [-1, 1, 4, 1.57], [2, 1, 5, 0], [0, 1, 9, Math.PI], [0, 1, 12, 0]] : [[0, 8, 0, 0], [0, 5, -4, 0], [0, 5, 8, 0], [-2, 5, 0, 1.2], [0, 5, 11, Math.PI], [0, 1, 13, Math.PI], [0, 1, -2, 0], [-2, 1, 3, 2.2], [2, 1, 4, -2.2], [0, 1, 8, 0], [3, 5, 1, 0.9]]
+      if (big) { const t = T[this.dbgTour = ((this.dbgTour ?? -1) + 1) % T.length]; if (P.seat) P.leaveSeat(); P.pos.copy(big.toWorld(new THREE.Vector3(t[0] * 2.5, t[1] * 2.5 - 1.2, t[2] * 2.5))); P.vel.set(0, 0, 0); P.quat.copy(big.quat).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), t[3])); P.pitch = 0; this.view = 'fp'; this.p0.log('dbg tour', this.dbgTour) }
+    }
     if (e.code === 'Numpad9') { this.photo = this.photo || new Photo(this); this.photoWant = (this.photoWant ?? this.photo.n) + 1 }
   }
   // ---- the frame ----
@@ -485,7 +504,17 @@ export class Game {
     const mv = menu ? [0, 0, 0] : [inp.axis('left', 'right'), (inp.down('up') ? 1 : 0) - (inp.down('down') ? 1 : 0), inp.axis('back', 'forward')]
     const roll = menu ? 0 : (inp.down('rollL') ? 1 : 0) - (inp.down('rollR') ? 1 : 0)
     if (!menu) {
-      if (inp.hit('view')) this.view = this.view === 'fp' ? 'tp' : 'fp'
+      if (inp.hit('view')) {
+        // on foot: first and third person. In a seat the round goes on through the grid's cameras.
+        const cams = P.seat ? P.seat.grid.parts.cameras.filter(b => works(b)) : []
+        if (this.view === 'fp') this.view = 'tp'
+        else if (this.view === 'tp' && cams.length) { this.view = 'cam'; this.camIndex = 0 }
+        else if (this.view === 'cam' && this.camIndex + 1 < cams.length) this.camIndex++
+        else this.view = 'fp'
+        this.freeLook = null
+        if (this.view === 'cam') this.hud.toast(`Camera ${this.camIndex + 1} of ${cams.length}`)
+      }
+      if (this.view === 'cam' && !P.seat) this.view = 'fp'
       if (inp.hit('terminal')) { this.terminalGrid = P.seat?.grid || B.hit?.grid || P.ground; this.menus.open('terminal') }
       if (inp.hit('blueprints')) { if (W.creative) this.menus.open('blueprints'); else this.hud.toast('Blueprints are for creative mode (a projector arrives in the next update)') }
       if (inp.hit('map')) this.menus.open('map')
@@ -505,7 +534,7 @@ export class Game {
       }
       if (P.seat) {
         // free look holds the ship's attitude and turns only your head
-        const free = inp.down('freeLook') || this.view === 'tp' && inp.mouse.right
+        const free = inp.down('freeLook') || this.view !== 'fp' && inp.mouse.right
         const k = gr.size === 'large' ? 0.9 : 1.6
         const rate = v => Math.max(-k, Math.min(k, v / Math.max(dt, 1 / 120) * 0.45))
         if (free) { this.freeLook = this.freeLook || { yaw: 0, pitch: 0 }; this.freeLook.yaw += look.yaw; this.freeLook.pitch = Math.max(-1.4, Math.min(1.4, this.freeLook.pitch + look.pitch)) }
@@ -566,11 +595,23 @@ export class Game {
       const p = new THREE.Vector3(), q = new THREE.Quaternion()
       P.seatFrame(p, q)
       if (this.freeLook) q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(this.freeLook.pitch, this.freeLook.yaw, 0, 'YXZ')))
-      if (this.view === 'tp') {
-        const back = gr.radius * 1.9 + 6
-        this.camPos.copy(gr.comWorld()).add(new THREE.Vector3(0, back * 0.28, back).applyQuaternion(q))
-      } else this.camPos.copy(p)
-      this.camQuat.copy(q)
+      const cam = this.view === 'cam' ? gr.parts.cameras.filter(b => works(b))[this.camIndex] : null
+      if (this.view === 'cam' && !cam) this.view = 'tp'
+      if (cam) {
+        // through a camera: where it sits, the way it faces
+        const e = cam.def.func.camera.eye
+        gr.toWorld(gr.blockPoint(cam, e[0], e[1], e[2]), this.camPos)
+        const up = gr.dirToWorld(gr.blockDir(cam, 0, 1, 0)), z = gr.dirToWorld(gr.blockDir(cam, 0, 0, 1))
+        if (up.dot(new THREE.Vector3(0, 1, 0).applyQuaternion(gr.quat)) < -0.5) up.negate()   // hung from a ceiling: the picture is still the right way up
+        this.camQuat.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(up, z), up, z))
+        if (this.freeLook) this.camQuat.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(this.freeLook.pitch, this.freeLook.yaw, 0, 'YXZ')))
+      } else {
+        if (this.view === 'tp') {
+          const back = gr.radius * 1.9 + 6
+          this.camPos.copy(gr.comWorld()).add(new THREE.Vector3(0, back * 0.28, back).applyQuaternion(q))
+        } else this.camPos.copy(p)
+        this.camQuat.copy(q)
+      }
     } else {
       const eye = P.eye(), q = P.viewQuat()
       if (this.view === 'tp') {

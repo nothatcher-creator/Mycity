@@ -154,6 +154,36 @@ def({ id: 'seat', name: 'Control Seat', cat: 'Control', sizes: { large: [1, 1, 1
     seat(g, o, o + 0.05, o + 0.1, k * 0.95)
     g.box(o - 0.32 * k, -0.42, o - 0.45 * k, o + 0.32 * k, o - 0.12 * k, o - 0.28 * k, { tile: T.DASH, paint: false, emits: { py: 0.4 } })
   } })
+def({ id: 'command_chair', name: 'Command Chair', cat: 'Control', sizes: { large: [1, 1, 1], small: [3, 3, 3] }, shape: 'panel', mass: { large: 420, small: 80 }, hp: { large: 800, small: 140 },
+  desc: 'A cockpit you can stand anywhere: a high-backed chair with its own controls and air line. Put it on a bridge deep inside a ship and fly from there; V in the seat steps through the views, the ship\'s cameras among them.',
+  func: { cockpit: { eye: [0, 0.2, 0.06], eyeS: [1, 1.12, 1.12], enclosed: true } },
+  geo(g, S) {
+    const k = S[0] === 3 ? 3 : 1, o = (k - 1) / 2, D = { tile: T.DARK, col: DARKC, paint: false }, M2 = { tile: T.METAL, col: STEEL, paint: false }
+    const B = (x0, y0, z0, x1, y1, z1, opt) => g.box(o + x0 * k, o + y0 * k, o + z0 * k, o + x1 * k, o + y1 * k, o + z1 * k, opt)
+    g.box(-0.5, -0.5, -0.5, k - 0.5, -0.44, k - 0.5, { tile: T.FLOOR, cull: k === 1, cullPartial: true })
+    g.cyl('y', o, o - 0.42 * k, o + 0.05 * k, 0.3 * k, 0.05 * k, { tile: T.RING, seg: 12, paint: false, emits: { py: 0.5 } })   // a lit ring in the floor
+    g.cyl('y', o, o - 0.3 * k, o + 0.05 * k, 0.07 * k, 0.2 * k, { ...M2, seg: 8 })                                              // the pedestal
+    B(-0.2, -0.2, -0.14, 0.2, -0.1, 0.24, D)                                                                                    // the seat
+    B(-0.2, -0.1, 0.16, 0.2, 0.34, 0.26, D); B(-0.12, 0.34, 0.17, 0.12, 0.46, 0.25, D)                                          // the back and the head rest
+    B(-0.23, -0.14, 0.1, -0.2, 0.3, 0.28, { tile: T.STRIPE }); B(0.2, -0.14, 0.1, 0.23, 0.3, 0.28, { tile: T.STRIPE })          // painted wings on the back
+    for (const sx of [-1, 1]) {
+      B(sx * 0.2, -0.1, -0.2, sx * 0.3, 0.0, 0.2, M2)                                                                           // arm rests
+      B(sx * 0.19, 0.0, -0.22, sx * 0.31, 0.02, -0.02, { tile: T.DASH, paint: false, emits: { py: 0.7 } })                      // with keys under each hand
+      B(sx * 0.3, -0.44, -0.36, sx * 0.44, -0.02, -0.22, D)                                                                     // two side desks
+      g.poly([[o + sx * 0.3 * k, o - 0.02 * k, o - 0.36 * k], [o + sx * 0.44 * k, o - 0.02 * k, o - 0.36 * k], [o + sx * 0.44 * k, o + 0.16 * k, o - 0.42 * k], [o + sx * 0.3 * k, o + 0.16 * k, o - 0.42 * k]], { tile: T.SCREEN, paint: false, emit: 0.9, double: true })
+    }
+  } })
+def({ id: 'camera', name: 'Camera', cat: 'Control', shape: 'boxes', boxes: [[-0.2, -0.5, -0.32, 0.2, -0.06, 0.3]], mass: { large: 90, small: 8 }, hp: { large: 240, small: 30 },
+  desc: 'An eye for the ship. It sits on the surface under it and looks along its front. From any seat on the same grid, V steps through first person, third person and each camera in turn; hold Alt to look round.',
+  func: { camera: { eye: [0, -0.24, -0.44] } },
+  geo(g) {
+    g.box(-0.1, -0.5, -0.08, 0.1, -0.38, 0.12, { tile: T.METAL, col: STEEL, paint: false })
+    g.box(-0.15, -0.4, -0.24, 0.15, -0.1, 0.28, { tile: T.DARK, col: DARKC, paint: false })
+    g.box(-0.16, -0.12, -0.26, 0.16, -0.08, 0.3, { tile: T.STRIPE })
+    g.cyl('z', 0, -0.25, -0.31, 0.1, 0.14, { tile: T.PIPE, seg: 10, col: STEEL, paint: false })
+    g.cyl('z', 0, -0.25, -0.385, 0.075, 0.02, { tile: T.GLASS, seg: 10, paint: false, emit: 0.5 })
+    g.box(0.09, -0.08, 0.2, 0.13, -0.05, 0.24, { tile: T.GLOW, col: [1, 0.25, 0.15], paint: false, emit: 1 })
+  } })
 def({ id: 'gyro', name: 'Gyro Stabiliser', cat: 'Control', shape: 'cube', full: 0, mass: { large: 1200, small: 60 }, hp: { large: 1800, small: 160 },
   desc: 'Spinning rings that turn the grid. More gyros, faster turns.',
   func: { gyro: { large: 33.6e6, small: 4.5e5 }, power: { use: { large: 0.002, small: 0.0005 } } },

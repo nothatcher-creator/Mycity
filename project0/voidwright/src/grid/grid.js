@@ -238,13 +238,14 @@ export class Grid {
   }
   // the working blocks, by kind
   scan() {
-    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [], detectors: [] }
+    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], cameras: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [], detectors: [] }
     for (const b of this.blocks) {
       const f = b.def.func
       if (!f) continue
       if (f.thruster) L.thrusters.push(b)
       if (f.gyro) L.gyros.push(b)
       if (f.cockpit) L.cockpits.push(b)
+      if (f.camera) L.cameras.push(b)
       if (f.power) L.power.push(b)
       if (f.light) L.lights.push(b)
       if (f.medbay) L.medbays.push(b)

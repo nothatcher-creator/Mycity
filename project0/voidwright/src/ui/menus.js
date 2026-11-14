@@ -14,6 +14,7 @@ import { netItems, netVolume, netTake, netPut, gasTotal, gasMax } from '../game/
 export const SCENARIOS = [
   { id: 'planet', name: 'Halvor: Landing Site', sub: 'On the home world, 1 g and air', desc: 'Start on the grass of Halvor beside a small outpost, a Sparrow scout and a Mule hauler. Fly them, take them apart, build your own.' },
   { id: 'orbit', name: 'Kestrel Station', sub: 'High orbit over Halvor', desc: 'A station in orbit with the Lancer explorer docked beside it. The Halvor Shoal asteroid field is close by; the jump drive reaches the whole system.' },
+  { id: 'ship', name: 'Aboard the Ardent', sub: 'A carrier in orbit, yours', desc: 'Start on the bridge of a big ship over Halvor: two decks, cabins, a workshop, and a Sparrow in the hangar astern. Sit in the command chair to fly her; V in the seat looks out through the ship\'s cameras.' },
   { id: 'moon', name: 'Ket: Crater Base', sub: 'The moon, a quarter g, no air', desc: 'A base on the grey moon. Low gravity makes for easy flying; atmos thrusters do nothing here.' },
   { id: 'thessa', name: 'Thessa: Violet Woods', sub: 'A purple forest world, 0.84 g', desc: 'Start under a green sky among violet trees, 650 km from home, with an outpost and ships. The air is thick but you cannot breathe it.' },
   { id: 'rocks', name: 'The Drift', sub: 'Deep space among asteroids', desc: 'Between the worlds in the richest rock field, with a scout to explore and an empty station core.' },

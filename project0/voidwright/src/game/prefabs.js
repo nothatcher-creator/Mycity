@@ -4,6 +4,7 @@
 // chamfered lines. Working blocks are then set into and onto the hull.
 import { R, F, BK, UPR, DNR, LF, RT, UPSIDE, BP, Shape, skin, roof } from './bpkit.js'
 import { FLEET, FLEET_LIST } from './fleet.js'
+import { CAPITAL, CAPITAL_LIST } from './capital.js'
 
 // ---- Sparrow: a small-grid scout that flies on Halvor and in space ----
 function sparrowHull(P, A) {
@@ -254,7 +255,7 @@ function foothold() {
   return b.bp
 }
 
-export const PREFABS = { sparrow, pick, mule, mole, lancer, kestrel, foothold, ...FLEET }
-export const PREFAB_LIST = ['sparrow', 'pick', 'mule', 'mole', 'lancer', ...FLEET_LIST, 'kestrel', 'foothold']
+export const PREFABS = { sparrow, pick, mule, mole, lancer, kestrel, foothold, ...FLEET, ...CAPITAL }
+export const PREFAB_LIST = ['sparrow', 'pick', 'mule', 'mole', 'lancer', ...FLEET_LIST, ...CAPITAL_LIST, 'kestrel', 'foothold']
 const cache = {}
 export function prefab(id) { return cache[id] || (cache[id] = PREFABS[id]()) }

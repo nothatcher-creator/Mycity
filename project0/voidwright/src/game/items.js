@@ -104,6 +104,7 @@ const R = {
   dish: [['plate', 60], ['construct', 40], ['tube_s', 40], ['tube_l', 20], ['computer', 12], ['radio', 60]],
   ramp: [['plate', 12], ['girder', 4]], porthole: [['plate', 16], ['glass', 6]], skylight: [['girder', 4], ['glass', 8]], wall: [['interior', 12], ['construct', 4]],
   pillar: [['plate', 8], ['girder', 6]], railing: [['girder', 4], ['tube_s', 4]], ladder: [['tube_s', 8]], bed: [['interior', 20], ['construct', 10]],
+  command_chair: [['interior', 20], ['construct', 20], ['motor', 2], ['display', 6], ['computer', 60]], camera: [['plate', 2], ['construct', 2], ['motor', 1], ['display', 1], ['computer', 3]],
   console: [['interior', 10], ['construct', 10], ['display', 4], ['computer', 20]], locker: [['interior', 20], ['construct', 10]], table: [['interior', 8], ['tube_s', 4]],
   sign: [['interior', 4], ['display', 6], ['computer', 4]], blastdoor: [['plate', 140], ['grid', 40], ['construct', 40], ['motor', 8], ['computer', 4]],
   hangar: [['plate', 30], ['construct', 20], ['tube_s', 10], ['motor', 4]], lightstrip: [['construct', 2], ['interior', 1]], lightpanel: [['construct', 4], ['interior', 4]], warnlight: [['construct', 2], ['computer', 1]],

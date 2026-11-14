@@ -210,9 +210,22 @@ milliseconds).
 Big grids mesh a few pieces at a time (on a time budget), their blueprint pictures and placement ghosts fill
 in over a few frames, and the physics only tests the hull points that could be touching the ground.
 
+## Rotors and walkers
+
+- **Rotors** (`src/grid/pistons.js`, beside pistons): a rotor turns a Rotor Head (a grid of its own you build
+  on) round its top while it runs. F on the rotor or its head starts and stops it, B in a seat runs every
+  rotor on the grid, the terminal starts, stops and reverses them, and touch has a ROTORS button. Guns on a
+  rotor or piston head fire with the seat's guns; heads carry what stands on them round.
+- **Walker legs** (`leg`, in Wheels): a 9 m leg (3 m small) hung from its block, two jointed struts and a broad
+  foot that steps as the grid walks, diagonal pairs in turn. Legs carry the grid on long springs; W and S
+  walk, A and D turn it on the spot (the gyros help).
+- **Mastodon**: an original heavy walker, an armoured hull on four legs with a gun turret (two autocannons,
+  two rocket launchers, a gatling turret) on a rotor. **Watchtower**: a radar station whose dish array turns
+  on a rotor.
+
 ## Coming next
 
-- Rotors and hinges, docking ports that dock, a projector for blueprints in survival, saved worlds,
+- Hinges, docking ports that dock, a projector for blueprints in survival, saved worlds,
   playing together.
 
 ## Playing it outside Project 0 (itch.io and other hosts)

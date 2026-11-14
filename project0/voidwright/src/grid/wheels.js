@@ -37,7 +37,7 @@ export function wheelStep(W, g, dt) {
   const want = Math.abs(d.throttle) > 0.05 || Math.abs(d.steer) > 0.05
   for (const w of L) {
     if (!works(w)) { w.contact = false; continue }
-    const fwh = w.def.func.wheel, ftr = w.def.func.track, f = fwh || ftr
+    const fwh = w.def.func.wheel, ftr = w.def.func.track, fleg = w.def.func.leg, f = fwh || ftr || fleg
     const S = w.def.sizes[size], rad = f.r[size]
     up.copy(g.dirToWorld(g.blockDir(w, 0, 1, 0, a), b))
     down.copy(up).negate()
@@ -46,6 +46,7 @@ export function wheelStep(W, g, dt) {
     if (fw.dot(sfW) < 0) fw.negate()
     const cen = g.toWorld(g.blockPoint(w, (S[0] - 1) / 2, (S[1] - 1) / 2, (S[2] - 1) / 2), new THREE.Vector3())
     const ahead = cen.clone().sub(com).dot(sfW), right = cen.clone().sub(com).dot(sideW)
+    w.ahead = ahead; w.right = right
     // the front wheels steer
     let steerA = 0
     if (fwh && ahead > cs * 0.3) steerA = -d.steer * 0.5 * Math.min(1, 12 / Math.max(6, g.vel.length()))
@@ -53,10 +54,11 @@ export function wheelStep(W, g, dt) {
     w.steer = steerA
     // drive for this wheel: tracks drive their sides against each other to turn
     let thr = d.throttle
-    if (ftr) thr = Math.max(-1, Math.min(1, d.throttle + (right > 0 ? -1 : 1) * d.steer * 1.4))
-    const smax = fwh ? fwh.smax[size] : cs * 0.5 * (S[1]) - 0.02 * cs + 0.12
-    const smin = fwh ? fwh.smin[size] : smax - 0.25
-    const xeq = fwh ? (smax - smin) * 0.38 : 0.12
+    if (ftr || fleg) thr = Math.max(-1, Math.min(1, d.throttle + (right > 0 ? -1 : 1) * d.steer * 1.4))
+    // a leg: a long stiff spring from the hip, the body riding at about four fifths of its length
+    const smax = fwh ? fwh.smax[size] : fleg ? fleg.len[size] : cs * 0.5 * (S[1]) - 0.02 * cs + 0.12
+    const smin = fwh ? fwh.smin[size] : fleg ? smax * 0.55 : smax - 0.25
+    const xeq = fwh ? (smax - smin) * 0.38 : fleg ? smax * 0.12 : 0.12
     const k = share * gW / xeq, c = 2 * 0.75 * Math.sqrt(k * share)
     const nr = ftr ? ftr.rays : 1
     let anyC = false, sAvg = 0
@@ -88,13 +90,13 @@ export function wheelStep(W, g, dt) {
       const lim = mu * N
       const eff = share / dt * 0.6
       // tracks slip sideways while they turn (that is how a tracked machine steers)
-      const latLim = ftr && Math.abs(d.steer) > 0.1 ? lim * 0.18 : lim
+      const latLim = (ftr || fleg) && Math.abs(d.steer) > 0.1 ? lim * (fleg ? 0.08 : 0.18) : lim
       let side = -vs * eff; side = Math.max(-latLim, Math.min(latLim, side))
       let drive = 0
       if (Math.abs(thr) > 0.03) {
         drive = thr * f.force[size] / nr * ratio
         // a top speed: the motors fade out as the ground speed grows
-        const top = size === 'large' ? 34 : 26
+        const top = fleg ? fleg.top[size] : size === 'large' ? 34 : 26
         if (Math.sign(vl) === Math.sign(thr)) drive *= Math.max(0, 1 - Math.abs(vl) / top)
         drive -= vl * share * 0.02
       } else if (g.dampeners) drive = -vl * eff * 0.9
@@ -107,9 +109,12 @@ export function wheelStep(W, g, dt) {
       g.angVel.add(r.applyMatrix3(g._iw).multiplyScalar(dt))
       if (h.grid && !h.grid.static && !h.grid.locked) h.grid.vel.addScaledVector(F, -dt / h.grid.mass)
       w.speed = vl
+      if (fleg) { (w.footP || (w.footP = new THREE.Vector3())).copy(h.point) }
     }
     w.contact = anyC
     w.susp = sAvg / nr
+    // a leg's step: the gait goes round once every stride, faster as it walks
+    if (fleg) { w.walk = (w.walk || 0) + (anyC ? (w.speed || 0) : 0) * dt / (smax * 0.55); w.gait = (w.gait || 0) + ((anyC && Math.abs(w.speed || 0) > 0.25 ? 1 : 0) - (w.gait || 0)) * Math.min(1, dt * 3) }
     if (anyC) touching++
     w.spin = (w.spin || 0) + (w.speed || 0) * dt / Math.max(0.1, rad) * (fw.dot(g.dirToWorld(g.blockDir(w, 0, 0, -1, b), a)) < 0 ? -1 : 1)
     if (!anyC && Math.abs(thr) > 0.03) w.spin += thr * dt * 6

@@ -4,13 +4,16 @@
 // every piston on the grid (and on the heads riding it); the terminal has the same. Break the piston and
 // its head comes loose.
 //
+// Rotors work the same way: a Rotor Head held on top of the rotor, turning round the rotor's up while the
+// rotor runs (F on either starts or stops it; B in a seat runs every rotor on the grid).
+//
 // A blueprint can carry what is built on each head: bp.heads = [{ at: [i, j, k], ext, blocks: [...] }],
 // blocks in the head's own cells (its +Y pointing away from the piston, the head block itself at 0,0,0).
 import * as THREE from 'three'
 import { ROTS, QUATS, rotIndex, apply } from './rot.js'
 import { works } from './grid.js'
 
-const v1 = new THREE.Vector3(), v2 = new THREE.Vector3()
+const v1 = new THREE.Vector3(), v2 = new THREE.Vector3(), q1 = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0)
 const mul = (A, B) => { const C = new Array(9); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) C[r * 3 + c] = A[r * 3] * B[c] + A[r * 3 + 1] * B[3 + c] + A[r * 3 + 2] * B[6 + c]; return C }
 export const composeRot = (a, b) => rotIndex(mul(ROTS[a], ROTS[b]))
 
@@ -31,10 +34,10 @@ export function flattenHeads(bp, cs) {
     return { o: [T.o[0] + w[0], T.o[1] + w[1], T.o[2] + w[2]], r: composeRot(T.r, pr) }
   }
   const put = (h, T, list) => {
-    const pb = list.find(x => x[0] === 'piston' && x[1] === h.at[0] && x[2] === h.at[1] && x[3] === h.at[2])
+    const pb = list.find(x => (x[0] === 'piston' || x[0] === 'rotor') && x[1] === h.at[0] && x[2] === h.at[1] && x[3] === h.at[2])
     if (!pb) return
-    const H = headFrame(T, h.at, pb[4], h.ext)
-    for (const [id, i, j, k, rot, col] of [['piston_top', 0, 0, 0, 0, 0], ...h.blocks]) {
+    const H = headFrame(T, h.at, pb[4], pb[0] === 'rotor' ? 0 : h.ext)
+    for (const [id, i, j, k, rot, col] of [[pb[0] === 'rotor' ? 'rotor_top' : 'piston_top', 0, 0, 0, 0, 0], ...h.blocks]) {
       const v = apply(H.r, i, j, k, [0, 0, 0])
       out.push([id, H.o[0] + v[0], H.o[1] + v[1], H.o[2] + v[2], composeRot(H.r, rot || 0), col || 0])
     }
@@ -50,12 +53,13 @@ export class Pistons {
   attach(g, b) {
     const W = this.W, ext = b.ext || 0
     const pos = g.toWorld(headLocal(g, b, ext, v1), new THREE.Vector3())
+    const rotor = !!b.def.func.rotor
     const q = g.quat.clone().multiply(QUATS[b.rot])
-    const h = W.newGrid(g.size, pos, q, { static: false, name: `${g.name} Piston Head` })
-    h.add('piston_top', 0, 0, 0, 0, b.color || 0)
+    const h = W.newGrid(g.size, pos, q, { static: false, name: `${g.name} ${rotor ? 'Rotor' : 'Piston'} Head` })
+    h.add(rotor ? 'rotor_top' : 'piston_top', 0, 0, 0, 0, b.color || 0)
     for (const [id, i, j, k, rot, col] of b.headBlocks || []) h.add(id, i, j, k, rot || 0, col || 0)
     // a piston on this head with its own head to come
-    if (b.headSub) { const pb = h.at(...b.headSub.at); if (pb?.def.func?.piston) { pb.headBlocks = b.headSub.blocks; pb.headSub = b.headSub.sub || null; pb.startExt = b.headSub.ext || 0 } }
+    if (b.headSub) { const pb = h.at(...b.headSub.at); if (pb?.def.func?.piston || pb?.def.func?.rotor) { pb.headBlocks = b.headSub.blocks; pb.headSub = b.headSub.sub || null; pb.startExt = b.headSub.ext || 0 } }
     b.headBlocks = null; b.headSub = null
     h.updateMass(); h.rebuild()
     h.locked = { grid: g, relPos: headLocal(g, b, ext), relQuat: QUATS[b.rot].clone() }
@@ -65,6 +69,20 @@ export class Pistons {
     b.head = h
     return h
   }
+  // a rotor: start or stop it
+  // (`running`, not `on`: `on` is whether the block is switched on at all)
+  spin(b, on = !b.running) { b.running = on; return on }
+  // every rotor on a grid and the heads riding it: all running, or all stopped
+  spinAll(g) {
+    const L = []
+    const walk = (x, d) => { if (d > 4) return; for (const b of x.parts?.rotors || []) { L.push(b); if (b.head) walk(b.head, d + 1) } for (const b of x.parts?.pistons || []) if (b.head) walk(b.head, d + 1) }
+    walk(g, 0)
+    if (!L.length) return null
+    const on = !L.some(b => b.running)
+    for (const b of L) b.running = on
+    return on
+  }
+  reverseAll(g) { for (const b of g.parts?.rotors || []) b.dir = -(b.dir || 1) }
   toggle(b) {
     const f = b.def.func.piston, g = b.grid, travel = f.travel[g?.size || 'large']
     b.target = (b.target ?? 0) > travel * 0.5 ? 0 : travel
@@ -88,6 +106,7 @@ export class Pistons {
         const P = g.pistonOf
         if (!W.grids.includes(P.grid) || !P.grid.blocks.has(P.block) || g.locked?.grid !== P.grid) { g.pistonOf = null; g.parentOf = null; if (g.locked?.grid === P.grid) g.locked = null; g.sleep = 0; if (P.block.head === g) P.block.head = null }
       }
+      if (g.parts?.rotors?.length && !g.frozen) this.turn(g, dt)
       const L = g.parts?.pistons
       if (!L?.length || g.frozen) continue
       for (const b of L) {
@@ -119,6 +138,28 @@ export class Pistons {
           for (const o of W.grids) if (o !== h && !o.static && !o.locked && o.sleep > 0 && o.pos.distanceTo(h.pos) < o.radius + h.radius + 4) o.sleep = 0
         }
       }
+    }
+  }
+  // rotors: the head turns round the rotor's up while it runs, and carries what stands on it round
+  turn(g, dt) {
+    const W = this.W
+    for (const b of g.parts.rotors) {
+      b.grid = g
+      if (b.head && !W.grids.includes(b.head)) b.head = null
+      if (!b.head && !b.noHead && b.build >= 1) { if (b.running == null) b.running = !!b.startOn; this.attach(g, b) }
+      const h = b.head
+      if (!h || h.locked?.grid !== g) continue
+      let root = g; for (let n = 0; root.pistonOf && n < 6; n++) root = root.pistonOf.grid
+      const pw = root.power && (root.power.supply > 0 || root.power.store > 0) ? root.power : g.power
+      const ok = b.running && works(b) && (!pw || pw.ratio > 0.05)
+      const w = ok ? b.def.func.rotor.speed[g.size] * (b.dir || 1) * (pw ? Math.min(1, pw.ratio) : 1) : 0
+      b.angle = ((b.angle || 0) + w * dt) % (Math.PI * 2)
+      h.locked.relQuat.copy(QUATS[b.rot]).multiply(q1.setFromAxisAngle(Y, b.angle))
+      headLocal(g, b, 0, h.locked.relPos)
+      if (!h.locked.spin) h.locked.spin = new THREE.Vector3()
+      h.locked.spin.copy(g.dirToWorld(v2.set(...apply(b.rot, 0, 1, 0, [0, 0, 0])))).multiplyScalar(w)
+      W.followLock(h)
+      if (w) h.sleep = 0
     }
   }
 }

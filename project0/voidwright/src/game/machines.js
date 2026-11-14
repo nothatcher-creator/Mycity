@@ -80,5 +80,50 @@ function borer() {
   return b.bp
 }
 
-export const MACHINES = { lift, strider, borer }
-export const MACHINE_LIST = ['strider', 'lift', 'borer']
+// ---- Mastodon: a heavy walker on four legs, a gun turret turning on a rotor ----
+function mastodon() {
+  const b = new BP('Mastodon', 'large', { desc: 'Heavy walker: an armoured hull on four 9 m legs. W and S walk, A and D turn it on the spot; B turns the gun turret on its rotor (B again stops it), the left button fires its guns.' })
+  const P = 4, A = 2, D = 10
+  const s = new Shape()
+  s.box(-4, 4, 0, 2, -5, 5, P).box(-3, 3, 3, 3, -4, 4, P)                       // the hull and its upper deck
+  s.box(-2, 2, 0, 2, -8, -6, A).box(-1, 1, 3, 3, -6, -5, A)                     // the cab out front
+  s.sym(5, 5, 0, 1, -4, 4, D)                                                   // armour skirts along the sides
+  s.paint((x, y, z) => y === 2 && Math.abs(x) === 4 ? A : null)
+  skin(b, s, 'light', { solid: true })
+  b.over('cockpit', 0, 1, -8, 0, A).over('window', -1, 2, -8, R([0, 0, -1]), 0).over('window', 1, 2, -8, R([0, 0, -1]), 0).over('window', 0, 2, -8, R([0, 0, -1]), 0)
+  // the legs under the four corners
+  for (const [x, z] of [[-4, -4], [4, -4], [-4, 4], [4, 4]]) b.set('leg', x, -1, z, 0, D)
+  // the turret: a rotor on the deck; on its head a ring, a gun house with two autocannons and two rocket
+  // launchers, a gatling turret on its roof
+  b.rotor(0, 4, 0, 0, A, h => {
+    for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) if ((x || z) && Math.abs(x) + Math.abs(z) < 4) h.set('heavy_cube', x, 0, z, 0, P)
+    for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) h.set('heavy_cube', x, 1, z, 0, A)
+    h.set('gun_auto', -1, 1, -4, F, A).set('gun_auto', 1, 1, -4, F, A).set('gun_rocket', -2, 0, -4, F, A).set('gun_rocket', 2, 0, -4, F, A)
+    h.set('turret_gatling', 0, 2, 0, 0, A).set('flood', 0, 2, -1, 0)
+  })
+  b.over('battery', -1, 1, 2).over('battery', 1, 1, 2).over('core_small', 0, 1, 3).over('core_small', 0, 1, 1).over('gyro', -2, 1, 0).over('gyro', 2, 1, 0)
+  b.over('cargo_s', -2, 1, 3, 0, P).over('survival_kit', 2, 1, 3, 0, 3)
+  b.set('flood', -2, 1, -9, 0).set('flood', 2, 1, -9, 0).set('beacon', 0, 4, 4, 0).set('warnlight', -3, 4, -3, 0).set('warnlight', 3, 4, -3, 0).set('antenna', 3, 4, 3, 0)
+  return b.bp
+}
+
+// ---- Watchtower: a radar station, its dish array turning on a rotor ----
+function watchtower() {
+  const b = new BP('Watchtower', 'large', { static: true, ground: true, desc: 'Radar station: a girder tower carrying a dish array on a rotor, turning from the moment it is built (F on the rotor stops it). A hut with power at its foot.' })
+  const D = 1, A = 7
+  for (let x = -4; x <= 4; x++) for (let z = -4; z <= 4; z++) b.set(Math.abs(x) === 4 || Math.abs(z) === 4 ? 'hull_hazard' : 'heavy_cube', x, -1, z, 0, D)
+  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) for (let y = 0; y <= 9; y++) b.set('girder', x, y, z, 0, 1)
+  for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) b.set('heavy_cube', x, 10, z, 0, A)
+  for (const y of [3, 6]) for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) if (!(Math.abs(x) === 1 && Math.abs(z) === 1)) b.set('girder', x, y, z, 0, 1)
+  b.rotor(0, 11, 0, 0, A, h => {
+    for (const x of [-2, -1, 1, 2]) h.set('heavy_cube', x, 0, 0, 0, D)
+    h.set('dish', -4, 1, -1, 0, 0).set('dish', 2, 1, -1, 0, 0).set('antenna', 0, 1, 0, 0)
+  }, true)
+  // the hut: power and a seat
+  for (let x = 2; x <= 3; x++) for (let z = 2; z <= 3; z++) for (let y = 0; y <= 1; y++) b.set('light_cube', x, y, z, 0, A)
+  b.set('battery', -3, 0, 3, 0).set('battery', -2, 0, 3, 0).set('core_small', -3, 0, 2, 0).set('beacon', 3, 2, 3, 0).set('flood', -3, 0, -3, 0).set('lamp', 2, 2, 2, 0)
+  return b.bp
+}
+
+export const MACHINES = { lift, strider, borer, mastodon, watchtower }
+export const MACHINE_LIST = ['strider', 'mastodon', 'lift', 'borer', 'watchtower']

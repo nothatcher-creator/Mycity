@@ -583,6 +583,18 @@ def({ id: 'piston', name: 'Piston', cat: 'Mechanical', shape: 'cube', full: 63 &
     g.box(-0.5, 0.42, -0.5, 0.5, 0.5, 0.5, { skip: ['ny'], tiles: { py: T.RING }, col: DARKC, paint: false })
     g.cyl('y', 0, 0.3, 0, 0.26, 0.36, { tile: T.PIPE, seg: 16, col: STEEL, paint: false })
   } })
+def({ id: 'rotor', name: 'Rotor', cat: 'Mechanical', shape: 'cube', full: 63 & ~BIT.py, mass: { large: 1600, small: 110 }, hp: { large: 1600, small: 160 },
+  desc: 'Turns a head round its top: build on the head (a turret ring, a radar, a spinning section). F on it or its head starts and stops it; B in a seat runs every rotor on the grid; the terminal can reverse them. Needs power.',
+  func: { rotor: { speed: { large: 0.5, small: 1.1 } }, power: { use: { large: 0.3, small: 0.04 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.2, 0.5, { cull: true, skip: ['py'], tiles: { px: T.HAZARD, nx: T.HAZARD, pz: T.HAZARD, nz: T.HAZARD, ny: T.HEAVY } })
+    g.box(-0.5, 0.2, -0.5, 0.5, 0.26, 0.5, { tile: T.HEAVY })
+    g.cyl('y', 0, 0.36, 0, 0.44, 0.2, { tile: T.RING, seg: 20, col: [0.75, 0.62, 0.3], paint: false })
+    g.cyl('y', 0, 0.48, 0, 0.3, 0.06, { tile: T.GEAR, seg: 16, col: [0.4, 0.42, 0.45], paint: false })
+  } })
+def({ id: 'rotor_top', name: 'Rotor Head', cat: 'Parts', shape: 'cube', full: 63, mass: { large: 500, small: 35 }, hp: { large: 1200, small: 120 },
+  desc: 'The turning plate of a rotor: build on it.', func: { rotorTop: true },
+  geo(g) { g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.STRIPE, nx: T.STRIPE, pz: T.STRIPE, nz: T.STRIPE, py: T.HEAVY, ny: T.GEAR } }) } })
 def({ id: 'piston_top', name: 'Piston Head', cat: 'Parts', shape: 'cube', full: 63, mass: { large: 600, small: 40 }, hp: { large: 1200, small: 120 },
   desc: 'The moving end of a piston: build on it.', func: { pistonTop: true },
   geo(g) {
@@ -647,6 +659,14 @@ def({ id: 'wheel_big', name: 'Large Wheel', cat: 'Wheels', sizes: { large: [2, 2
   desc: 'A big sprung wheel for heavy rovers and rough ground.',
   func: { wheel: { r: { large: 2.0, small: 1.15 }, smin: { large: 0.4, small: 0.25 }, smax: { large: 2.8, small: 1.6 }, force: { large: 260000, small: 26000 }, grip: 1.2 }, power: { use: { large: 0.05, small: 0.005 } }, spinner: 'tyre' },
   geo: wheelMount })
+def({ id: 'leg', name: 'Walker Leg', cat: 'Wheels', sizes: { large: [1, 1, 1], small: [3, 3, 3] }, shape: 'box', mass: { large: 5200, small: 420 }, hp: { large: 5000, small: 420 },
+  desc: 'A walking leg hung from its block: two jointed struts and a broad foot, 9 m long on a large grid (3 m small). Legs carry the grid on springs and step as it moves: W and S walk, A and D turn it on the spot (the two sides against each other).',
+  func: { leg: { len: { large: 9, small: 3 }, r: { large: 0.6, small: 0.25 }, force: { large: 260000, small: 22000 }, grip: 1.4, top: { large: 5.5, small: 4 } }, power: { use: { large: 0.08, small: 0.01 } } },
+  geo(g, S) {
+    const k = S[0]
+    g.box(-0.5, -0.1, -0.5, k - 0.5, k - 0.5, k - 0.5, { tiles: { px: T.HEAVY, nx: T.HEAVY, pz: T.HAZARD, nz: T.HAZARD, py: T.HEAVY, ny: T.METAL } })
+    g.cyl('x', (k - 1) / 2, -0.25, (k - 1) / 2, 0.32 * k, k * 0.9, { tile: T.GEAR, seg: 16, col: [0.35, 0.37, 0.4], paint: false })
+  } })
 def({ id: 'track', name: 'Track Unit', cat: 'Wheels', sizes: { large: [1, 1, 3], small: [3, 3, 9] }, shape: 'box', noContact: true, mass: { large: 3600, small: 300 }, hp: { large: 3600, small: 300 },
   desc: 'A sprung caterpillar track. Tracks do not steer: A and D drive the two sides against each other, so a tracked machine turns on the spot.',
   func: { track: { r: { large: 0.7, small: 0.42 }, rays: 3, force: { large: 160000, small: 16000 }, grip: 1.3 }, power: { use: { large: 0.05, small: 0.005 } }, spinner: 'tread' },

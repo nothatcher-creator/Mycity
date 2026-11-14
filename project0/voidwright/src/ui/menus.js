@@ -71,7 +71,7 @@ export class Menus {
     B('new', 'NEW WORLD', `Creative or survival, ${SCENARIOS.length} places to start`, () => this.open('new'))
     B('settings', 'SETTINGS', 'Graphics, controls, sound', () => this.open('settings'))
     B('controls', 'CONTROLS', 'Keys for flying and building', () => this.open('controls'))
-    if (k > 0.8) text(c, 'Still to come: rotors, hinges, docking and saved worlds.', 8, y + 14, { size: 11, weight: 500, color: C.dim, shadow: true, max: p.w - 16 })
+    if (k > 0.8) text(c, 'Still to come: hinges, docking and saved worlds.', 8, y + 14, { size: 11, weight: 500, color: C.dim, shadow: true, max: p.w - 16 })
   }
   // ---- choosing a start ----
   page_new(c, p) {
@@ -430,6 +430,7 @@ export class Menus {
       p.button(c, 'grp' + name, 18, y, p.w - 36, 40, `${name.toUpperCase()}  (${on}/${list.length} on)`, () => { const all = on < list.length; for (const b of list) { b.on = all; gr.touch(b) } }, { selected: on === list.length })
       y += 46
     }
+    if (L.rotors.length) { const on = L.rotors.some(b => b.running); p.button(c, 'rot', 18, y, (p.w - 46) / 2, 40, `ROTORS (${L.rotors.length}): ${on ? 'RUNNING' : 'STOPPED'}`, () => { g.world.pistons.spinAll(gr); this.panel.dirty = true }, { selected: on }); p.button(c, 'rotrev', 28 + (p.w - 46) / 2, y, (p.w - 46) / 2, 40, 'REVERSE ROTORS', () => { g.world.pistons.reverseAll(gr); this.panel.dirty = true }); y += 46 }
     if (L.pistons.length) { const out = L.pistons.some(b => (b.target ?? 0) > 0); p.button(c, 'pist', 18, y, p.w - 36, 40, `PISTONS  (${L.pistons.length}): ${out ? 'OUT' : 'IN'}`, () => { g.world.pistons.toggleAll(gr); this.panel.dirty = true }, { selected: out, sub: 'Click to run them all the other way' }); y += 46 }
     if (L.assemblers.length || L.refineries.length || L.gasgens.length || L.invs.length) { p.button(c, 'prod', 18, y, p.w - 36, 44, 'PRODUCTION AND CARGO', () => this.open('production'), { sub: `${L.refineries.length} refining · ${L.assemblers.length} assembling · ${L.gasgens.length} splitting ice`, arrow: true }); y += 50 }
     if (L.power.length && gr.power) { y += 8; text(c, `POWER  ${gr.power.want.toFixed(2)} MW used of ${gr.power.supply.toFixed(2)} MW made`, 18, y + 12, { size: 12, weight: 700, color: C.dim }); if (gr.power.cap) { bar(c, 18, y + 22, p.w - 36, 10, gr.power.store / gr.power.cap, C.green) } }

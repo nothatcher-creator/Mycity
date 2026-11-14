@@ -16,10 +16,10 @@ const world = {
   raycast(o, d, max, skip) { if (d.y >= -1e-6) return null; const t = -o.y / d.y; return t >= 0 && t <= max ? { solid: ground, dist: t, point: o.clone().addScaledVector(d, t) } : null },
 }
 const ships = new ShipControl(world), phys = new Physics(world)
-for (const id of ['buggy', 'rover', 'crawler']) {
+for (const id of (process.env.IDS || 'buggy,rover,crawler,mastodon').split(',')) {
   world.grids.length = 0
   const g = new Grid(world, prefab(id).size, {}); load(g, prefab(id)); g.updateMass()
-  g.pos.set(0, 4, 0)
+  g.pos.set(0, id === 'mastodon' ? 10 : 4, 0)
   const seat = g.parts.cockpits[0], dt = 1 / 60
   const run = (sec, move) => { for (let i = 0; i < sec * 60; i++) { ships.update(g, seat, { move, turn: [0, 0, 0] }, dt); phys.step(dt / 2); phys.step(dt / 2) } }
   let low = Infinity; for (let i = 1; i < g.points.length; i += 3) low = Math.min(low, g.points[i])

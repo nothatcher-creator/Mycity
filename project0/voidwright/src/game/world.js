@@ -255,6 +255,7 @@ export class World {
       g.pos.copy(L.grid.toWorld(L.relPos, this.tmp))
       g.vel.copy(L.grid.vel); g.angVel.copy(L.grid.angVel)
       if (L.slide) g.vel.add(L.slide)   // a piston head sliding out
+      if (L.spin) { g.angVel.add(L.spin); g.vel.add(new THREE.Vector3().crossVectors(L.spin, g.comWorld(new THREE.Vector3()).sub(g.pos))) }   // a rotor head turning
     } else { g.vel.set(0, 0, 0); g.angVel.set(0, 0, 0) }
   }
   update(dt, piloted, ctl) {
@@ -437,7 +438,12 @@ class Spinners {
     const rg = new THREE.CylinderGeometry(0.17, 0.17, 1, 14).translate(0, 0.5, 0), rc = new Float32Array(rg.attributes.position.count * 3).fill(lin(0.8))
     rg.setAttribute('color', new THREE.BufferAttribute(rc, 3))
     this.rods = new THREE.InstancedMesh(rg, mat, 96)
-    for (const m of [this.heads, this.rolls, this.tyres, this.rods]) { m.frustumCulled = false; m.count = 0; engine.scene.add(m) }
+    // walker legs: struts (a unit box standing on its foot) and feet
+    const col = (geo, c) => { geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3).fill(lin(c)), 3)); return geo }
+    this.struts = new THREE.InstancedMesh(col(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), 0.42), mat, 128)
+    this.feet = new THREE.InstancedMesh(col(new THREE.CylinderGeometry(0.42, 0.55, 0.32, 12), 0.3), mat, 64)
+    this.legTmp = { H: new THREE.Vector3(), F: new THREE.Vector3(), K: new THREE.Vector3(), up: new THREE.Vector3(), fw: new THREE.Vector3(), d: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Quaternion() }
+    for (const m of [this.heads, this.rolls, this.tyres, this.rods, this.struts, this.feet]) { m.frustumCulled = false; m.count = 0; engine.scene.add(m) }
     this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.s = new THREE.Vector3(); this.p = new THREE.Vector3(); this.spin = new THREE.Quaternion(); this.spin2 = new THREE.Quaternion()
     this.t = 0
   }
@@ -446,7 +452,7 @@ class Spinners {
     let nh = 0, nr = 0
     const cam = engine.camPos
     let nt = 0
-    let nrod = 0
+    let nrod = 0, nleg = 0, nfoot = 0
     for (const g of grids) {
       if (!g.parts || g.pos.distanceTo(cam) > 1500 + g.radius) continue
       // tyres where their springs put them
@@ -461,6 +467,36 @@ class Spinners {
         const wdt = S[0] * g.cs * 0.42
         this.s.set(wdt, rad, rad)
         this.m.compose(this.p, bq, this.s); this.tyres.setMatrixAt(nt++, this.m)
+      }
+      // walker legs: the foot where the ground is (stepping fore and aft as it walks), the knee found by
+      // bending two struts to reach it
+      for (const b of g.parts.wheels || []) {
+        const f = b.def.func.leg
+        if (!f || b.build < 1 || nleg + 2 > 128 || nfoot >= 64) continue
+        const T = this.legTmp, len = f.len[g.size], S = b.def.sizes[g.size], cs = g.cs
+        g.toWorld(g.blockPoint(b, (S[0] - 1) / 2, -0.35, (S[2] - 1) / 2), T.H)
+        g.dirToWorld(g.blockDir(b, 0, 1, 0), T.up)
+        const seat = g.drive?.seat
+        g.dirToWorld(seat ? g.blockDir(seat, 0, 0, -1) : g.blockDir(b, 0, 0, -1), T.fw); T.fw.addScaledVector(T.up, -T.fw.dot(T.up)).normalize()
+        if (b.contact && b.footP) T.F.copy(b.footP); else T.F.copy(T.H).addScaledVector(T.up, -len * 0.9)
+        // the step: diagonal pairs out of phase
+        const ph = (b.walk || 0) * Math.PI * 2 + (((b.ahead || 0) > 0) !== ((b.right || 0) > 0) ? Math.PI : 0), a = b.gait || 0
+        T.F.addScaledVector(T.fw, Math.sin(ph) * len * 0.16 * a).addScaledVector(T.up, Math.max(0, Math.cos(ph)) * len * 0.1 * a)
+        // two struts of 0.62 the leg's length each, bending the knee forward on the front legs and back on the rear
+        const L1 = len * 0.62
+        T.d.subVectors(T.F, T.H); let dist = T.d.length(); dist = Math.min(dist, L1 * 2 - 0.05); T.d.normalize()
+        const hk = Math.sqrt(Math.max(0, L1 * L1 - dist * dist / 4))
+        T.p.copy(T.fw).addScaledVector(T.d, -T.fw.dot(T.d)).normalize().multiplyScalar((b.ahead || 0) >= 0 ? 1 : -1)
+        T.K.copy(T.H).addScaledVector(T.d, dist / 2).addScaledVector(T.p, hk)
+        T.F.copy(T.H).addScaledVector(T.d, dist)
+        const th = cs * (g.size === 'large' ? 0.42 : 0.5)
+        for (const [A, B, w] of [[T.H, T.K, th], [T.K, T.F, th * 0.8]]) {
+          const dir = new THREE.Vector3().subVectors(B, A), l = dir.length()
+          engine.rel(A, this.p); T.q.setFromUnitVectors(Y, dir.divideScalar(l || 1))
+          this.s.set(w, l, w); this.m.compose(this.p, T.q, this.s); this.struts.setMatrixAt(nleg++, this.m)
+        }
+        engine.rel(T.F, this.p); T.q.setFromUnitVectors(Y, T.up); this.s.set(cs * 1.8, cs * 0.9, cs * 1.8)
+        this.m.compose(this.p, T.q, this.s); this.feet.setMatrixAt(nfoot++, this.m)
       }
       // piston rods, from the top of the piston to its head
       for (const b of g.parts.pistons || []) {
@@ -494,7 +530,7 @@ class Spinners {
         }
       }
     }
-    this.heads.count = nh; this.rolls.count = nr; this.tyres.count = nt; this.rods.count = nrod; this.rods.instanceMatrix.needsUpdate = true
+    this.heads.count = nh; this.rolls.count = nr; this.tyres.count = nt; this.rods.count = nrod; this.rods.instanceMatrix.needsUpdate = true; this.struts.count = nleg; this.struts.instanceMatrix.needsUpdate = true; this.feet.count = nfoot; this.feet.instanceMatrix.needsUpdate = true
     this.heads.instanceMatrix.needsUpdate = true; this.rolls.instanceMatrix.needsUpdate = true; this.tyres.instanceMatrix.needsUpdate = true
   }
 }

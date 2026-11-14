@@ -534,9 +534,10 @@ export class Game {
       const pl = this.world.universe.nearestPlanet(P.pos), up = P.pos.clone().sub(pl.center).normalize()
       const side = new THREE.Vector3().crossVectors(up, new THREE.Vector3(0, 0, -1).applyQuaternion(this.camQuat)).normalize(), fwd = new THREE.Vector3().crossVectors(side, up)
       this.dbgMach = []
-      for (const [id, off] of [['lift', -24], ['borer', 4], ['strider', 30]]) {
+      for (const [id, off] of [['lift', -24], ['borer', 4], ['strider', 30], ['mastodon', 64], ['watchtower', -60]]) {
         const d = P.pos.clone().addScaledVector(fwd, 40).addScaledVector(side, off).sub(pl.center).normalize(), f = this.frameAt(pl, d, pl.height(d.x, d.y, d.z))
-        const g = this.spawnGrid(id, f.p.clone().addScaledVector(f.up, id === 'strider' ? 4 : 1.5), f.q, { static: id !== 'strider', ground: id !== 'strider', sink: 0.6 })
+        const mob = id === 'strider' || id === 'mastodon'
+        const g = this.spawnGrid(id, f.p.clone().addScaledVector(f.up, id === 'strider' ? 4 : id === 'mastodon' ? 10 : 1.5), f.q, { static: !mob, ground: !mob, sink: 0.6 })
         this.dbgMach.push(g)
       }
       this.p0.log('dbg machines', this.dbgMach.map(g => g.name + ':' + g.parts.pistons.length).join(' '))
@@ -670,6 +671,7 @@ export class Game {
         if (inp.hit('dampeners')) { gr.dampeners = !gr.dampeners; this.hud.toast(gr.dampeners ? 'Inertia dampeners on' : 'Inertia dampeners off'); this.sfx.play('ui_on', 0.4) }
         if (inp.hit('park')) { const r = W.tryLock(gr); this.hud.toast(r === 'locked' ? 'Landing clamps locked' : r === 'unlocked' ? 'Landing clamps released' : gr.parts.gears.length ? 'No clamp is touching anything' : 'This grid has no landing clamps'); if (r !== 'none') this.sfx.play('gear', 0.5) }
         if (inp.hit('light')) { gr.lights = !gr.lights; for (const b of gr.parts.lights) gr.touch(b) }
+        if (inp.hit('rotors')) { const r = W.pistons.spinAll(gr); this.hud.toast(r == null ? 'This grid has no rotors' : r ? 'Rotors running' : 'Rotors stopped'); if (r != null) this.sfx.play('door', 0.4, 1.2) }
         if (inp.hit('pistons')) { const r = W.pistons.toggleAll(gr); this.hud.toast(r == null ? 'This grid has no pistons' : r ? 'Pistons extending' : 'Pistons retracting'); if (r != null) this.sfx.play('door', 0.4, 0.7) }
         if (inp.hit('jump')) { if (this.jump) { this.jump = null; this.hud.toast('Jump cancelled') } else if (gr.parts.jumpdrives.length) this.menus.open('jump'); else this.hud.toast('This grid has no jump drive') }
       }
@@ -699,7 +701,8 @@ export class Game {
     this.pirates.update(dt)
     W.update(dt, piloted, ctl)
     // weapons: the pilot's trigger, the pirates' triggers, the engineer's rifle
-    if (P.seat && !menu && inp.mouse.left) W.combat.fireGuns(P.seat.grid, dt, true)
+    // the seat's guns, and the guns on the rotor and piston heads riding its grid
+    if (P.seat && !menu && inp.mouse.left) { W.combat.fireGuns(P.seat.grid, dt, true); for (const h of W.grids) if (h.pistonOf?.grid === P.seat.grid && h.parts?.guns.length) W.combat.fireGuns(h, dt, true) }
     for (const gr of W.grids) if (gr.ai?.fire && !gr.ai.disabled) W.combat.fireGuns(gr, dt, true)
     if (!P.seat && !menu && B.tool === 'rifle' && inp.mouse.left && !P.dead) W.combat.rifle(P, this.camPos, new THREE.Vector3(0, 0, -1).applyQuaternion(this.camQuat), dt)
     this.wrecks.update(dt)
@@ -744,6 +747,7 @@ export class Game {
         else if (f?.cockpit) this.interactTarget = { label: `Sit in ${b.name}`, fn: () => { P.enterSeat(h.grid, b); this.view = 'fp'; this.sfx.play('seat', 0.5); this.hud.toast(`${h.grid.name}: WASD, Space/C to fly, mouse to turn, Z dampeners, F to leave`) } }
         else if (f?.hangar && b.build >= 1) this.interactTarget = { label: b.open ? 'Close the hangar door' : 'Open the hangar door', fn: () => { const o = !b.open; for (const d of h.grid.parts.doors) if (d.def.func.hangar) { d.open = o; h.grid.touch(d) } this.sfx.play('door', 0.7, 0.7) } }
         else if (f?.door && b.build >= 1) this.interactTarget = { label: b.open ? 'Close door' : 'Open door', fn: () => { b.open = !b.open; h.grid.touch(b); this.sfx.play('door', 0.5) } }
+        else if ((f?.rotor || f?.rotorTop) && b.build >= 1) { const rb = f.rotor ? b : h.grid.pistonOf?.block; if (rb) this.interactTarget = { label: rb.running ? 'Stop the rotor' : 'Start the rotor', fn: () => { const on = W.pistons.spin(rb); this.sfx.play('door', 0.4, 1.2); this.hud.toast(on ? 'Rotor running' : 'Rotor stopped') } } }
         else if ((f?.piston || f?.pistonTop) && b.build >= 1) { const pb = f.piston ? b : h.grid.pistonOf?.block; if (pb) this.interactTarget = { label: (pb.target ?? 0) > 0 ? 'Retract the piston' : 'Extend the piston', fn: () => { const out = W.pistons.toggle(pb); this.sfx.play('door', 0.4, 0.7); this.hud.toast(out ? 'Piston extending' : 'Piston retracting') } } }
         else if (f?.gravgen) this.interactTarget = { label: f.gravgen.sphere ? `${b.name}: pulls toward itself, out to ${f.gravgen.sphere} m (the rings show its reach)` : `${b.name}: down is toward its base (the arrows); its field is the box`, fn: () => {} }
         else if (f?.medbay) this.interactTarget = { label: `${b.name}: stand by it to heal and refill your suit`, fn: () => {} }

@@ -93,7 +93,11 @@ export class ShipControl {
       if (ctl && cockpit) apply(cockpit.rot, ctl.turn[0], ctl.turn[1], ctl.turn[2], tgt)
       else if (!grid.dampeners && !ctl) tgt = null
       // on its wheels a grid follows the ground: the gyros only roll it when asked
-      if (grid.wheelContacts > 0 && tgt && ctl && !ctl.turn[2]) tgt = null
+      // (a walker's gyros help it turn on its feet when the pilot steers)
+      if (grid.wheelContacts > 0 && tgt && ctl && !ctl.turn[2]) {
+        if (cockpit && Math.abs(grid.drive?.steer || 0) > 0.05 && grid.parts.wheels.some(w => w.def.func.leg)) { tgt = [0, 0, 0]; apply(cockpit.rot, 0, -grid.drive.steer * 0.35, 0, tgt) }
+        else tgt = null
+      }
       if (tgt) {
         const e = new THREE.Vector3(tgt[0] - wl.x, tgt[1] - wl.y, tgt[2] - wl.z).divideScalar(0.18)
         const T = e.applyMatrix3(grid.I)

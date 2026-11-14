@@ -240,7 +240,7 @@ export class Grid {
   }
   // the working blocks, by kind
   scan() {
-    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], cameras: [], guns: [], turrets: [], wheels: [], warheads: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [], detectors: [] }
+    const L = this.parts = { thrusters: [], gyros: [], cockpits: [], cameras: [], guns: [], turrets: [], wheels: [], warheads: [], power: [], lights: [], medbays: [], beacons: [], gravgens: [], pistons: [], jumpdrives: [], gears: [], doors: [], cargo: [], invs: [], refineries: [], assemblers: [], gasgens: [], tanks: [], drills: [], kits: [], detectors: [] }
     for (const b of this.blocks) {
       const f = b.def.func
       if (!f) continue
@@ -257,6 +257,7 @@ export class Grid {
       if (f.medbay) L.medbays.push(b)
       if (f.beacon) L.beacons.push(b)
       if (f.gravgen) L.gravgens.push(b)
+      if (f.piston) L.pistons.push(b)
       if (f.jumpdrive) L.jumpdrives.push(b)
       if (f.gear) L.gears.push(b)
       if (f.door) L.doors.push(b)

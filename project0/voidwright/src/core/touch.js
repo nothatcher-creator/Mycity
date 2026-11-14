@@ -112,6 +112,7 @@ export class Touch {
       btn('park', 'GEAR', 2, 1, () => g.input.tap('park'), { on: !!P.seat.grid.locked })
       btn('view', 'VIEW', 2, 0, () => g.input.tap('view'))
       if (P.seat.grid.parts.jumpdrives.length) btn('jump', 'JUMP', 2, 3, () => g.input.tap('jump'))
+      if (P.seat.grid.parts.pistons.length) btn('pist', 'PISTONS', 0, 4, () => g.input.tap('pistons'))
       const guns = P.seat.grid.parts.guns.length, drills = P.seat.grid.parts.drills.length
       if (guns || drills) btn('place', guns && drills ? 'FIRE+DRILL' : guns ? 'FIRE' : 'DRILL', 1, 3)
     } else {

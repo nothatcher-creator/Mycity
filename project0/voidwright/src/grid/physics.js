@@ -59,15 +59,22 @@ export class Physics {
   // the grid's hull against planets and asteroids
   solidContacts(g) {
     const W = this.world, com = g.comWorld(new THREE.Vector3())
-    const solids = W.universe.solidsNear(com, g.radius + 10, this._s || (this._s = []))
+    // the piston heads riding this grid stand on the ground for it (a lander's legs): their hull points
+    // count as this grid's
+    const heads = W.grids.filter(h => h.pistonOf && h.locked?.grid === g)
+    const reach = g.radius + 10 + (heads.length ? 16 : 0)
+    const solids = W.universe.solidsNear(com, reach, this._s || (this._s = []))
     if (!solids.length) return
-    const rad = g.cs * 0.5, pts = g.points, P = new THREE.Vector3(), found = []
+    const rad = g.cs * 0.5, P = new THREE.Vector3(), found = []
     for (const s of solids) {
-      if (s.sdf(com) > g.radius + 4) continue
-      for (let i = 0; i < pts.length; i += 3) {
-        P.set(pts[i], pts[i + 1], pts[i + 2]).applyQuaternion(g.quat).add(g.pos)
-        const d = s.sdf(P)
-        if (d < rad) found.push({ s, p: P.clone(), pen: rad - d })
+      if (s.sdf(com) > reach - 6) continue
+      for (const src of [g, ...heads]) {
+        const pts = src.points
+        for (let i = 0; i < pts.length; i += 3) {
+          P.set(pts[i], pts[i + 1], pts[i + 2]).applyQuaternion(src.quat).add(src.pos)
+          const d = s.sdf(P)
+          if (d < rad) found.push({ s, p: P.clone(), pen: rad - d })
+        }
       }
     }
     if (!found.length) return

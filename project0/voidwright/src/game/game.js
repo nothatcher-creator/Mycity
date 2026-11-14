@@ -19,6 +19,7 @@ import { SFX } from './sfx.js'
 import { Trees } from '../world/trees.js'
 import { clusterStarPos } from '../world/universe.js'
 import { Events } from './events.js'
+import { FieldView } from './fieldview.js'
 import { BLOCKS } from '../grid/blocks.js'
 import { works } from '../grid/grid.js'
 import { ITEMS } from './items.js'
@@ -475,7 +476,6 @@ export class Game {
       const m = pl?.caves?.nearest(P.pos.clone().sub(pl.center)), best = m ? m.clone().add(pl.center) : null, bd = best ? best.distanceTo(P.pos) : 0
       if (best) { if (P.seat) P.leaveSeat(); const up = best.clone().sub(pl.center).normalize(); P.pos.copy(best).addScaledVector(up, 3); P.vel.set(0, 0, 0); P.pitch = -1.2; this.p0.log('dbg cave', Math.round(bd), L.length) } else this.p0.log('dbg no cave yet', L.length)
     }
-    if (e.code === 'Numpad0') { const C = this.world.universe.cosmos; this.p0.log('dbg stars', JSON.stringify({ bodies: C.bodies.map(B => [B.m.visible, Math.round(B.m.position.length() / 1000), Math.round(B.m.scale.x / 1000)]), cam: this.engine.camPos.toArray().map(v => Math.round(v / 1000)), home: C.home.pos.toArray().map(v => Math.round(v / 1000)), giants: C.giants.map(g => g.id) })) }
     if (e.code === 'NumpadDecimal') { // to a few radii from the nearest star, looking at it
       const C = this.world.universe.cosmos, st = C.nearestStar(P.pos), k = this.dbgK = ((this.dbgK || 0) % 3) + 1, at = [4, 2.2, 1.4][k - 1]
       if (P.seat) P.leaveSeat()
@@ -483,30 +483,33 @@ export class Game {
       P.quat.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), dir.clone().negate(), Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0))); P.pitch = 0
       this.p0.log('dbg star look', st.name, at)
     }
-    if (e.code === 'Home') { // next to a world of the nearest generated group, its day side, looking at it
-      const U = this.world.universe; let d = null
-      for (const [i, k] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [0, 2]]) { const x = U.sector(i, k).def; if (!x.empty) { d = x; break } }
-      if (d) {
-        const b = d.bodies[0], c = new THREE.Vector3(...b.center), st = clusterStarPos(d.star, U.time, new THREE.Vector3())
-        const side = st.clone().sub(c).normalize().add(new THREE.Vector3(0.6, 0, 0.6)).normalize()
-        if (P.seat) P.leaveSeat()
-        P.pos.copy(c).addScaledVector(side, b.R * 2.6); P.vel.set(0, 0, 0); P.jetpack = true; U.ensure(P.pos)
-        P.quat.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), c.clone().sub(P.pos).normalize(), new THREE.Vector3(0, 1, 0))); P.pitch = 0
-        this.p0.log('dbg group', d.name, b.name, 'star', d.star.name, Math.round(st.distanceTo(c) / 1000), 'km')
+    if (e.code === 'Minus') { // the piston machines on the ground beside you, facing you
+      const pl = this.world.universe.nearestPlanet(P.pos), up = P.pos.clone().sub(pl.center).normalize()
+      const side = new THREE.Vector3().crossVectors(up, new THREE.Vector3(0, 0, -1).applyQuaternion(this.camQuat)).normalize(), fwd = new THREE.Vector3().crossVectors(side, up)
+      this.dbgMach = []
+      for (const [id, off] of [['lift', -24], ['borer', 4], ['strider', 30]]) {
+        const d = P.pos.clone().addScaledVector(fwd, 40).addScaledVector(side, off).sub(pl.center).normalize(), f = this.frameAt(pl, d, pl.height(d.x, d.y, d.z))
+        const g = this.spawnGrid(id, f.p.clone().addScaledVector(f.up, id === 'strider' ? 4 : 1.5), f.q, { static: id !== 'strider', ground: id !== 'strider', sink: 0.6 })
+        this.dbgMach.push(g)
       }
+      this.p0.log('dbg machines', this.dbgMach.map(g => g.name + ':' + g.parts.pistons.length).join(' '))
     }
-    if (e.code === 'End') this.p0.log('dbg sun', JSON.stringify({ at: P.pos.toArray().map(v => Math.round(v / 1000)), voids: this.world.universe.voids.scan(P.pos).map(s => s.def.name + ':' + Math.round(s.pos.distanceTo(P.pos) / 1000) + (s.def.event ? ':' + s.def.event : '')), awake: [...this.world.universe.voids.awake].map(s => s.def.name), star: this.world.universe.star?.name, planets: this.world.universe.planets.map(p => p.name + ':' + (p.owner?.star?.name || 'Vela')) }))
-    if (e.code === 'Insert' && P.seat) { // out into the void, then (second press) jump to the nearest void rock
+    if (e.code === 'Equal') { // run every piston of the machines, and say where they are
+      if (!this.dbgLogOnly) for (const g of this.dbgMach || []) this.world.pistons.toggleAll(g)
+      const all = this.world.grids.flatMap(g => (g.parts?.pistons || []).map(b => `${g.name.slice(0, 12)}:${(b.ext || 0).toFixed(1)}>${(b.target || 0).toFixed(0)}${b.head ? '' : ' NOHEAD'}`))
+      this.p0.log('dbg pistons', all.join(' | '), 'heads', this.world.grids.filter(g => g.pistonOf).length)
+    }
+    if (e.code === 'Slash' && P.seat) { // out into the void, then (second press) jump to the nearest void rock
       const U = this.world.universe, gr = P.seat.grid
       if (!this.dbgVoid) { this.dbgVoid = true; const to = new THREE.Vector3(-4e6, -3e6, 9.9e6); const d = to.sub(gr.comWorld()); gr.pos.add(d); for (const o of this.world.grids) if (o.locked?.grid === gr) o.pos.add(d); gr.vel.set(0, 0, 0); U.voids.manage(gr.comWorld()); this.p0.log('dbg void out', U.voids.scan(gr.comWorld()).length) }
       else { const v = U.voids.places(gr.comWorld()).sort((a, b) => a.pos.distanceTo(gr.comWorld()) - b.pos.distanceTo(gr.comWorld()))[0]; if (v) { this.planJump(v); this.jump.t = 0.15; this.p0.log('dbg void jump', v.name, v.site.def.event) } }
     }
-    if (e.code === 'Delete') { this.dbgFast = !this.dbgFast; this.p0.log('dbg fast', this.dbgFast) }
+    if (e.code === 'Numpad0') { const B = this.builder; B.bar[0] = { block: this.dbgGB = this.dbgGB === 'gravgen' ? 'gravgen_sphere' : 'gravgen' }; B.size = 'large'; B.slot = -1; B.select(0); this.p0.log('dbg hold', this.dbgGB); setTimeout(() => { const v = new THREE.Vector3(0, -1, 0).applyQuaternion(this.fieldView.group.quaternion); this.p0.log('dbg fv', B.rot, JSON.stringify(B.ghostQuat?.toArray().map(x => x.toFixed(2))), 'down->', v.toArray().map(x => x.toFixed(2)).join(','), 'grav', this.world.gravityAt(this.player.pos).normalize().toArray().map(x => x.toFixed(2)).join(','), 'arrow0', JSON.stringify([...this.fieldView.arrows.instanceMatrix.array.slice(0, 16)].map(x => +x.toFixed(2)))) }, 1500) }
+    if (e.code === 'Backquote') { this.dbgFast = !this.dbgFast; this.p0.log('dbg fast', this.dbgFast) }
     if (e.code === 'NumpadMultiply') { const gr = this.pirates.spawn('marauder'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
     if (e.code === 'NumpadDivide') this.p0.log('dbg combat', JSON.stringify({ shots: this.world.combat.shots.length, rockets: this.world.combat.rockets.length, pirates: this.pirates.list.map(x => [x.grid.name, x.grid.ai.state, Math.round(x.grid.comWorld().distanceTo(P.pos)), x.grid.blocks.size, x.grid.ai.disabled ? 'off' : 'on']), health: Math.round(P.health), heat: this.heatNow?.toFixed(2), star: this.world.universe.star?.name, starD: Math.round(this.world.universe.star?.pos.distanceTo(P.pos) / 1000), wrecks: this.world.grids.filter(g => g.wreck).map(g => g.name), caves: this.world.universe.nearestPlanet(P.pos)?.caves?.list.length, wheels: P.seat?.grid.parts.wheels.map(w => [w.contact, (w.susp || 0).toFixed(2)]), v: P.seat ? P.seat.grid.vel.length().toFixed(1) : P.vel.length().toFixed(1) }))
     if (e.code === 'Backslash') { const gr = this.pirates.spawn('reaver'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
     if ((e.code === 'KeyT' || e.code === 'KeyU') && P.seat) { const gr = P.seat.grid, st = this.world.universe.cosmos.home, to = st.pos.clone().add(gr.comWorld().sub(st.pos).normalize().multiplyScalar(st.R * (e.code === 'KeyU' ? 2.2 : 6))); gr.pos.add(to.sub(gr.comWorld())); gr.vel.set(0, 0, 0); this.p0.log('dbg near star', Math.round(st.R * (e.code === 'KeyU' ? 2.2 : 6) / 1000), 'km') }
-    if (e.code === 'KeyN') { const big = this.world.universe.cosmos.giants[0]; if (big && P.seat) { const gr = P.seat.grid, to = big.center.clone().add(new THREE.Vector3(0.3, 0.5, 1).normalize().multiplyScalar(big.R * 2.4)); gr.pos.add(to.sub(gr.comWorld())); gr.vel.set(0, 0, 0); this.p0.log('dbg giant', big.name) } }
     if (e.code === 'Numpad0') { this.engine.resScale = this.engine.resScale === 2 ? 0.4 : 2; this.engine.resize() }
     if (e.code === 'NumpadAdd') { this.engine.postOn = !this.engine.postOn; this.p0.log('dbg post', this.engine.postOn, this.engine.post.ok) }
     if (e.code === 'NumpadSubtract') { // a tour of the carrier's rooms: each press stands you in the next
@@ -614,6 +617,7 @@ export class Game {
         if (inp.hit('dampeners')) { gr.dampeners = !gr.dampeners; this.hud.toast(gr.dampeners ? 'Inertia dampeners on' : 'Inertia dampeners off'); this.sfx.play('ui_on', 0.4) }
         if (inp.hit('park')) { const r = W.tryLock(gr); this.hud.toast(r === 'locked' ? 'Landing clamps locked' : r === 'unlocked' ? 'Landing clamps released' : gr.parts.gears.length ? 'No clamp is touching anything' : 'This grid has no landing clamps'); if (r !== 'none') this.sfx.play('gear', 0.5) }
         if (inp.hit('light')) { gr.lights = !gr.lights; for (const b of gr.parts.lights) gr.touch(b) }
+        if (inp.hit('pistons')) { const r = W.pistons.toggleAll(gr); this.hud.toast(r == null ? 'This grid has no pistons' : r ? 'Pistons extending' : 'Pistons retracting'); if (r != null) this.sfx.play('door', 0.4, 0.7) }
         if (inp.hit('jump')) { if (this.jump) { this.jump = null; this.hud.toast('Jump cancelled') } else if (gr.parts.jumpdrives.length) this.menus.open('jump'); else this.hud.toast('This grid has no jump drive') }
       }
       if (P.seat) {
@@ -648,7 +652,13 @@ export class Game {
     this.wrecks.update(dt)
     this.events.update(dt)
     this.heat(dt)
-    if (P.seat) { const n = W.survival.shipDrill(P.seat.grid, dt, !menu && inp.mouse.left && P.seat.grid.parts.drills.length > 0); if (n) this.shake = Math.max(this.shake || 0, 0.15) }
+    if (P.seat) {
+      // the seat's grid and the piston heads riding it (a drill on a piston bores where the piston pushes it)
+      const sg = P.seat.grid, heads = W.grids.filter(h => h.pistonOf && h.locked?.grid === sg), on = !menu && inp.mouse.left && [sg, ...heads].some(x => x.parts.drills.length > 0)
+      let n = W.survival.shipDrill(sg, dt, on)
+      for (const h of heads) n += W.survival.shipDrill(h, dt, on, sg)
+      if (n) this.shake = Math.max(this.shake || 0, 0.15)
+    }
     this.oreT = (this.oreT || 0) + dt
     if (this.oreT > 2) { this.oreT = 0; this.oreMarks = this.scanOre(P) }
     this.suitWarn = W.survival.suit(P, dt)
@@ -665,6 +675,12 @@ export class Game {
     this.cameraFor(P, dt, look)
     // what you can use, and building
     this.interactTarget = null
+    // a gravity generator's field: while you hold one to place it, or look at one close by
+    const FV = this.fieldView || (this.fieldView = new FieldView(this.engine))
+    let fv = false
+    if (!P.seat && !menu && B.blockId && BLOCKS[B.blockId]?.func?.gravgen && B.ghostCenter) { FV.show(B.ghostCenter, B.ghostQuat, BLOCKS[B.blockId], dt); fv = true }
+    else if (!P.seat && !menu && B.hit?.block?.def.func.gravgen && B.hit.dist < 14) { FV.showBlock(B.hit.grid, B.hit.block, dt); fv = true }
+    if (!fv) FV.hide()
     if (!P.seat) {
       if (!menu) B.update(dt); else { B.mesh.visible = B.edges.visible = false }
       const h = B.hit
@@ -674,6 +690,8 @@ export class Game {
         else if (f?.cockpit) this.interactTarget = { label: `Sit in ${b.name}`, fn: () => { P.enterSeat(h.grid, b); this.view = 'fp'; this.sfx.play('seat', 0.5); this.hud.toast(`${h.grid.name}: WASD, Space/C to fly, mouse to turn, Z dampeners, F to leave`) } }
         else if (f?.hangar && b.build >= 1) this.interactTarget = { label: b.open ? 'Close the hangar door' : 'Open the hangar door', fn: () => { const o = !b.open; for (const d of h.grid.parts.doors) if (d.def.func.hangar) { d.open = o; h.grid.touch(d) } this.sfx.play('door', 0.7, 0.7) } }
         else if (f?.door && b.build >= 1) this.interactTarget = { label: b.open ? 'Close door' : 'Open door', fn: () => { b.open = !b.open; h.grid.touch(b); this.sfx.play('door', 0.5) } }
+        else if ((f?.piston || f?.pistonTop) && b.build >= 1) { const pb = f.piston ? b : h.grid.pistonOf?.block; if (pb) this.interactTarget = { label: (pb.target ?? 0) > 0 ? 'Retract the piston' : 'Extend the piston', fn: () => { const out = W.pistons.toggle(pb); this.sfx.play('door', 0.4, 0.7); this.hud.toast(out ? 'Piston extending' : 'Piston retracting') } } }
+        else if (f?.gravgen) this.interactTarget = { label: f.gravgen.sphere ? `${b.name}: pulls toward itself, out to ${f.gravgen.sphere} m (the rings show its reach)` : `${b.name}: down is toward its base (the arrows); its field is the box`, fn: () => {} }
         else if (f?.medbay) this.interactTarget = { label: `${b.name}: stand by it to heal and refill your suit`, fn: () => {} }
         else if (f?.inv || f?.tank) this.interactTarget = { label: `Open ${h.grid.name}'s cargo`, fn: () => { this.invGrid = h.grid; this.menus.open('inventory') } }
       }

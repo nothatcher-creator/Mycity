@@ -319,8 +319,17 @@ def({ id: 'antenna', name: 'Antenna Mast', cat: 'Utility', sizes: { large: [1, 4
     g.cyl('z', 0, h - 0.4, -0.35, 0.3, 0.05, { r2: 0.05, tile: T.PLAIN, seg: 12, paint: false, double: true })
   } })
 def({ id: 'gravgen', name: 'Gravity Generator', cat: 'Utility', sizes: { large: [1, 1, 1] }, shape: 'cube', full: 63, mass: { large: 2600 }, hp: { large: 1800 },
-  desc: 'Artificial gravity in a 60 x 40 x 60 m box round it, pointing to its base: walk the decks of a ship or station, and loose ships parked inside settle to the floor. Needs power.', func: { gravgen: { half: [30, 20, 30], g: 9.81 }, power: { use: { large: 0.5 } } },
-  geo(g) { g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.RING, nx: T.RING, pz: T.RING, nz: T.RING, py: T.CORE, ny: T.METAL }, emits: { py: 0.9 } }) } })
+  desc: 'Artificial gravity in a 60 x 40 x 60 m box round it, pulling toward its base (the glowing arrows on its sides point down; look at it to see its field): walk the decks of a ship or station, and loose ships parked inside settle to the floor. Needs power.', func: { gravgen: { half: [30, 20, 30], g: 9.81 }, power: { use: { large: 0.5 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.RING, nx: T.RING, pz: T.RING, nz: T.RING, py: T.CORE, ny: T.HAZARD }, emits: { py: 0.9 } })
+    // a glowing arrow on each side, pointing to the base: that way is down
+    const o = { tile: T.GLOW, col: [0.37, 0.95, 0.9], emit: 1, paint: false, fit: true }, ins = [0, 0, 0]
+    for (const [ax, s] of [[0, 1], [0, -1], [2, 1], [2, -1]]) {
+      const P = (y, w) => ax === 0 ? [s * 0.508, y, w] : [w, y, s * 0.508]
+      g.poly([P(0.34, -0.07), P(0.34, 0.07), P(-0.02, 0.07), P(-0.02, -0.07)], { ...o, inside: ins })
+      g.poly([P(-0.02, -0.23), P(-0.02, 0.23), P(-0.38, 0)], { ...o, inside: ins })
+    }
+  } })
 def({ id: 'jumpdrive', name: 'Jump Drive', cat: 'Utility', sizes: { large: [3, 3, 2], small: [3, 3, 3] }, shape: 'box', mass: { large: 22000, small: 2400 }, hp: { large: 6000, small: 1600 },
   desc: 'Charges, then folds space: jump the whole grid up to 16,000 km (large grid) or 5,000 km (small). A place out of range is jumped toward as far as the drive goes. J in a seat.', func: { jumpdrive: { range: { large: 16000000, small: 5000000 }, charge: 10 }, power: { use: { large: 32, small: 6 } } },
   geo(g) {
@@ -562,6 +571,24 @@ export function hasSize(id, size) { return !!BLOCKS[id]?.sizes[size] }
 const CACHE = new Map()
 // ---------- the eighth round: weapons, wheels and tracks, a sphere of gravity, furnishings ----------
 CATS.splice(CATS.indexOf('Production'), 0, 'Weapons', 'Wheels')
+// ---------- mechanical: pistons ----------
+CATS.splice(CATS.indexOf('Production'), 0, 'Mechanical')
+def({ id: 'piston', name: 'Piston', cat: 'Mechanical', shape: 'cube', full: 63 & ~BIT.py, mass: { large: 1800, small: 120 }, hp: { large: 1600, small: 160 },
+  desc: 'Pushes its head out from its top: 10 m on a large grid, 2 m on a small one. Build on the head like any grid. F on it (or on its head) to extend or retract; N in a seat runs every piston on the grid. Needs power.',
+  func: { piston: { travel: { large: 10, small: 2 }, speed: { large: 1.2, small: 0.5 } }, power: { use: { large: 0.4, small: 0.05 } } },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.12, 0.5, { cull: true, skip: ['py'], tiles: { px: T.HAZARD, nx: T.HAZARD, pz: T.HAZARD, nz: T.HAZARD, ny: T.HEAVY } })
+    g.box(-0.5, 0.1, -0.5, 0.5, 0.14, 0.5, { tile: T.HEAVY })
+    for (const [x, z] of [[-0.42, -0.42], [0.42, -0.42], [-0.42, 0.42], [0.42, 0.42]]) g.box(x - 0.07, 0.12, z - 0.07, x + 0.07, 0.5, z + 0.07, { tile: T.METAL, col: STEEL })
+    g.box(-0.5, 0.42, -0.5, 0.5, 0.5, 0.5, { skip: ['ny'], tiles: { py: T.RING }, col: DARKC, paint: false })
+    g.cyl('y', 0, 0.3, 0, 0.26, 0.36, { tile: T.PIPE, seg: 16, col: STEEL, paint: false })
+  } })
+def({ id: 'piston_top', name: 'Piston Head', cat: 'Parts', shape: 'cube', full: 63, mass: { large: 600, small: 40 }, hp: { large: 1200, small: 120 },
+  desc: 'The moving end of a piston: build on it.', func: { pistonTop: true },
+  geo(g) {
+    g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.HAZARD, nx: T.HAZARD, pz: T.HAZARD, nz: T.HAZARD, py: T.HEAVY, ny: T.RING } })
+  } })
+
 def({ id: 'gun_auto', name: 'Autocannon', cat: 'Weapons', sizes: { large: [1, 1, 3], small: [1, 1, 3] }, shape: 'box', mass: { large: 1400, small: 110 }, hp: { large: 1600, small: 160 },
   desc: 'Fires along its front while you hold the left button in a seat on the same grid. Uses ammo boxes from the grid\'s cargo in survival.',
   func: { gun: { kind: 'bullet', rate: 8, dmg: { large: 160, small: 45 }, speed: 720, range: 1400, spread: 0.0035, ammo: 'ammo', per: 0.02, muzzle: [0, 0.02, -0.62] }, power: { use: { large: 0.02, small: 0.004 } } },

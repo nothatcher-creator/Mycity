@@ -4,6 +4,7 @@
 // button, take blocks away with the right. Ctrl + drag places a line, Ctrl + Shift + drag a plane. The
 // welder repairs, the grinder takes blocks apart, the middle button paints. Ctrl + C / Ctrl + V copy and
 // paste whole grids.
+import { flattenHeads } from '../grid/pistons.js'
 import * as THREE from 'three'
 import { BLOCKS, CELL, blockGeo, hasSize } from '../grid/blocks.js'
 import { ROTS, QUATS, turn, apply } from '../grid/rot.js'
@@ -183,6 +184,7 @@ export class Builder {
     const g = this.g, e = g.engine, id = this.blockId
     const on = !!(id && t)
     this.mesh.visible = on; this.edges.visible = on
+    if (!on) this.ghostCenter = null
     if (this.drag && t?.grid === this.drag.grid) {
       const [a, b] = this.dragCells(t), gr = this.drag.grid, cs = gr.cs
       const lo = [0, 1, 2].map(i => Math.min(a[i], b[i])), hi = [0, 1, 2].map(i => Math.max(a[i], b[i]))
@@ -207,6 +209,7 @@ export class Builder {
     this.edges.scale.set(S[0] * cs * 1.02, S[1] * cs * 1.02, S[2] * cs * 1.02)
     this.edges.material.color.set(t.ok ? 0x5ff3e6 : 0xff5040)
     this.ghostPos = wp
+    this.ghostCenter = bc; this.ghostQuat = this.mesh.quaternion.clone(); this.ghostOk = t.ok
   }
   // the first part a frame of this block needs, if you have it (survival)
   firstPart(id, size) {
@@ -352,6 +355,12 @@ export function serialize(g) {
 }
 export function load(g, bp) {
   for (const [id, i, j, k, rot, color] of bp.blocks) g.add(id, i, j, k, rot, color)
+  // what is built on piston heads: a picture shows it in place; a real grid hands it to each piston, which
+  // makes its head (grid/pistons.js)
+  if (bp.heads?.length) {
+    if (g.ghost) for (const [id, i, j, k, rot, color] of flattenHeads(bp, g.cs)) g.add(id, i, j, k, rot, color)
+    else for (const h of bp.heads) { const b = g.at(h.at[0], h.at[1], h.at[2]); if (b?.def.func.piston) { b.headBlocks = h.blocks; b.headSub = h.sub || null; b.startExt = h.ext || 0 } }
+  }
   return g
 }
 

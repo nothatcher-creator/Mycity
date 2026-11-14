@@ -110,6 +110,7 @@ const R = {
   turret_gatling: [['plate', 40], ['construct', 40], ['tube_l', 4], ['motor', 12], ['computer', 20]], turret_missile: [['plate', 60], ['construct', 50], ['tube_l', 8], ['motor', 14], ['computer', 24]],
   warhead: [['plate', 30], ['construct', 20], ['girder', 20], ['computer', 4], ['rocket', 4]],
   wheel: [['plate', 16], ['construct', 20], ['tube_l', 4], ['motor', 6], ['tube_s', 8]], wheel_big: [['plate', 40], ['construct', 40], ['tube_l', 8], ['motor', 14], ['tube_s', 16]],
+  piston: [['plate', 40], ['construct', 20], ['tube_l', 4], ['motor', 8], ['computer', 2]], piston_top: [['plate', 20], ['construct', 8]],
   track: [['plate', 60], ['construct', 50], ['tube_l', 6], ['motor', 16], ['grid', 20]], gravgen_sphere: [['plate', 200], ['construct', 60], ['gravity', 8], ['motor', 6], ['computer', 40]],
   plant: [['interior', 4], ['construct', 2]], sofa: [['interior', 12], ['construct', 4]], shelf: [['interior', 16], ['construct', 8]], holotable: [['interior', 10], ['construct', 10], ['display', 6], ['computer', 12]],
   command_chair: [['interior', 20], ['construct', 20], ['motor', 2], ['display', 6], ['computer', 60]], camera: [['plate', 2], ['construct', 2], ['motor', 1], ['display', 1], ['computer', 3]],

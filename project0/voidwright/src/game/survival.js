@@ -134,7 +134,8 @@ export class Survival {
     return null
   }
   // ship drills: while the pilot holds the button, each drill bites the rock in front of it
-  shipDrill(g, dt, on) {
+  // (`into`: where the ore goes; drills on a piston head fill the hold of the grid it rides)
+  shipDrill(g, dt, on, into = g) {
     const D = g.parts?.drills || []
     if (!on || !D.length) { for (const b of D) b.spin = false; return 0 }
     g.drillT = (g.drillT || 0) + dt
@@ -153,8 +154,8 @@ export class Survival {
       if (res) {
         // a drill keeps everything; a crusher throws the stone away (a little gravel aside) and keeps the ore
         let put = 1, want = 1
-        if (crush && res.ore === 'ore_stone') netPut(g, 'ing_gravel', res.kg * 0.05)
-        else { want = res.kg * (crush ? 1.5 : 1); put = netPut(g, res.ore, want) }
+        if (crush && res.ore === 'ore_stone') netPut(into, 'ing_gravel', res.kg * 0.05)
+        else { want = res.kg * (crush ? 1.5 : 1); put = netPut(into, res.ore, want) }
         this.world.sparks.burst(p, crush ? 12 : 6, crush ? 5 : 3)
         g.cargoFull = put < want * 0.5
         n++

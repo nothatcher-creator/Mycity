@@ -26,6 +26,15 @@ export class BP {
     return false
   }
   clear(x, y, z) { this.bp.blocks = this.bp.blocks.filter(b => !(b[1] === x && b[2] === y && b[3] === z)); return this }
+  // a piston at (i, j, k) and what is built on its head: fn gets a BP whose cells are the head's own (its +Y
+  // pointing away from the piston, the head block at 0,0,0); ext is how far out it starts
+  piston(i, j, k, rot = 0, color = 0, fn = null, ext = 0) {
+    this.over('piston', i, j, k, rot, color)
+    const sub = new BP('head', this.bp.size)
+    if (fn) fn(sub)
+    ;(this.bp.heads || (this.bp.heads = [])).push({ at: [i, j, k], ext, blocks: sub.bp.blocks })
+    return this
+  }
 }
 
 // ---- a hull as a set of cells, and its skin ----

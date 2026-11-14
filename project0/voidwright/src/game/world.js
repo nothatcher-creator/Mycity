@@ -15,6 +15,7 @@ import { blockRecipe } from './items.js'
 import { apply, INV, QUATS } from '../grid/rot.js'
 import { Survival, netCount, netTake, netPut, gasTotal, gasTake, gasPut } from './survival.js'
 import { Combat } from './combat.js'
+import { Pistons } from '../grid/pistons.js'
 
 function envTexture() {
   const W = 256, H = 128, cv = new OffscreenCanvas(W, H), c = cv.getContext('2d')
@@ -50,6 +51,7 @@ export class World {
     this.spinners = new Spinners(e, this)
     this.survival = new Survival(this)
     this.combat = new Combat(this)
+    this.pistons = new Pistons(this)
     this.tmp = new THREE.Vector3()
   }
   recipeOf(id, size) { return blockRecipe(BLOCKS[id], size) }
@@ -212,6 +214,7 @@ export class World {
       g.quat.copy(L.grid.quat).multiply(L.relQuat)
       g.pos.copy(L.grid.toWorld(L.relPos, this.tmp))
       g.vel.copy(L.grid.vel); g.angVel.copy(L.grid.angVel)
+      if (L.slide) g.vel.add(L.slide)   // a piston head sliding out
     } else { g.vel.set(0, 0, 0); g.angVel.set(0, 0, 0) }
   }
   update(dt, piloted, ctl) {
@@ -225,6 +228,7 @@ export class World {
       const cp = mine ? piloted.block : ai ? g.ai.cockpit : null
       this.ships.update(g, cp, mine ? ctl : ai ? g.ai.ctl : null, dt)
     }
+    this.pistons.update(dt)
     // physics in two half steps
     const n = dt > 1 / 45 ? 3 : 2
     for (let i = 0; i < n; i++) this.physics.step(dt / n)
@@ -384,7 +388,11 @@ class Spinners {
     this.heads = new THREE.InstancedMesh(drillHeadGeo(), mat, 96)
     this.rolls = new THREE.InstancedMesh(rollerGeo(), mat, 192)
     this.tyres = new THREE.InstancedMesh(tyreGeo(), mat, 160)
-    for (const m of [this.heads, this.rolls, this.tyres]) { m.frustumCulled = false; m.count = 0; engine.scene.add(m) }
+    // piston rods: a unit cylinder standing on its foot, stretched to the stroke
+    const rg = new THREE.CylinderGeometry(0.17, 0.17, 1, 14).translate(0, 0.5, 0), rc = new Float32Array(rg.attributes.position.count * 3).fill(lin(0.8))
+    rg.setAttribute('color', new THREE.BufferAttribute(rc, 3))
+    this.rods = new THREE.InstancedMesh(rg, mat, 96)
+    for (const m of [this.heads, this.rolls, this.tyres, this.rods]) { m.frustumCulled = false; m.count = 0; engine.scene.add(m) }
     this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.s = new THREE.Vector3(); this.p = new THREE.Vector3(); this.spin = new THREE.Quaternion(); this.spin2 = new THREE.Quaternion()
     this.t = 0
   }
@@ -393,6 +401,7 @@ class Spinners {
     let nh = 0, nr = 0
     const cam = engine.camPos
     let nt = 0
+    let nrod = 0
     for (const g of grids) {
       if (!g.parts || g.pos.distanceTo(cam) > 1500 + g.radius) continue
       // tyres where their springs put them
@@ -407,6 +416,14 @@ class Spinners {
         const wdt = S[0] * g.cs * 0.42
         this.s.set(wdt, rad, rad)
         this.m.compose(this.p, bq, this.s); this.tyres.setMatrixAt(nt++, this.m)
+      }
+      // piston rods, from the top of the piston to its head
+      for (const b of g.parts.pistons || []) {
+        if (nrod >= 96 || !b.head) continue
+        const ext = b.ext || 0, cs = g.cs
+        engine.rel(g.toWorld(g.blockPoint(b, 0, 0.42, 0)), this.p)
+        this.s.set(cs, ext + cs * 0.12, cs)
+        this.m.compose(this.p, this.q.copy(g.quat).multiply(QUATS[b.rot]), this.s); this.rods.setMatrixAt(nrod++, this.m)
       }
       const D = g.parts.drills
       if (!D || !D.length) continue
@@ -432,7 +449,7 @@ class Spinners {
         }
       }
     }
-    this.heads.count = nh; this.rolls.count = nr; this.tyres.count = nt
+    this.heads.count = nh; this.rolls.count = nr; this.tyres.count = nt; this.rods.count = nrod; this.rods.instanceMatrix.needsUpdate = true
     this.heads.instanceMatrix.needsUpdate = true; this.rolls.instanceMatrix.needsUpdate = true; this.tyres.instanceMatrix.needsUpdate = true
   }
 }

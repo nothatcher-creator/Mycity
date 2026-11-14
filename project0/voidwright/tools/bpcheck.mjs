@@ -3,6 +3,7 @@
 import { PREFAB_LIST, prefab } from '../src/game/prefabs.js'
 import { Grid } from '../src/grid/grid.js'
 import { ShipControl } from '../src/grid/ship.js'
+import { flattenHeads } from '../src/grid/pistons.js'
 import * as THREE from 'three'
 const world = { creative: true, addGrid() {}, gridMat: null, glassMat: null, sunDir: new THREE.Vector3(0, 1, 0), airAt: () => 1, gravityAt: (p, o) => o.set(0, -9.81, 0), gasTotal: () => 1, gasTake: () => 1, gasPut: () => 0, netCount: () => 0, netTake: () => 0, netPut: () => 0, universe: { nearestPlanet: () => null } }
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : PREFAB_LIST
@@ -11,6 +12,13 @@ for (const id of ids) {
   const bp = prefab(id), g = new Grid(world, bp.size, {})
   const fails = []
   for (const [bid, i, j, k, rot, c] of bp.blocks) if (!g.add(bid, i, j, k, rot, c)) fails.push(`${bid}@${i},${j},${k}`)
+  // what rides piston heads (at their starting stroke) must not overlap the grid or each other
+  if (bp.heads?.length) {
+    const ghost = new Grid(world, bp.size, { ghost: true }), hf = []
+    for (const [bid, i, j, k, rot, c] of bp.blocks) ghost.add(bid, i, j, k, rot, c)
+    for (const [bid, i, j, k, rot, c] of flattenHeads(bp, g.cs)) if (!ghost.add(bid, i, j, k, rot, c)) hf.push(`${bid}@${i},${j},${k}`)
+    if (hf.length) fails.push('HEAD ' + hf.join(' '))
+  }
   g.updateMass()
   let line = `${id.padEnd(11)} ${bp.size} blocks ${String(g.blocks.size).padStart(4)} pieces ${g.components().length} mass ${(g.mass / 1000).toFixed(0)} t`
   if (!bp.static) {

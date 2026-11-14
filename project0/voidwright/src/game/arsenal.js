@@ -151,7 +151,7 @@ function crawler() {
 
 // ---- Citadel: a ring station, its hub and four spokes ----
 function citadel() {
-  const b = new BP('Citadel', 'large', { static: true, desc: 'Huge ring station: a hub with docking decks, four spokes, a ring 120 m across with gravity pointing outward, solar masts.' })
+  const b = new BP('Citadel', 'large', { static: true, desc: 'Huge ring station: a hub with docking decks, four spokes, a ring 120 m across with gravity pointing outward, a hub with gravity to its lower floor, solar masts.' })
   const P = 13, A = 7, D = 1
   const s = new Shape()
   for (let x = -24; x <= 24; x++) for (let z = -24; z <= 24; z++) { const r = Math.hypot(x, z); if (r > 20.6 && r < 23.6) for (let y = -1; y <= 1; y++) s.add(x, y, z, y === 1 && r > 22.6 ? A : P) }
@@ -174,7 +174,9 @@ function citadel() {
   for (const y of [5, -5]) for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) if (x * x + z * z <= 52) b.set(x * x + z * z > 40 ? 'hull_hazard' : 'hull_grate', x, y, z, 0, D)
   b.over('refinery', -2, -3, -2, 0, 1).over('assembler', 2, -3, -2, 0, 1).over('assembler', 2, -3, 0, 0, 1).over('survival_kit', -2, -3, 2, 0, 3).over('medbay', 0, -3, 2, 0, 3)
   b.over('core_big', -1, 0, -1, 0).over('cargo_s', -4, -3, -1, 0, D).over('cargo_s', -4, -3, 0, 0, D).over('cargo_s', -4, -3, 1, 0, D).over('o2h2', 3, -3, 2, 0, 1).over('tank_o2', 3, -3, -3, 0).over('tank_h2', -4 + 0, 1, -1, 0, 1)
-  b.over('gravgen_sphere', 0, 3, 0, 0)
+  // the hub's decks: an ordinary generator, its base to the lower floor (a spherical one here would pull you up
+  // to the middle of the hub)
+  b.over('gravgen', 0, -3, 0, 0)
   for (let y = 6; y <= 13; y++) b.set('girder', 0, y, 0, 0, 1)
   for (const y of [8, 10, 12]) b.set('solar', 1, y, -1, 0).set('solar', -4, y, -1, 0)
   b.set('beacon', 0, 14, 0, 0).set('dish', -1, 6, 3, 0, 0).set('antenna', 5, 6, 3, 0)

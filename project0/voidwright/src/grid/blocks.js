@@ -631,7 +631,7 @@ def({ id: 'track', name: 'Track Unit', cat: 'Wheels', sizes: { large: [1, 1, 3],
     for (const z of [z0 + r, z1 - r]) { g.cyl('x', o, y0 + r * 1.05, z, r, k * 0.98, { tile: T.RUBBER, seg: 14, col: [0.16, 0.16, 0.17], paint: false }); g.cyl('x', o, y0 + r * 1.05, z, r * 0.6, k * 1.02, { tile: T.GEAR, seg: 10, col: DARKC, paint: false }) }
   } })
 def({ id: 'gravgen_sphere', name: 'Spherical Gravity Generator', cat: 'Utility', sizes: { large: [1, 1, 1] }, shape: 'cube', full: 63, mass: { large: 3200 }, hp: { large: 1800 },
-  desc: 'Pulls everything within 70 m toward itself: for round stations and spinning-free habitats. Needs power.',
+  desc: 'Pulls everything within 70 m toward itself, so you walk on the outside of whatever surrounds it: for round hulls and asteroid bases. For decks, use the Gravity Generator (it wins wherever both reach). Needs power.',
   func: { gravgen: { sphere: 70, g: 9.81 }, power: { use: { large: 0.8 } } },
   geo(g) {
     g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tile: T.METAL })

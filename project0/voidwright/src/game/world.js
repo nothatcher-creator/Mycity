@@ -64,8 +64,13 @@ export class World {
   // ---- what is where ----
   gravityAt(p, out = new THREE.Vector3()) { return this.universe.gravity(p, out) }
   // gravity felt by someone on foot: natural, plus any gravity generator whose field they stand in
+  // (a deck generator's box wins over any spherical field around it: inside a deck field you are pulled to
+  // that floor, never up toward a spherical generator overhead or sideways out of the deck)
   gravityFelt(p, out = new THREE.Vector3(), skip = null) {
     this.universe.gravity(p, out)
+    const box = this._gBox || (this._gBox = new THREE.Vector3()), sph = this._gSph || (this._gSph = new THREE.Vector3())
+    box.set(0, 0, 0); sph.set(0, 0, 0)
+    let inBox = false
     for (const g of this.grids) {
       if (g === skip || !g.parts?.gravgens.length) continue
       if (p.distanceTo(g.pos) > g.radius + 80) continue
@@ -76,7 +81,7 @@ export class World {
         if (f.sphere) {
           // a spherical field: toward the generator, full strength out to its edge
           const d = c.sub(p), L = d.length()
-          if (L < f.sphere && L > 0.5) out.addScaledVector(d, f.g / L)
+          if (L < f.sphere && L > 0.5) sph.addScaledVector(d, f.g / L)
           continue
         }
         const l = g.dirToLocal(new THREE.Vector3().subVectors(p, c))
@@ -85,11 +90,13 @@ export class World {
         apply(INV[b.rot], l.x, l.y, l.z, v)
         if (Math.abs(v[0]) < f.half[0] && Math.abs(v[1]) < f.half[1] && Math.abs(v[2]) < f.half[2]) {
           const down = g.dirToWorld(g.blockDir(b, 0, -1, 0, lb))
-          out.addScaledVector(down, f.g)
+          box.addScaledVector(down, f.g); inBox = true
         }
       }
     }
-    return out
+    // several deck fields overlapping pull no harder than one
+    if (box.length() > 9.81) box.setLength(9.81)
+    return out.add(inBox ? box : sph)
   }
   airAt(p) { let a = 0; for (const pl of this.universe.planets) a = Math.max(a, pl.air(p)); return a }
   // is a point in a planet's shadow (for solar arrays)

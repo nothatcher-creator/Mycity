@@ -115,9 +115,10 @@ export class Grid {
   blockDir(b, x, y, z, out = new THREE.Vector3()) { const v = apply(b.rot, x, y, z, [0, 0, 0]); return out.set(v[0], v[1], v[2]) }
   // ---- placement in space ----
   toWorld(l, out = new THREE.Vector3()) { return out.copy(l).applyQuaternion(this.quat).add(this.pos) }
-  toLocal(w, out = new THREE.Vector3()) { return out.copy(w).sub(this.pos).applyQuaternion(this._qi || (this._qi = new THREE.Quaternion()).copy(this.quat).invert()) }
+  // (the inverse rotation is worked out fresh each time: the grid turns between calls)
+  toLocal(w, out = new THREE.Vector3()) { return out.copy(w).sub(this.pos).applyQuaternion((this._qi || (this._qi = new THREE.Quaternion())).copy(this.quat).invert()) }
   dirToWorld(l, out = new THREE.Vector3()) { return out.copy(l).applyQuaternion(this.quat) }
-  dirToLocal(w, out = new THREE.Vector3()) { return out.copy(w).applyQuaternion(this._qi2 || (this._qi2 = new THREE.Quaternion()).copy(this.quat).invert()) }
+  dirToLocal(w, out = new THREE.Vector3()) { return out.copy(w).applyQuaternion((this._qi2 || (this._qi2 = new THREE.Quaternion())).copy(this.quat).invert()) }
   comWorld(out = new THREE.Vector3()) { return this.toWorld(this.com, out) }
   // velocity of a world point fixed to the grid
   pointVel(w, out = new THREE.Vector3()) {

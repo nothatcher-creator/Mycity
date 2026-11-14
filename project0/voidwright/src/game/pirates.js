@@ -83,9 +83,11 @@ export class Pirates {
     const toT = tp.clone().sub(me), dist = toT.length()
     if (dist > 9000) { this.W.removeGrid(gr); return }
     // what to do
-    if (ai.state === 'approach' && dist < 520) ai.state = 'attack'
+    if (ai.state === 'approach' && dist < 650) { ai.state = 'attack'; ai.atk = 0 }
+    if (ai.state === 'attack') ai.atk = (ai.atk || 0) + dt
     if (ai.state === 'attack' && ai.target !== 'player') {
-      const slow = ai.target.vel.length() < 14 && dist < 170
+      // it fights a while first, then comes alongside if the target stays slow
+      const slow = ai.atk > 16 && ai.target.vel.length() < 14 && dist < 260
       ai.robT = slow ? ai.robT + dt : Math.max(0, ai.robT - dt)
       if (ai.robT > 5) { this.rob(gr, ai.target); ai.state = 'flee'; ai.t = 0 }
     }
@@ -94,7 +96,7 @@ export class Pirates {
     let want
     const up = W.gravityAt(me, new THREE.Vector3()).negate()
     if (up.lengthSq() < 0.01) up.set(0, 1, 0); else up.normalize()
-    if (ai.state === 'approach') want = toT.clone().normalize().multiplyScalar(Math.min(130, dist * 0.2)).add(tv)
+    if (ai.state === 'approach') want = toT.clone().normalize().multiplyScalar(Math.min(130, Math.max(0, dist - 300) * 0.16)).add(tv)
     else if (ai.state === 'attack') {
       ai.orbit += dt * 0.25
       const side = new THREE.Vector3().crossVectors(up, toT).normalize(); if (side.lengthSq() < 0.01) side.set(1, 0, 0)
@@ -103,6 +105,9 @@ export class Pirates {
       if (ai.robT > 0.5) ring.copy(tp).addScaledVector(side, 40).addScaledVector(up, 12)
       want = ring.sub(me).multiplyScalar(0.35).add(tv)
       const L = want.length(); if (L > 95) want.multiplyScalar(95 / L)
+      // never ram it: back off when too close (closer when robbing)
+      const close = ai.robT > 0.5 ? 25 : 90
+      if (dist < close) want.addScaledVector(toT, -(close - dist) * 0.8 / Math.max(1, dist))
     } else want = toT.clone().normalize().multiplyScalar(-160).addScaledVector(up, 25)
     // into the cockpit's frame (x right, y up, z back)
     const cq = q1.copy(gr.quat).multiply(QUATS[cp.rot]).invert()
@@ -119,10 +124,14 @@ export class Pirates {
     // keep its top toward the sky in gravity
     const upL = up.clone().applyQuaternion(cq), rollE = Math.atan2(-upL.x, upL.y)
     const kt = 1.6, lim = gr.size === 'large' ? 0.7 : 1.3
-    const turn = [Math.max(-lim, Math.min(lim, pitchE * kt)), Math.max(-lim, Math.min(lim, yawE * kt)), Math.max(-lim, Math.min(lim, rollE * 1.2))]
+    // plus the turn rate of the line to the target, so the nose keeps up as they circle each other
+    const los = new THREE.Vector3().crossVectors(toT, v1.copy(tv).sub(gr.vel)).divideScalar(Math.max(1, dist * dist)).applyQuaternion(cq)
+    if (ai.state === 'flee') los.set(0, 0, 0)
+    const turn = [Math.max(-lim, Math.min(lim, pitchE * kt + los.x)), Math.max(-lim, Math.min(lim, yawE * kt + los.y)), Math.max(-lim, Math.min(lim, rollE * 1.2 + los.z * 0))]
     ai.ctl = { move, turn }
+    ai.err = [yawE, pitchE, rollE]
     // shoot when lined up and in reach
-    const aligned = Math.abs(yawE) < 0.05 && Math.abs(pitchE) < 0.05
+    const aligned = Math.abs(yawE) < 0.09 && Math.abs(pitchE) < 0.09
     ai.fire = ai.state === 'attack' && aligned && dist < 900
   }
   forwardThrust(gr, cp) {

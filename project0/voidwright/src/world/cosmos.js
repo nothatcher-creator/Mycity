@@ -13,7 +13,7 @@ function rng(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.im
 function hash2(i, k) { let h = (Math.imul(i | 0, 2654435761) + Math.imul(k | 0, 40503) + 31) | 0; h = Math.imul(h ^ (h >>> 15), 2246822519); h ^= h >>> 13; return h >>> 0 }
 const SYL = ['ve', 'la', 'an', 'tar', 'is', 'ri', 'gel', 'mi', 'ra', 'sol', 'en', 'ca', 'pel', 'nos', 'ar', 'cyr', 'thu', 'ban']
 const starName = r => { let s = ''; const n = 2 + (r() < 0.4 ? 1 : 0); for (let i = 0; i < n; i++) s += SYL[Math.floor(r() * SYL.length)]; return s[0].toUpperCase() + s.slice(1) }
-const KCOL = [[1, 0.58, 0.32], [1, 0.78, 0.52], [1, 0.95, 0.85], [0.82, 0.88, 1]]
+export const KCOL = [[1, 0.58, 0.32], [1, 0.78, 0.52], [1, 0.95, 0.85], [0.82, 0.88, 1]]
 
 export function starsNear(p, n = 6) {
   const ci = Math.round(p.x / STAR_CELL), ck = Math.round(p.z / STAR_CELL), out = []
@@ -22,7 +22,7 @@ export function starsNear(p, n = 6) {
     if (i === 0 && k === 0) continue
     const r = rng(hash2(i, k))
     const t = r()
-    out.push({ id: `star${i},${k}`, name: starName(r), R: 160000 + r() * 420000, col: KCOL[Math.floor(t * KCOL.length)], pos: new THREE.Vector3((i + (r() - 0.5) * 0.5) * STAR_CELL, (r() - 0.5) * 6e6, (k + (r() - 0.5) * 0.5) * STAR_CELL) })
+    out.push({ id: `star${i},${k}`, name: starName(r), R: 160000 + r() * 420000, col: KCOL[Math.floor(t * KCOL.length)], pos: new THREE.Vector3((i + (r() - 0.5) * 0.5) * STAR_CELL, (r() < 0.5 ? 1 : -1) * (5e6 + r() * 4e6), (k + (r() - 0.5) * 0.5) * STAR_CELL) })
   }
   return out
 }
@@ -115,16 +115,18 @@ export class Cosmos {
     }
     // far stars: points of light with a little glow
     this.sprites = []
-    for (let i = 0; i < 12; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false })); s.visible = false; s.renderOrder = -2; engine.scene.add(s); this.sprites.push(s) }
+    for (let i = 0; i < 24; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false })); s.visible = false; s.renderOrder = -2; engine.scene.add(s); this.sprites.push(s) }
     this.cloudTex = [cloudTexture(3), cloudTexture(17), cloudTexture(29)]
     this.heatTmp = new THREE.Vector3()
   }
   // ---- the stars ----
   // Vela circles the home system once a day (this is the day); every other star stands still
   place(sunDir) { this.home.pos.copy(sunDir).multiplyScalar(HOME_STAR_D) }
+  // every star that matters near a point: Vela, the stars of the nearby planet groups, the lone stars
+  starList(p) { return [this.home, ...(this.U?.clusterStars?.(p) || []), ...this.far(p)] }
   nearestStar(p) {
-    let best = this.home, bd = p.distanceTo(this.home.pos)
-    if (Math.abs(p.x) > STAR_CELL * 0.3 || Math.abs(p.z) > STAR_CELL * 0.3) for (const s of this.far(p)) { const d = p.distanceTo(s.pos); if (d < bd) { bd = d; best = s } }
+    let best = this.home, bd = Infinity
+    for (const s of this.starList(p)) { const d = p.distanceTo(s.pos) - s.R; if (d < bd) { bd = d; best = s } }
     return best
   }
   far(p) {
@@ -135,7 +137,7 @@ export class Cosmos {
   // how hot it is here: 0 out beyond five radii, 1 at the surface
   heatAt(p) {
     let worst = 0, star = null
-    for (const s of [this.home, ...(this.farList || [])]) {
+    for (const s of this.starList(p)) {
       const d = p.distanceTo(s.pos)
       if (d > s.R * 5) continue
       const h = d < s.R ? 1 : Math.pow(1 - (d - s.R) / (s.R * 4), 2)
@@ -148,8 +150,8 @@ export class Cosmos {
     return { heat: worst, by: star }
   }
   // ---- gas giants, comets, nebulae: added when their group wakes ----
-  addGiant(d) {
-    const e = this.engine, g = { def: d, id: d.id, name: d.name, R: d.R, g: d.g, center: new THREE.Vector3(...d.center), group: new THREE.Group() }
+  addGiant(d, owner = null) {
+    const e = this.engine, g = { def: d, owner, id: d.id, name: d.name, R: d.R, g: d.g, center: new THREE.Vector3(...d.center), group: new THREE.Group() }
     const mat = new THREE.ShaderMaterial({ uniforms: { uA: { value: new THREE.Color(...d.cols[0]) }, uB: { value: new THREE.Color(...d.cols[1]) }, uC: { value: new THREE.Color(...d.cols[2]) }, uSun: { value: new THREE.Vector3(1, 0, 0) }, uTime: { value: 0 }, uSeed: { value: d.seed % 97 } }, vertexShader: STAR_VS, fragmentShader: GIANT_FS, fog: false })
     const ball = new THREE.Mesh(new THREE.SphereGeometry(d.R, 96, 48), mat); ball.frustumCulled = false
     g.group.add(ball); g.mat = mat
@@ -205,7 +207,7 @@ export class Cosmos {
     this.time += dt
     const e = this.engine
     // the star bodies: the nearest three in reach of the far slice
-    const list = [this.home, ...this.far(cam)].map(s => ({ s, d: cam.distanceTo(s.pos) })).sort((a, b) => a.d - b.d)
+    const list = this.starList(cam).map(s => ({ s, d: cam.distanceTo(s.pos) })).sort((a, b) => a.d - b.d)
     for (let i = 0; i < this.bodies.length; i++) {
       const B = this.bodies[i], it = list[i]
       const show = it && it.d < 7.6e7 - it.s.R
@@ -228,7 +230,7 @@ export class Cosmos {
     }
     for (; k < this.sprites.length; k++) this.sprites[k].visible = false
     for (const g of this.giants) {
-      const sd = this.heatTmp.copy(this.nearestStar(g.center).pos).sub(g.center).normalize()
+      const sd = this.heatTmp.copy((g.owner && this.U?.starOf ? this.U.starOf(g.owner) : this.nearestStar(g.center)).pos).sub(g.center).normalize()
       g.mat.uniforms.uSun.value.copy(sd); g.mat.uniforms.uTime.value = this.time
       if (g.ringMat) { g.ringMat.uniforms.uSun.value.copy(sd); g.ringMat.uniforms.uSunL.value.copy(sd).applyQuaternion(g.ring.quaternion.clone().invert()) }
     }

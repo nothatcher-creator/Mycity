@@ -17,6 +17,7 @@ import { prefab, PREFAB_LIST } from './prefabs.js'
 import { Engineer, EYE } from '../actors/engineer.js'
 import { SFX } from './sfx.js'
 import { Trees } from '../world/trees.js'
+import { clusterStarPos } from '../world/universe.js'
 import { BLOCKS } from '../grid/blocks.js'
 import { works } from '../grid/grid.js'
 import { ITEMS } from './items.js'
@@ -472,6 +473,19 @@ export class Game {
       P.quat.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), dir.clone().negate(), Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0))); P.pitch = 0
       this.p0.log('dbg star look', st.name, at)
     }
+    if (e.code === 'Home') { // next to a world of the nearest generated group, its day side, looking at it
+      const U = this.world.universe; let d = null
+      for (const [i, k] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [0, 2]]) { const x = U.sector(i, k).def; if (!x.empty) { d = x; break } }
+      if (d) {
+        const b = d.bodies[0], c = new THREE.Vector3(...b.center), st = clusterStarPos(d.star, U.time, new THREE.Vector3())
+        const side = st.clone().sub(c).normalize().add(new THREE.Vector3(0.6, 0, 0.6)).normalize()
+        if (P.seat) P.leaveSeat()
+        P.pos.copy(c).addScaledVector(side, b.R * 2.6); P.vel.set(0, 0, 0); P.jetpack = true; U.ensure(P.pos)
+        P.quat.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), c.clone().sub(P.pos).normalize(), new THREE.Vector3(0, 1, 0))); P.pitch = 0
+        this.p0.log('dbg group', d.name, b.name, 'star', d.star.name, Math.round(st.distanceTo(c) / 1000), 'km')
+      }
+    }
+    if (e.code === 'End') this.p0.log('dbg sun', JSON.stringify({ star: this.world.universe.star?.name, planets: this.world.universe.planets.map(p => p.name + ':' + (p.owner?.star?.name || 'Vela')) }))
     if (e.code === 'Numpad9') { this.dbgFast = !this.dbgFast; this.p0.log('dbg fast', this.dbgFast) }
     if (e.code === 'NumpadMultiply') { const gr = this.pirates.spawn('marauder'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
     if (e.code === 'NumpadDivide') this.p0.log('dbg combat', JSON.stringify({ shots: this.world.combat.shots.length, rockets: this.world.combat.rockets.length, pirates: this.pirates.list.map(x => [x.grid.name, x.grid.ai.state, Math.round(x.grid.comWorld().distanceTo(P.pos)), x.grid.blocks.size, x.grid.ai.disabled ? 'off' : 'on']), health: Math.round(P.health), heat: this.heatNow?.toFixed(2), star: this.world.universe.star?.name, starD: Math.round(this.world.universe.star?.pos.distanceTo(P.pos) / 1000), wrecks: this.world.grids.filter(g => g.wreck).map(g => g.name), caves: this.world.universe.nearestPlanet(P.pos)?.caves?.list.length, wheels: P.seat?.grid.parts.wheels.map(w => [w.contact, (w.susp || 0).toFixed(2)]), v: P.seat ? P.seat.grid.vel.length().toFixed(1) : P.vel.length().toFixed(1) }))

@@ -147,7 +147,7 @@ landed on and built on. Everything here (code, block models, textures, sounds) i
   every design. New blocks: plants, sofa, shelf, holo table, spherical gravity generator, 101 in all.
 - **Gravity generators that work**: box and sphere fields, powered, felt by you and by loose grids.
 - **Stars are places** (`src/world/cosmos.js`): Vela is a burning ball 560 km across, 7,200 km out, and its
-  orbit makes day and night. Every 26,000 km square holds another star that lights what is near it. Come
+  orbit makes day and night. Every generated planet group has its own star, 3,200 to 4,800 km out above or below the plane of the groups, circling the group as Vela circles home: it lights that group's worlds and gives them day and night. Lone stars lie farther still. Come
   within a few radii and the heat burns your suit and your hull.
 - **More things in space**: the ringed gas giant Toren (its depths crush), comets with tails that point
   away from their star, glowing nebulae, and more of each in generated sectors.

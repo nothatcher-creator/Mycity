@@ -8,7 +8,7 @@ import * as THREE from 'three'
 import { Planet } from './planet.js'
 import { AsteroidField } from './asteroid.js'
 import { rng } from '../core/noise.js'
-import { Cosmos, STAR_CELL, starsNear } from './cosmos.js'
+import { Cosmos, STAR_CELL, starsNear, KCOL } from './cosmos.js'
 
 export const SECTOR = 1800000
 const WAKE = 1050000, SLEEP = 1300000, SENSE = 3400000
@@ -103,7 +103,29 @@ export function sectorDef(i, k) {
     cols: h < 0.33 ? [[0.86, 0.66, 0.42], [0.62, 0.42, 0.28], [0.95, 0.9, 0.8]] : h < 0.66 ? [[0.42, 0.62, 0.86], [0.26, 0.38, 0.66], [0.85, 0.92, 1]] : [[0.7, 0.8, 0.55], [0.45, 0.55, 0.36], [0.92, 0.95, 0.8]], blurb: 'A gas giant: no ground, only cloud that crushes the deeper you go.' }) }
   if (r() < 0.3) fields.push({ id: `s${key}c`, name: `Comet ${makeName(r)}`, center: at(c, dir(), 300000 + r() * 300000), radius: 900, count: 0, seed: Math.floor(r() * 1e6), anchor: 110 + r() * 70, comet: true, tail: 40000 + r() * 50000, ores: ['ice', 'ice', ...pickOres(r, far).slice(0, 2)], blurb: 'A comet: dirty ice with a tail of light.' })
   if (r() < 0.25) { const h = r(); nebulae.push({ id: `s${key}n`, name: `${makeName(r)} Nebula`, center: at(c, dir(), 900000 + r() * 400000), radius: 200000 + r() * 250000, seed: Math.floor(r() * 1e5), cols: h < 0.5 ? [[0.95, 0.35, 0.45], [0.95, 0.65, 0.3]] : [[0.3, 0.9, 0.7], [0.3, 0.5, 0.95]], blurb: 'A cloud of glowing gas.' }) }
-  return { key, i, k, name, center: c, bodies, fields, giants, nebulae }
+  // the group's own star, far out above or below the plane of the groups (a stream of its own, so the
+  // worlds above come out as they always have): it circles the group on a tilted cone, which is the day there
+  const rs = rng(hash2i(i, k) ^ 0x2c1b3c6d), sn = makeName(rs)
+  const star = { id: `s${key}*`, name: sn, R: 150000 + rs() * 170000, col: KCOL[Math.floor(rs() * KCOL.length)], center: c, dist: 3.2e6 + rs() * 1.6e6,
+    el: (0.6 + rs() * 0.35) * (rs() < 0.5 ? 1 : -1), phase: rs() * Math.PI * 2, day: 0.6 + rs() * 0.9, pos: new THREE.Vector3(), group: name }
+  return { key, i, k, name, center: c, bodies, fields, giants, nebulae, star }
+}
+// the planet group a point belongs to: the group whose centre is nearest, if it is near enough (worlds,
+// fields and giants all lie well inside this); null out in the dark between groups
+export function groupFor(p, get = sectorDef) {
+  const ci = Math.round(p.x / SECTOR), ck = Math.round(p.z / SECTOR)
+  let best = null, bd = SECTOR * 0.75
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+    const d = get(ci + a, ck + b); if (d.empty) continue
+    const dd = Math.hypot(p.x - d.center[0], p.y - d.center[1], p.z - d.center[2])
+    if (dd < bd) { bd = dd; best = d }
+  }
+  return best
+}
+// where a group's star is at a time
+export function clusterStarPos(st, time, out = st.pos) {
+  const a = st.phase + time / (DAY * st.day) * Math.PI * 2, ce = Math.cos(st.el)
+  return out.set(st.center[0] + st.dist * ce * Math.cos(a), st.center[1] + st.dist * Math.sin(st.el), st.center[2] + st.dist * ce * Math.sin(a))
 }
 
 const DAY = 60 * 60 // seconds for the star to go round once
@@ -130,10 +152,10 @@ export class Universe {
   }
   wake(s) {
     if (s.awake || s.def.empty) return
-    if (!s.planets) { s.planets = s.def.bodies.map(d => new Planet(d, this.engine)); s.fields = s.def.fields.map(d => new AsteroidField(d, this.engine)) }
+    if (!s.planets) { s.planets = s.def.bodies.map(d => new Planet(d, this.engine)); s.fields = s.def.fields.map(d => new AsteroidField(d, this.engine)); for (const p of s.planets) p.owner = s.def }
     else for (const p of s.planets) p.wake()
     for (const p of s.planets) p.setSun(this.sunDir)
-    if (this.cosmos) { for (const g of s.def.giants || []) this.cosmos.addGiant(g); for (const n of s.def.nebulae || []) this.cosmos.addNebula(n); for (const f of s.fields) if (f.def.comet) this.cosmos.addComet(f) }
+    if (this.cosmos) { for (const g of s.def.giants || []) this.cosmos.addGiant(g, s.def); for (const n of s.def.nebulae || []) this.cosmos.addNebula(n); for (const f of s.fields) if (f.def.comet) this.cosmos.addComet(f) }
     s.awake = true
     const fresh = !this.known.has(s.key)
     this.known.add(s.key)
@@ -188,13 +210,40 @@ export class Universe {
     this.homeDir.set(Math.cos(a), 0.18, Math.sin(a)).normalize().applyAxisAngle(ax, 0.3)
     const C = this.cosmos
     C.place(this.homeDir)
-    const st = C.nearestStar(this.cam)
+    // light comes from the star of the group you are in (another group's star can be nearer, but it is
+    // that group's sun); out between the groups, from the nearest star
+    const st = this.sunStar(this.cam)
     this.sunDir.copy(st.pos).sub(this.cam).normalize()
     this.star = st
-    for (const p of this.planets) p.setSun(this.tmpG.copy(C.nearestStar(p.center).pos).sub(p.center).normalize())
+    for (const p of this.planets) p.setSun(this.tmpG.copy((p.owner ? this.starOf(p.owner) : this.sunStar(p.center)).pos).sub(p.center).normalize())
     return this.sunDir
   }
   heatAt(p) { return this.cosmos.heatAt(p) }
+  sunStar(p) {
+    // close to a world or a gas giant: its group's star
+    for (const pl of this.planets) if (pl.owner && p.distanceTo(pl.center) < Math.max(pl.R * 3, 150000)) return this.starOf(pl.owner)
+    for (const g of this.cosmos.giants) if (g.owner && p.distanceTo(g.center) < g.R * 3) return this.starOf(g.owner)
+    const d = groupFor(p, (i, k) => this.sector(i, k).def)
+    if (!d) return this.cosmos.nearestStar(p)
+    return this.starOf(d)
+  }
+  // a group's own star (Vela for home), placed for now
+  starOf(d) {
+    if (d.home || !d.star) return this.cosmos.home
+    clusterStarPos(d.star, this.time)
+    return d.star
+  }
+  // the stars of the groups around a point (seven by seven groups), where they are now
+  clusterStars(p) {
+    const ci = Math.round(p.x / SECTOR), ck = Math.round(p.z / SECTOR), key = ci + ',' + ck
+    if (key !== this._csKey) {
+      this._csKey = key; this._cs = []
+      for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { const d = this.sector(ci + a, ck + b).def; if (d.star) this._cs.push(d.star) }
+      this._csT = null
+    }
+    if (this._csT !== this.time) { this._csT = this.time; for (const st of this._cs) clusterStarPos(st, this.time) }
+    return this._cs
+  }
   gravity(p, out = new THREE.Vector3()) {
     out.set(0, 0, 0)
     let best = null, bg = 0
@@ -246,6 +295,7 @@ export class Universe {
       for (const f of d.fields) out.push({ id: f.id, name: f.name, pos: new THREE.Vector3(...f.center), r: f.comet ? f.anchor : f.radius, kind: f.comet ? 'comet' : 'field', blurb: f.blurb, sector: key, group: d.name })
       for (const g of d.giants || []) out.push({ id: g.id, name: g.name, pos: new THREE.Vector3(...g.center), r: g.R, kind: 'giant', blurb: g.blurb, sector: key, group: d.name, g: g.g })
       for (const n of d.nebulae || []) out.push({ id: n.id, name: n.name, pos: new THREE.Vector3(...n.center), r: n.radius, kind: 'nebula', blurb: n.blurb, sector: key, group: d.name })
+      if (d.star) out.push({ id: d.star.id, name: d.star.name, pos: clusterStarPos(d.star, this.time, new THREE.Vector3()), r: d.star.R, kind: 'star', blurb: `The star of the ${d.name} group: it circles the group far out, which is the day there. It burns anything that comes within a few of its radii.`, sector: key, group: d.name })
     }
     // the stars: Vela always, and the nearest others
     const C = this.cosmos

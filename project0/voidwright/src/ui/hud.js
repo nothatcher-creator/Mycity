@@ -240,7 +240,7 @@ export class HUD {
     // stars, gas giants, nebulae
     const C2 = U.cosmos
     if (C2) {
-      for (const st of [C2.home, ...C2.far(eye).slice().sort((a, b) => a.pos.distanceTo(eye) - b.pos.distanceTo(eye)).slice(0, 2)]) { const d = eye.distanceTo(st.pos) - st.R; mark(st.pos, st.name, fmtDist(d), d < st.R * 4 ? 'rgba(255,90,60,0.95)' : 'rgba(255,224,150,0.85)') }
+      for (const st of C2.starList(eye).slice().sort((a, b) => a.pos.distanceTo(eye) - b.pos.distanceTo(eye)).slice(0, 3)) { const d = eye.distanceTo(st.pos) - st.R; mark(st.pos, st.name, fmtDist(d), d < st.R * 4 ? 'rgba(255,90,60,0.95)' : 'rgba(255,224,150,0.85)') }
       for (const gg of C2.giants) { const d = eye.distanceTo(gg.center) - gg.R; if (d > gg.R * 0.4) mark(gg.center, gg.name, fmtDist(d), 'rgba(166,255,245,0.85)') }
       for (const n of C2.nebulae) { const d = eye.distanceTo(n.center); if (d > n.R) mark(n.center, n.name, fmtDist(d - n.R), 'rgba(200,170,255,0.75)') }
     }

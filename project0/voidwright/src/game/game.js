@@ -287,6 +287,18 @@ export class Game {
       const lock = W.tryLock(sp, 1.5)
       if (DEBUG) this.p0.log('dbg ardent', big.blocks.size, 'blocks; sparrow', lock)
       spawn = { pos: big.toWorld(cap === 'ardent' ? new THREE.Vector3(0, 18.85, -1.5) : new THREE.Vector3(0, 1.3, 0)), quat: q }
+    } else if (id === 'haven') {
+      // Haven Station high over Halvor, its hub pointing away from the world; ships in the hangar
+      const c = new THREE.Vector3(-9000, 21000, 72000).add(new THREE.Vector3(-5200, 2600, 3400))
+      const out = c.clone().sub(halvor.center).normalize()
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), out)
+      const st = this.spawnGrid('haven', c, q, { static: true })
+      const cs = st.cs
+      this.spawnGrid('sparrow', st.toWorld(new THREE.Vector3(-7 * cs, -14 * cs, -4 * cs)), q.clone(), { static: false })
+      this.spawnGrid('pick', st.toWorld(new THREE.Vector3(7 * cs, -14 * cs, -3 * cs)), q.clone(), { static: false })
+      this.spawnGrid('hornet', st.toWorld(new THREE.Vector3(6 * cs, -13 * cs, 6 * cs)), q.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI)), { static: false })
+      // on the command deck, between the chair and the holotable, looking out of the windows
+      spawn = { pos: st.toWorld(new THREE.Vector3(0, 0.5 * cs + 0.15, -3 * cs)), quat: q.clone() }
     } else if (id === 'void') {
       // a ball of ice adrift in the void, thousands of kilometres from any world, lit by a far star
       const V = U.voids, near = new THREE.Vector3(-4e6, -3e6, 9.9e6)

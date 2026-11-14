@@ -131,6 +131,8 @@ export class ShipControl {
     }
     for (const b of P.thrusters) if (works(b)) want += b.def.func.thruster.mw[size] * (b.out || 0)
     want += grid.extraPower || 0
+    // what the heads riding this grid's pistons and rotors draw through their joints
+    if (grid._hw) for (const [h, w] of grid._hw) { if (h.pistonOf && this.world.grids.includes(h)) want += w; else grid._hw.delete(h) }
     const total = supply + store
     const ratio = want > total ? total / want : 1
     // batteries: drain for the shortfall, charge from the surplus
@@ -145,6 +147,11 @@ export class ShipControl {
     }
     grid.power = { supply, want, store: bats.reduce((s, b) => s + b.charge, 0), cap: bats.reduce((s, b) => s + b.def.func.power.store[size], 0), ratio: total > 0 ? Math.min(1, ratio) : (want > 0 ? 0 : 1) }
     if (this.world.creative && total === 0 && want > 0) grid.power.ratio = 0
+    // a head with no power of its own runs on the grid at the bottom of its chain of joints
+    if (grid.pistonOf && total === 0) {
+      let root = grid; for (let n = 0; root.pistonOf && n < 6; n++) root = root.pistonOf.grid
+      if (root !== grid && root.power) { grid.power.ratio = want > 0 ? root.power.ratio : 1; (root._hw || (root._hw = new Map())).set(grid, want) }
+    }
     return grid.power
   }
 }

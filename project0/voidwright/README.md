@@ -223,6 +223,33 @@ in over a few frames, and the physics only tests the hull points that could be t
   two rocket launchers, a gatling turret) on a rotor. **Watchtower**: a radar station whose dish array turns
   on a rotor.
 
+## Haven Station
+
+A new start, **Haven Station**, wakes you on the command deck of a massive working station high over Halvor
+(also a blueprint, `haven`, built by `src/game/stations.js`): 10,452 blocks, about 140 m across.
+
+- **The hub**: eight decks round a ladder shaft. Reactor (four fusion cores, a ring of batteries); command
+  (command chair, consoles, holotables, a band of windows); crew (eight cabins round a corridor, each with a
+  door, a bunk, a locker, a shelf, a table, a lamp, a plant and a porthole); two farm decks (rows of the new
+  **Hydroponic Planter** under grow lights, and a garden lounge); mess and medical (tables and sofas, a
+  partition with a door, medical bays); workshop (refinery, assemblers, cargo, a hydrogen tank); observation
+  (glass all round, sofas, a ring of skylights).
+- **The hangar** under the hub, 70 m by 60 m with doors at both ends (F opens them all): a Sparrow, a Pick
+  and a Hornet parked inside, connectors, catwalks with ladders and consoles, cargo and fuel.
+- **On rotors**: a habitat ring 120 m across, turning once in about two minutes, with its floor on its outer
+  wall (gravity generators pull outward; you turn with it as you walk it), bunks, lounges, skylights and four
+  doors in its underside; two solar wings slowly tracking round; a radar dish under the hangar.
+- **On pistons**: docking arms out of both sides of the hangar, each pushing out a landing pad with a
+  connector; a cargo lift in the hangar floor that rides up 10 m to the foot of the ladder shaft; a
+  telescoping mast on the hangar roof (a piston on a piston). N in a seat (or the terminal) runs the pistons,
+  B the rotors; F on any one runs that one.
+- A rotor can now turn at a share of its full speed (`rate` in a blueprint), and a blueprint can stack a piston
+  or rotor on a head. Blocks on a head with no power of their own now run on the power of the grid the head
+  rides (the ring's lights and gravity, the wings' lamps), and that grid pays for it.
+- Faster contacts: grids now test only the cells within reach of each hull point, and skip a pair whose boxes
+  hold no blocks near each other. Three ships parked on Haven's hangar floor cost about 1 ms of physics a frame
+  instead of 80 (`tools/parktest.mjs`); this speeds up every big station and ship.
+
 ## Coming next
 
 - Hinges, docking ports that dock, a projector for blueprints in survival, saved worlds,
@@ -245,5 +272,5 @@ in local storage) and three.js. Upload the zip to itch.io as an HTML game (index
 - `tools/pack.sh` packs `build/experience.zip`; `tools/sfxgen.py` makes the sounds; `tools/prefabtest.mjs`
   checks the designs (block overlaps, lift/weight); `tools/bench.mjs` times terrain and rock building; `tools/survivaltest.mjs`, `tools/weldtest.mjs` and
   `tools/digtest.mjs` check mining, production and welding without the renderer; `tools/voxtest.mjs` checks
-  tunnels.
+  tunnels; `tools/parktest.mjs` times ships resting on a station floor.
 - `lot/`: the exterior generator and what it builds in `lot/out` (three levels of detail, shaders, `lot.json`).

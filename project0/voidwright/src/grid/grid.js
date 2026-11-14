@@ -312,13 +312,14 @@ export class Grid {
     return null
   }
   // distance from a grid-local point (metres) to the hull near it, looking `reach` metres round
+  // (only the cells that come within `reach` of the point: usually two each way, not five)
   sdfLocal(x, y, z, reach) {
-    const cs = this.cs, R = Math.ceil(reach / cs + 0.5)
-    const i0 = Math.round(x / cs), j0 = Math.round(y / cs), k0 = Math.round(z / cs)
+    const cs = this.cs
+    const i0 = Math.round((x - reach) / cs), i1 = Math.round((x + reach) / cs), j0 = Math.round((y - reach) / cs), j1 = Math.round((y + reach) / cs), k0 = Math.round((z - reach) / cs), k1 = Math.round((z + reach) / cs)
     let best = Infinity
     const seen = this._seen || (this._seen = new Set()); seen.clear()
-    for (let a = -R; a <= R; a++) for (let b = -R; b <= R; b++) for (let c = -R; c <= R; c++) {
-      const bl = this.cells.get(kOf(i0 + a, j0 + b, k0 + c))
+    for (let a = i0; a <= i1; a++) for (let b = j0; b <= j1; b++) for (let c = k0; c <= k1; c++) {
+      const bl = this.cells.get(kOf(a, b, c))
       if (!bl || seen.has(bl)) continue
       seen.add(bl)
       const d = shapeSdf(bl, this.size, x / cs, y / cs, z / cs) * cs

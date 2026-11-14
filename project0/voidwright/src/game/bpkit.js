@@ -29,16 +29,22 @@ export class BP {
   // a piston at (i, j, k) and what is built on its head: fn gets a BP whose cells are the head's own (its +Y
   // pointing away from the piston, the head block at 0,0,0); ext is how far out it starts
   // a rotor the same way (its head turns; `on`: running from the start)
-  rotor(i, j, k, rot = 0, color = 0, fn = null, on = false) {
+  // (`rate`: a share of the rotor's full speed, for slow turners such as a habitat ring)
+  rotor(i, j, k, rot = 0, color = 0, fn = null, on = false, rate = 0) {
     this.piston(i, j, k, rot, color, fn, 0, 'rotor')
-    if (on) this.bp.heads[this.bp.heads.length - 1].on = true
+    const h = this.bp.heads[this.bp.heads.length - 1]
+    if (on) h.on = true
+    if (rate) h.rate = rate
     return this
   }
   piston(i, j, k, rot = 0, color = 0, fn = null, ext = 0, id = 'piston') {
     this.over(id, i, j, k, rot, color)
     const sub = new BP('head', this.bp.size)
     if (fn) fn(sub)
-    ;(this.bp.heads || (this.bp.heads = [])).push({ at: [i, j, k], ext, blocks: sub.bp.blocks })
+    const h = { at: [i, j, k], ext, blocks: sub.bp.blocks }
+    // a piston or rotor built on this head (one): its own head comes with it
+    if (sub.bp.heads?.length) h.sub = sub.bp.heads[0]
+    ;(this.bp.heads || (this.bp.heads = [])).push(h)
     return this
   }
 }

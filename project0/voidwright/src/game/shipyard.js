@@ -15,7 +15,7 @@ const G = 9.81
 const kk = (x, y, z) => (x + 1024) * 4194304 + (y + 1024) * 2048 + (z + 1024)
 
 // ---- a blueprint that knows which cells are taken ----
-class Yard {
+export class Yard {
   constructor(name, size, o) { this.b = new BP(name, size, o); this.size = size; this.cell = new Map() }
   get blocks() { return this.b.bp.blocks }
   foot(id, i, j, k, rot) {

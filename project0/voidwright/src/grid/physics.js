@@ -115,13 +115,16 @@ export class Physics {
     // points from the grid with fewer of them (a small ship landing on a big station)
     const [src, dst] = a.points.length / a.cs <= b.points.length / b.cs ? [a, b] : [b, a]
     const rad = src.cs * 0.5, pts = src.points, P = new THREE.Vector3(), n = new THREE.Vector3()
+    // first a quick look: any of dst's blocks in src's box at all? (a ship parked inside a huge station's
+    // reach would otherwise test every hull point against it every step)
+    if (!this.boxNear(src, dst, rad + 0.1)) return
     const dc = dst.comWorld(new THREE.Vector3())
     let count = 0
     const found = []
     for (let i = 0; i < pts.length; i += 3) {
       P.set(pts[i], pts[i + 1], pts[i + 2]).applyQuaternion(src.quat).add(src.pos)
       if (P.distanceTo(dc) > dst.radius + rad) continue
-      const d = dst.sdf(P, rad + dst.cs, n)
+      const d = dst.sdf(P, rad + 0.1, n)
       if (d < rad) found.push({ p: P.clone(), n: n.clone(), pen: rad - d })
     }
     if (!found.length) return
@@ -134,6 +137,29 @@ export class Physics {
       // normal pushes src away from dst
       this.contacts.push({ A: src, B: dst, p: f.p.addScaledVector(f.n, -rad + f.pen * 0.5), n: f.n, pen: f.pen })
     }
+  }
+  // whether dst has a block within `pad` of src's hull box (false only when it surely has none)
+  boxNear(src, dst, pad) {
+    const pts = src.points
+    if (src._boxOf !== pts) {
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity]
+      for (let i = 0; i < pts.length; i += 3) for (let a = 0; a < 3; a++) { const v = pts[i + a]; if (v < lo[a]) lo[a] = v; if (v > hi[a]) hi[a] = v }
+      src._box = [lo, hi]; src._boxOf = pts
+    }
+    const [lo, hi] = src._box
+    if (lo[0] > hi[0]) return false
+    // the box's corners in dst's cells
+    const L = [Infinity, Infinity, Infinity], H = [-Infinity, -Infinity, -Infinity], c = v3
+    for (let k = 0; k < 8; k++) {
+      c.set(k & 1 ? hi[0] : lo[0], k & 2 ? hi[1] : lo[1], k & 4 ? hi[2] : lo[2]).applyQuaternion(src.quat).add(src.pos)
+      dst.toLocal(c, c)
+      L[0] = Math.min(L[0], c.x); L[1] = Math.min(L[1], c.y); L[2] = Math.min(L[2], c.z); H[0] = Math.max(H[0], c.x); H[1] = Math.max(H[1], c.y); H[2] = Math.max(H[2], c.z)
+    }
+    const m = pad + src.cs * 0.5, cs = dst.cs
+    const i0 = Math.round((L[0] - m) / cs), i1 = Math.round((H[0] + m) / cs), j0 = Math.round((L[1] - m) / cs), j1 = Math.round((H[1] + m) / cs), k0 = Math.round((L[2] - m) / cs), k1 = Math.round((H[2] + m) / cs)
+    if ((i1 - i0 + 1) * (j1 - j0 + 1) * (k1 - k0 + 1) > 20000) return true
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) for (let k = k0; k <= k1; k++) if (dst.at(i, j, k)) return true
+    return false
   }
   movable(g) { return g && !g.static && !g.locked && !g.frozen }
   applyImpulse(g, p, J) {

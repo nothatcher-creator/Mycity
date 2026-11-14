@@ -689,6 +689,11 @@ fit('plant', 'Potted Plant', [[-0.3, -0.5, -0.3, 0.3, 0.4, 0.3]], 'Something gre
   g.cyl('y', 0, -0.32, 0, 0.26, 0.36, { r2: 0.3, tile: T.PANEL, seg: 10 })
   for (const [x, z, h, s] of [[0, 0, 0.15, 0.28], [0.12, -0.08, 0.02, 0.2], [-0.12, 0.1, 0.05, 0.22]]) g.ball(x, h, z, s, { tile: T.PLAIN, seg: 5, col: [0.28, 0.55, 0.26], paint: false })
 })
+fit('planter', 'Hydroponic Planter', [[-0.5, -0.5, -0.5, 0.5, 0.1, 0.5]], 'A tray of crops growing in water and light: rows of greens for a station farm.', g => {
+  g.box(-0.5, -0.5, -0.5, 0.5, -0.12, 0.5, { tile: T.METAL, col: [0.32, 0.34, 0.36], paint: false })
+  g.box(-0.46, -0.12, -0.46, 0.46, -0.06, 0.46, { tile: T.DARK, col: [0.22, 0.16, 0.1], paint: false })
+  for (const z of [-0.3, 0, 0.3]) for (const x of [-0.3, 0, 0.3]) g.ball(x, 0.02, z, 0.13, { tile: T.PLAIN, seg: 4, col: z === 0 ? [0.42, 0.7, 0.24] : [0.24, 0.58, 0.22], paint: false })
+}, { mass: { large: 400, small: 25 } })
 fit('sofa', 'Sofa', [[-0.5, -0.5, -0.4, 0.5, -0.05, 0.5]], 'A soft seat for the crew room (to sit on, not to fly from).', g => {
   const S2 = { tile: T.PLAIN, col: [0.42, 0.3, 0.5] }
   g.box(-0.5, -0.5, -0.35, 0.5, -0.22, 0.45, { tile: T.DARK, col: DARKC, paint: false }); g.box(-0.48, -0.22, -0.32, 0.48, -0.08, 0.3, S2); g.box(-0.48, -0.22, 0.28, 0.48, 0.35, 0.45, S2)

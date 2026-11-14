@@ -113,7 +113,7 @@ const R = {
   piston: [['plate', 40], ['construct', 20], ['tube_l', 4], ['motor', 8], ['computer', 2]], piston_top: [['plate', 20], ['construct', 8]],
   rotor: [['plate', 30], ['construct', 20], ['tube_l', 2], ['motor', 10], ['computer', 2]], rotor_top: [['plate', 20], ['construct', 8]], leg: [['plate', 80], ['construct', 40], ['tube_l', 10], ['motor', 20], ['computer', 4]],
   track: [['plate', 60], ['construct', 50], ['tube_l', 6], ['motor', 16], ['grid', 20]], gravgen_sphere: [['plate', 200], ['construct', 60], ['gravity', 8], ['motor', 6], ['computer', 40]],
-  plant: [['interior', 4], ['construct', 2]], sofa: [['interior', 12], ['construct', 4]], shelf: [['interior', 16], ['construct', 8]], holotable: [['interior', 10], ['construct', 10], ['display', 6], ['computer', 12]],
+  plant: [['interior', 4], ['construct', 2]], planter: [['interior', 6], ['construct', 4], ['tube_s', 2]], sofa: [['interior', 12], ['construct', 4]], shelf: [['interior', 16], ['construct', 8]], holotable: [['interior', 10], ['construct', 10], ['display', 6], ['computer', 12]],
   command_chair: [['interior', 20], ['construct', 20], ['motor', 2], ['display', 6], ['computer', 60]], camera: [['plate', 2], ['construct', 2], ['motor', 1], ['display', 1], ['computer', 3]],
   console: [['interior', 10], ['construct', 10], ['display', 4], ['computer', 20]], locker: [['interior', 20], ['construct', 10]], table: [['interior', 8], ['tube_s', 4]],
   sign: [['interior', 4], ['display', 6], ['computer', 4]], blastdoor: [['plate', 140], ['grid', 40], ['construct', 40], ['motor', 8], ['computer', 4]],

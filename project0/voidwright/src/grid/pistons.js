@@ -59,7 +59,7 @@ export class Pistons {
     h.add(rotor ? 'rotor_top' : 'piston_top', 0, 0, 0, 0, b.color || 0)
     for (const [id, i, j, k, rot, col] of b.headBlocks || []) h.add(id, i, j, k, rot || 0, col || 0)
     // a piston on this head with its own head to come
-    if (b.headSub) { const pb = h.at(...b.headSub.at); if (pb?.def.func?.piston || pb?.def.func?.rotor) { pb.headBlocks = b.headSub.blocks; pb.headSub = b.headSub.sub || null; pb.startExt = b.headSub.ext || 0 } }
+    if (b.headSub) { const pb = h.at(...b.headSub.at); if (pb?.def.func?.piston || pb?.def.func?.rotor) { pb.headBlocks = b.headSub.blocks; pb.headSub = b.headSub.sub || null; pb.startExt = b.headSub.ext || 0; if (b.headSub.on) pb.startOn = true; if (b.headSub.rate) pb.rate = b.headSub.rate } }
     b.headBlocks = null; b.headSub = null
     h.updateMass(); h.rebuild()
     h.locked = { grid: g, relPos: headLocal(g, b, ext), relQuat: QUATS[b.rot].clone() }
@@ -152,7 +152,7 @@ export class Pistons {
       let root = g; for (let n = 0; root.pistonOf && n < 6; n++) root = root.pistonOf.grid
       const pw = root.power && (root.power.supply > 0 || root.power.store > 0) ? root.power : g.power
       const ok = b.running && works(b) && (!pw || pw.ratio > 0.05)
-      const w = ok ? b.def.func.rotor.speed[g.size] * (b.dir || 1) * (pw ? Math.min(1, pw.ratio) : 1) : 0
+      const w = ok ? b.def.func.rotor.speed[g.size] * (b.rate || 1) * (b.dir || 1) * (pw ? Math.min(1, pw.ratio) : 1) : 0
       b.angle = ((b.angle || 0) + w * dt) % (Math.PI * 2)
       h.locked.relQuat.copy(QUATS[b.rot]).multiply(q1.setFromAxisAngle(Y, b.angle))
       headLocal(g, b, 0, h.locked.relPos)

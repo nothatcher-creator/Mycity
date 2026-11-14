@@ -129,11 +129,8 @@ export class Cosmos {
     for (const s of this.starList(p)) { const d = p.distanceTo(s.pos) - s.R; if (d < bd) { bd = d; best = s } }
     return best
   }
-  far(p) {
-    const key = Math.round(p.x / STAR_CELL) + ',' + Math.round(p.z / STAR_CELL)
-    if (key !== this.farKey) { this.farKey = key; this.farList = starsNear(p) }
-    return this.farList
-  }
+  // (lone stars between the groups are gone: every star now belongs to a group, so they lie far apart)
+  far() { return [] }
   // how hot it is here: 0 out beyond five radii, 1 at the surface
   heatAt(p) {
     let worst = 0, star = null
@@ -207,10 +204,13 @@ export class Cosmos {
     this.time += dt
     const e = this.engine
     // the star bodies: the nearest three in reach of the far slice
-    const list = this.starList(cam).map(s => ({ s, d: cam.distanceTo(s.pos) })).sort((a, b) => a.d - b.d)
+    // only your own star (the one lighting you) is a ball of fire you can see; every other one is a point of
+    // light, however near it is
+    const mine = this.U?.star || this.home
+    const list = this.starList(cam).map(s => ({ s, d: cam.distanceTo(s.pos) })).sort((a, b) => (a.s === mine ? -1 : b.s === mine ? 1 : a.d - b.d))
     for (let i = 0; i < this.bodies.length; i++) {
-      const B = this.bodies[i], it = list[i]
-      const show = it && it.d < 7.6e7 - it.s.R
+      const B = this.bodies[i], it = i === 0 ? list[0] : null
+      const show = it && it.s === mine && it.d < 7.6e7 - it.s.R
       B.m.visible = B.halo.visible = !!show
       if (!show) continue
       const s = it.s
@@ -221,11 +221,13 @@ export class Cosmos {
     }
     // the rest as points of light on the sky
     let k = 0
-    for (const it of list.slice(this.bodies.length)) {
+    for (const it of list) {
+      if (it.s === mine) continue
       if (k >= this.sprites.length) break
       const sp = this.sprites[k++], dir = this.heatTmp.subVectors(it.s.pos, cam).normalize()
       sp.visible = true; sp.position.copy(e.camera.position).addScaledVector(dir, 5.5e7)
-      sp.scale.setScalar(Math.max(2.5e5, Math.min(3e6, it.s.R / it.d * 5.5e7 * 9)))
+      // a bright point: a little bigger for a big, near one, never a disc
+      sp.scale.setScalar(Math.max(1.6e5, Math.min(4.2e5, 1.6e5 + it.s.R / it.d * 5.5e7 * 0.4)))
       sp.material.color.setRGB(...it.s.col)
     }
     for (; k < this.sprites.length; k++) this.sprites[k].visible = false

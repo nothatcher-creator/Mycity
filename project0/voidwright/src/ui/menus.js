@@ -21,8 +21,8 @@ export const SCENARIOS = [
   { id: 'empty', name: 'Empty Space', sub: 'Nothing but you', desc: 'Floating in the dark with a jetpack and every block. Build from the first cube.' },
 ]
 
-const KIND = { planet: 'World', field: 'Rock field', comet: 'Comet', star: 'Star', giant: 'Gas giant', nebula: 'Nebula', signal: 'Unknown', grid: 'Grid' }
-const MAPCOL = { star: '#ffd890', giant: '#e0b080', nebula: '#c8a8ff', comet: '#a8e8ff' }
+const KIND = { planet: 'World', field: 'Rock field', comet: 'Comet', star: 'Star', giant: 'Gas giant', nebula: 'Nebula', signal: 'Unknown', grid: 'Grid', void: 'Void rock', ice: 'Void ice' }
+const MAPCOL = { star: '#ffd890', giant: '#e0b080', nebula: '#c8a8ff', comet: '#a8e8ff', void: '#b8a890', ice: '#cfeeff' }
 
 export class Menus {
   constructor(game) {
@@ -252,7 +252,8 @@ export class Menus {
   // ---- jumping ----
   page_jump(c, p) {
     const g = this.g, P = g.player, gr = P?.seat?.grid, U = g.world.universe
-    this.title(c, p, 'JUMP DRIVE', 'Up to 2,000 km. The drive charges for 10 seconds, then the whole grid jumps. Unknown signals are groups of worlds not yet on your map.')
+    const range = g.jumpRange(gr)
+    this.title(c, p, 'JUMP DRIVE', `Up to ${Math.round(range / 1000).toLocaleString('en')} km. The drive charges for 10 seconds, then the whole grid jumps; somewhere farther is jumped toward as far as the drive reaches. Unknown signals are groups not yet on your map.`)
     if (!gr?.parts.jumpdrives.length) { text(c, 'This grid has no jump drive.', 18, 90, { size: 14 }); this.back(c, p); return }
     const here = gr.comWorld()
     const list = []
@@ -265,8 +266,8 @@ export class Menus {
     const max = Math.max(0, Math.ceil(rows.length / cols) - per)
     const off = Math.min(max, Math.round(this.scroll / 60))
     rows.slice(off * cols, (off + per) * cols).forEach((pl, i) => {
-      const x = 18 + (i % cols) * (cw + 10), y = 78 + Math.floor(i / cols) * (rh + 6), ok = pl.d < 2000000
-      p.button(c, 'j' + pl.id, x, y, cw, rh, pl.name.toUpperCase(), () => { this.close(); g.planJump(pl) }, { sub: `${KIND[pl.kind] || 'Waypoint'} · ${(pl.d / 1000).toFixed(0)} km${ok ? '' : ' · out of range'} · ${pl.blurb || ''}`, disabled: !ok, arrow: true })
+      const x = 18 + (i % cols) * (cw + 10), y = 78 + Math.floor(i / cols) * (rh + 6), ok = pl.d < range
+      p.button(c, 'j' + pl.id, x, y, cw, rh, pl.name.toUpperCase(), () => { this.close(); g.planJump(pl) }, { sub: `${KIND[pl.kind] || 'Waypoint'} · ${(pl.d / 1000).toFixed(0)} km${ok ? '' : ' · out of range: jumps part way'} · ${pl.blurb || ''}`, arrow: true })
     })
     if (max > 0) text(c, `Scroll for more (${rows.length} places)`, 18, p.h - 30, { size: 11, weight: 600, color: C.dim })
     this.back(c, p, null, 'CLOSE')
@@ -278,7 +279,7 @@ export class Menus {
     const here = g.camPos
     const V = this.mapv || (this.mapv = { cx: here.x, cz: here.z, scale: 2400, sel: null })
     if (this.mapFresh !== this.visible + this.page) { this.mapFresh = this.visible + this.page; V.cx = here.x; V.cz = here.z }
-    this.title(c, p, 'MAP', 'Seen from above. Click a place to select it, empty space to move the map; the wheel zooms. Sectors are 1,800 km across.')
+    this.title(c, p, 'MAP', 'Seen from above. Click a place to select it, empty space to move the map; the wheel zooms. Groups lie about 14,000 km apart, high and low as well as across.')
     const side = Math.min(290, p.w * 0.34), mx = 18, my = 66, mw = p.w - side - 46, mh = p.h - my - 20
     const sx = x => mx + mw / 2 + (x - V.cx) / V.scale, sy = z => my + mh / 2 + (z - V.cz) / V.scale
     c.fillStyle = 'rgba(2,6,9,0.75)'; c.fillRect(mx, my, mw, mh); c.strokeStyle = C.line; c.strokeRect(mx + 0.5, my + 0.5, mw - 1, mh - 1)
@@ -337,7 +338,7 @@ export class Menus {
       const on = g.tracked && g.tracked.id === sel.id
       p.button(c, 'trk', x0 + 10, y + 112, (side - 30) / 2, 30, on ? 'TRACKING' : 'TRACK', () => { g.tracked = on ? null : { id: sel.id, name: sel.name, pos: sel.pos.clone(), r: sel.kind === 'signal' ? 0 : sel.r, kind: sel.kind, wp: sel.wp }; this.panel.dirty = true }, { align: 'center', selected: on, font: FONT(11, 700) })
       if (sel.kind === 'waypoint') p.button(c, 'wdel', x0 + 20 + (side - 30) / 2, y + 112, (side - 30) / 2, 30, 'DELETE', () => { g.waypoints.splice(g.waypoints.indexOf(sel.wp), 1); if (g.tracked?.wp === sel.wp) g.tracked = null; V.sel = null; g.saveMap(); this.panel.dirty = true }, { align: 'center', font: FONT(11, 700) })
-      else if (P.seat?.grid.parts.jumpdrives.length && sel.kind !== 'grid') p.button(c, 'mjump', x0 + 20 + (side - 30) / 2, y + 112, (side - 30) / 2, 30, 'JUMP', () => { this.close(); g.planJump(sel) }, { align: 'center', font: FONT(11, 700), disabled: d > 2000000 || d < 3000 })
+      else if (P.seat?.grid.parts.jumpdrives.length && sel.kind !== 'grid') p.button(c, 'mjump', x0 + 20 + (side - 30) / 2, y + 112, (side - 30) / 2, 30, 'JUMP', () => { this.close(); g.planJump(sel) }, { align: 'center', font: FONT(11, 700), disabled: d < 3000 })
       y += 160
     }
     p.button(c, 'wadd', x0, y, side, 36, 'WAYPOINT WHERE I AM', () => { const w = g.addWaypoint(P.pos); g.hud.toast(`${w.name} set`); this.panel.dirty = true }, { align: 'center', font: FONT(11.5, 700) })

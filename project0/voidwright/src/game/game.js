@@ -18,6 +18,7 @@ import { Engineer, EYE } from '../actors/engineer.js'
 import { SFX } from './sfx.js'
 import { Trees } from '../world/trees.js'
 import { clusterStarPos } from '../world/universe.js'
+import { Events } from './events.js'
 import { BLOCKS } from '../grid/blocks.js'
 import { works } from '../grid/grid.js'
 import { ITEMS } from './items.js'
@@ -79,9 +80,12 @@ export class Game {
     this.world = new World(this)
     this.pirates = new Pirates(this)
     this.wrecks = new Wrecks(this)
+    this.events = new Events(this)
     this.world.trees = new Trees(e)
     // the map: what has been found, and waypoints (kept between visits; the universe itself is always the same)
     const U0 = this.world.universe
+    // (the universe was laid out again in round nine: what was found before is somewhere else now)
+    if (this.save.data.layout !== 9) { this.save.data.known = []; this.save.data.wps = []; this.save.data.layout = 9 }
     for (const key of this.save.data.known || []) U0.known.add(key)
     this.waypoints = (this.save.data.wps || []).map(w => ({ name: w[0], pos: new THREE.Vector3(w[1], w[2], w[3]) }))
     this.tracked = null
@@ -236,6 +240,7 @@ export class Game {
   startWorld(id, mode = 'creative') {
     const W = this.world, U = W.universe
     this.clearWorld()
+    this.events?.reset()
     this.scenario = id
     this.mode = mode
     W.creative = mode === 'creative'
@@ -371,14 +376,18 @@ export class Game {
   nearGrid(p, d) { let best = null, bd = d; for (const g of this.world.grids) { if (!g.parts?.invs.length) continue; const x = g.sdf(p, d, null); if (x < bd) { bd = x; best = g } } return best }
   groundNormal(hit) { if (hit.solid.surface) { const s = hit.solid.surface(hit.point); return new THREE.Vector3(s.nx, s.ny, s.nz) } const p = hit.point, e = 0.3, S = hit.solid; return new THREE.Vector3(S.sdf(p.clone().setX(p.x + e)) - S.sdf(p.clone().setX(p.x - e)), S.sdf(p.clone().setY(p.y + e)) - S.sdf(p.clone().setY(p.y - e)), S.sdf(p.clone().setZ(p.z + e)) - S.sdf(p.clone().setZ(p.z - e))).normalize() }
   // ---- the jump drive ----
+  // how far this grid's jump drives reach (the best one)
+  jumpRange(gr) { let r = 0; for (const b of gr?.parts?.jumpdrives || []) if (works(b)) r = Math.max(r, b.def.func.jumpdrive.range[gr.size] || 0); return r }
   planJump(place) {
     const gr = this.player?.seat?.grid
     if (!gr) return
+    if (!this.jumpRange(gr)) { this.hud.toast('The jump drive is not working', C.red); return }
     const pw = gr.power
     if (pw && pw.supply + (pw.store > 0 ? 1 : 0) < 1 && !this.world.creative) { this.hud.toast('Not enough power to charge the jump drive', C.red); return }
-    this.jump = { grid: gr, place, t: 10 }
+    const range = this.jumpRange(gr), far = gr.comWorld().distanceTo(place.pos) - (place.kind === 'signal' ? 0 : place.r || 0) > range
+    this.jump = { grid: gr, place, t: 10, partial: far ? range : 0 }
     this.sfx.play('jump_charge', 0.6)
-    this.hud.toast(`Jump drive charging: ${place.name}`, C.amber)
+    this.hud.toast(far ? `Jump drive charging: ${Math.round(range / 1000).toLocaleString('en')} km toward ${place.name} (out of range: you will come out in the void)` : `Jump drive charging: ${place.name}`, C.amber)
   }
   doJump() {
     const J = this.jump, gr = J.grid, pl = J.place
@@ -387,16 +396,17 @@ export class Game {
     // arrive outside the target: above the near side of a world, at the edge of a rock field, short of a
     // waypoint, well out from an unknown group's centre
     const from = gr.comWorld(), dir = from.clone().sub(pl.pos).normalize()
-    const dist = pl.kind === 'planet' ? pl.r + Math.max(6000, pl.r * 0.55) : pl.kind === 'field' ? pl.r + 2500 : pl.kind === 'comet' ? pl.r + 3000 : pl.kind === 'signal' ? 140000 : pl.kind === 'star' ? pl.r * 7 : pl.kind === 'giant' ? pl.r * 2.6 : pl.kind === 'nebula' ? pl.r * 0.4 : 300
-    const to = pl.pos.clone().addScaledVector(dir, dist)
+    const dist = pl.kind === 'planet' ? pl.r + Math.max(6000, pl.r * 0.55) : pl.kind === 'field' ? pl.r + 2500 : pl.kind === 'void' || pl.kind === 'ice' ? pl.r + 1800 : pl.kind === 'comet' ? pl.r + 3000 : pl.kind === 'signal' ? 140000 : pl.kind === 'star' ? pl.r * 7 : pl.kind === 'giant' ? pl.r * 2.6 : pl.kind === 'nebula' ? pl.r * 0.4 : 300
+    const to = J.partial ? from.clone().addScaledVector(dir, -J.partial) : pl.pos.clone().addScaledVector(dir, dist)
     this.world.universe.ensure(to)
+    this.world.universe.voids?.manage(to)
     const d = to.clone().sub(from)
     gr.pos.add(d)
     for (const o of this.world.grids) if (o.locked?.grid === gr) o.pos.add(d)
     gr.vel.set(0, 0, 0); gr.angVel.set(0, 0, 0)
     this.sfx.play('jump', 0.9)
     this.flash = 1
-    this.hud.toast(`Arrived at ${pl.name}`, C.gold2)
+    this.hud.toast(J.partial ? `Jumped ${Math.round(J.partial / 1000).toLocaleString('en')} km toward ${pl.name}: ${Math.round((to.distanceTo(pl.pos)) / 1000).toLocaleString('en')} km to go` : `Arrived at ${pl.name}`, C.gold2)
   }
   // ---- too close to a star (or too deep in a gas giant): the suit and the hull burn ----
   heat(dt) {
@@ -485,8 +495,13 @@ export class Game {
         this.p0.log('dbg group', d.name, b.name, 'star', d.star.name, Math.round(st.distanceTo(c) / 1000), 'km')
       }
     }
-    if (e.code === 'End') this.p0.log('dbg sun', JSON.stringify({ star: this.world.universe.star?.name, planets: this.world.universe.planets.map(p => p.name + ':' + (p.owner?.star?.name || 'Vela')) }))
-    if (e.code === 'Numpad9') { this.dbgFast = !this.dbgFast; this.p0.log('dbg fast', this.dbgFast) }
+    if (e.code === 'End') this.p0.log('dbg sun', JSON.stringify({ at: P.pos.toArray().map(v => Math.round(v / 1000)), voids: this.world.universe.voids.scan(P.pos).map(s => s.def.name + ':' + Math.round(s.pos.distanceTo(P.pos) / 1000) + (s.def.event ? ':' + s.def.event : '')), awake: [...this.world.universe.voids.awake].map(s => s.def.name), star: this.world.universe.star?.name, planets: this.world.universe.planets.map(p => p.name + ':' + (p.owner?.star?.name || 'Vela')) }))
+    if (e.code === 'Insert' && P.seat) { // out into the void, then (second press) jump to the nearest void rock
+      const U = this.world.universe, gr = P.seat.grid
+      if (!this.dbgVoid) { this.dbgVoid = true; const to = new THREE.Vector3(-4e6, -3e6, 9.9e6); const d = to.sub(gr.comWorld()); gr.pos.add(d); for (const o of this.world.grids) if (o.locked?.grid === gr) o.pos.add(d); gr.vel.set(0, 0, 0); U.voids.manage(gr.comWorld()); this.p0.log('dbg void out', U.voids.scan(gr.comWorld()).length) }
+      else { const v = U.voids.places(gr.comWorld()).sort((a, b) => a.pos.distanceTo(gr.comWorld()) - b.pos.distanceTo(gr.comWorld()))[0]; if (v) { this.planJump(v); this.jump.t = 0.15; this.p0.log('dbg void jump', v.name, v.site.def.event) } }
+    }
+    if (e.code === 'Delete') { this.dbgFast = !this.dbgFast; this.p0.log('dbg fast', this.dbgFast) }
     if (e.code === 'NumpadMultiply') { const gr = this.pirates.spawn('marauder'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
     if (e.code === 'NumpadDivide') this.p0.log('dbg combat', JSON.stringify({ shots: this.world.combat.shots.length, rockets: this.world.combat.rockets.length, pirates: this.pirates.list.map(x => [x.grid.name, x.grid.ai.state, Math.round(x.grid.comWorld().distanceTo(P.pos)), x.grid.blocks.size, x.grid.ai.disabled ? 'off' : 'on']), health: Math.round(P.health), heat: this.heatNow?.toFixed(2), star: this.world.universe.star?.name, starD: Math.round(this.world.universe.star?.pos.distanceTo(P.pos) / 1000), wrecks: this.world.grids.filter(g => g.wreck).map(g => g.name), caves: this.world.universe.nearestPlanet(P.pos)?.caves?.list.length, wheels: P.seat?.grid.parts.wheels.map(w => [w.contact, (w.susp || 0).toFixed(2)]), v: P.seat ? P.seat.grid.vel.length().toFixed(1) : P.vel.length().toFixed(1) }))
     if (e.code === 'Backslash') { const gr = this.pirates.spawn('reaver'); this.p0.log('dbg pirate', gr.name, gr.blocks.size) }
@@ -631,6 +646,7 @@ export class Game {
     for (const gr of W.grids) if (gr.ai?.fire && !gr.ai.disabled) W.combat.fireGuns(gr, dt, true)
     if (!P.seat && !menu && B.tool === 'rifle' && inp.mouse.left && !P.dead) W.combat.rifle(P, this.camPos, new THREE.Vector3(0, 0, -1).applyQuaternion(this.camQuat), dt)
     this.wrecks.update(dt)
+    this.events.update(dt)
     this.heat(dt)
     if (P.seat) { const n = W.survival.shipDrill(P.seat.grid, dt, !menu && inp.mouse.left && P.seat.grid.parts.drills.length > 0); if (n) this.shake = Math.max(this.shake || 0, 0.15) }
     this.oreT = (this.oreT || 0) + dt

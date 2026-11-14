@@ -128,6 +128,8 @@ export class Asteroid {
   oreAtWorld(p) { const v = this.toLocal(p, new THREE.Vector3()); return this.oreAt(v.x, v.y, v.z) }
   // what ore is at a local point: veins of the asteroid's ores in stone
   oreAt(x, y, z) {
+    // a ball of ice: ice right through, with grit in it and the odd seam of something else
+    if (this.icy) { const v = this.n2(x / 14 + 50, y / 14, z / 14); return v > 0.55 ? (this.ores[1] || 'stone') : v < -0.6 ? 'stone' : 'ice' }
     if (!this.ores.length) return 'stone'
     const v = this.n2(x / 18 + 50, y / 18, z / 18)
     if (v > 0.38) return this.ores[0]
@@ -138,6 +140,13 @@ export class Asteroid {
   }
   colorAt(x, y, z, out) {
     // veins show as a tint in the stone, not as paint
+    if (this.icy) {
+      // ice: pale and bright, bluer in the cracks, with dark grit where there is stone
+      const ore = this.oreAt(x, y, z), f = 0.86 + this.n(x / 5, y / 5, z / 5) * 0.14, b = this.n(x / 23 + 7, y / 23, z / 23)
+      const o = ore === 'ice' ? [0.78 + b * 0.06, 0.9 + b * 0.04, 1] : ORES[ore].col
+      for (let i = 0; i < 3; i++) out[i] = o[i] * f
+      return
+    }
     const st = ORES.stone.col, o = ORES[this.oreAt(x, y, z)].col, t = this.tint, f = 0.88 + this.n(x / 6, y / 6, z / 6) * 0.12
     for (let i = 0; i < 3; i++) out[i] = (st[i] * 0.55 + o[i] * 0.45) * t[i] * f
   }
@@ -219,10 +228,10 @@ export class AsteroidField {
       const rad = big ? 60 + r() * 75 : 14 + r() ** 2 * 55
       const ores = [...d.ores].sort(() => r() - 0.5).slice(0, 1 + Math.floor(r() * 3))
       const t = 0.85 + r() * 0.25
-      this.list.push(new Asteroid(this, { id: this.def.id + '-' + i, pos: p, r: rad, seed: this.def.seed * 100 + i, stretch: [0.8 + r() * 0.5, 0.65 + r() * 0.4, 0.8 + r() * 0.6], rot: [r() * 6, r() * 6, r() * 6], ores, tint: [t, t * (0.95 + r() * 0.08), t * (0.9 + r() * 0.1)] }, this.engine, this.mat))
+      this.list.push(new Asteroid(this, { icy: !!d.icy || (d.iceShare && r() < d.iceShare), id: this.def.id + '-' + i, pos: p, r: rad, seed: this.def.seed * 100 + i, stretch: [0.8 + r() * 0.5, 0.65 + r() * 0.4, 0.8 + r() * 0.6], rot: [r() * 6, r() * 6, r() * 6], ores, tint: [t, t * (0.95 + r() * 0.08), t * (0.9 + r() * 0.1)] }, this.engine, this.mat))
     }
     // the field's guaranteed anchor: a large asteroid at the centre (stations are built into it)
-    if (d.anchor) this.list.push(new Asteroid(this, { id: this.def.id + '-anchor', pos: this.center.clone(), r: d.anchor, seed: this.def.seed * 100 + 999, stretch: [1.15, 0.8, 1], rot: [0.3, 0.8, 0.1], ores: d.ores.slice(0, 3), tint: [1, 0.97, 0.93] }, this.engine, this.mat))
+    if (d.anchor) this.list.push(new Asteroid(this, { icy: !!d.icy, id: this.def.id + '-anchor', pos: this.center.clone(), r: d.anchor, seed: this.def.seed * 100 + 999, stretch: [1.15, 0.8, 1], rot: [0.3, 0.8, 0.1], ores: d.ores.slice(0, 3), tint: [1, 0.97, 0.93] }, this.engine, this.mat))
   }
   update(cam, quality = 1) {
     const dc = cam.distanceTo(this.center)

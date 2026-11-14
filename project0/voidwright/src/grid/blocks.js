@@ -321,8 +321,8 @@ def({ id: 'antenna', name: 'Antenna Mast', cat: 'Utility', sizes: { large: [1, 4
 def({ id: 'gravgen', name: 'Gravity Generator', cat: 'Utility', sizes: { large: [1, 1, 1] }, shape: 'cube', full: 63, mass: { large: 2600 }, hp: { large: 1800 },
   desc: 'Artificial gravity in a 60 x 40 x 60 m box round it, pointing to its base: walk the decks of a ship or station, and loose ships parked inside settle to the floor. Needs power.', func: { gravgen: { half: [30, 20, 30], g: 9.81 }, power: { use: { large: 0.5 } } },
   geo(g) { g.box(-0.5, -0.5, -0.5, 0.5, 0.5, 0.5, { cull: true, tiles: { px: T.RING, nx: T.RING, pz: T.RING, nz: T.RING, py: T.CORE, ny: T.METAL }, emits: { py: 0.9 } }) } })
-def({ id: 'jumpdrive', name: 'Jump Drive', cat: 'Utility', sizes: { large: [3, 3, 2] }, shape: 'box', mass: { large: 22000 }, hp: { large: 6000 },
-  desc: 'Charges, then folds space: jump the whole grid up to 2,000 km. J in a seat.', func: { jumpdrive: { range: 2000000, charge: 10 }, power: { use: { large: 32 } } },
+def({ id: 'jumpdrive', name: 'Jump Drive', cat: 'Utility', sizes: { large: [3, 3, 2], small: [3, 3, 3] }, shape: 'box', mass: { large: 22000, small: 2400 }, hp: { large: 6000, small: 1600 },
+  desc: 'Charges, then folds space: jump the whole grid up to 16,000 km (large grid) or 5,000 km (small). A place out of range is jumped toward as far as the drive goes. J in a seat.', func: { jumpdrive: { range: { large: 16000000, small: 5000000 }, charge: 10 }, power: { use: { large: 32, small: 6 } } },
   geo(g) {
     g.box(-0.5, -0.5, -0.5, 2.5, 0.0, 1.5, { tile: T.HEAVY }); g.box(-0.5, 2.0, -0.5, 2.5, 2.5, 1.5, { tile: T.HEAVY })
     g.cyl('z', 1, 1, 0.5, 1.15, 1.6, { tile: T.RING, seg: 20, caps: false, double: true })

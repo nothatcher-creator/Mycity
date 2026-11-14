@@ -3,7 +3,6 @@
 // ever come close enough to burn a world, a field, a gas giant or a comet of any group?
 import * as THREE from 'three'
 import { sectorDef, clusterStarPos, groupFor, SECTOR } from '../src/world/universe.js'
-import { starsNear } from '../src/world/cosmos.js'
 
 const N = +(process.env.N || 8), defs = []
 for (let i = -N; i <= N; i++) for (let k = -N; k <= N; k++) { const d = sectorDef(i, k); if (!d.empty) defs.push(d) }

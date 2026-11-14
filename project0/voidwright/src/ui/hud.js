@@ -237,6 +237,8 @@ export class HUD {
       mark(pl.center, pl.name, fmtDist(d), 'rgba(166,255,245,0.85)')
     }
     for (const f of U.fields) { const d = eye.distanceTo(f.center); if (d > f.radius * 1.2) mark(f.center, f.name, fmtDist(d), 'rgba(255,190,110,0.85)') }
+    // what the scanner picks up in the void (within 400 km; the rest are on the map and the jump list)
+    if (U.voids) for (const s of U.voids.scan(eye)) { if (U.voids.awake.has(s)) continue; const d = eye.distanceTo(s.pos); if (d < 400000) mark(s.pos, s.def.name, fmtDist(d), s.def.kind === 'ice' ? 'rgba(190,232,255,0.85)' : 'rgba(228,210,168,0.8)') }
     // stars, gas giants, nebulae
     const C2 = U.cosmos
     if (C2) {

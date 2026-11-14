@@ -1,17 +1,20 @@
 // The universe of VOIDWRIGHT. The home system is made by hand: green Halvor and its moon, rust Vashti and its
 // ice moon, violet Thessa, the dune world Sabik with its molten moon, and three fields of rock. Beyond it,
-// space is laid out in sectors 1,800 km across, most holding a group of worlds made from the sector's
-// number: the same worlds for everyone, every visit. Only the groups near you are awake (their ground
+// space is laid out in sectors 14,000 km across, most holding a group of worlds made from the sector's
+// number (and set high or low as well as across: the groups are spread in every direction), each group
+// with its own star: the same worlds for everyone, every visit. Between them is the void, where lone rocks
+// drift (world/void.js). Only the groups near you are awake (their ground
 // drawn, their gravity felt); the ones behind you go to sleep but stay on your map, which grows as you
 // find things. Everything is in metres from Halvor's centre; the star's direction is the same everywhere.
 import * as THREE from 'three'
 import { Planet } from './planet.js'
 import { AsteroidField } from './asteroid.js'
 import { rng } from '../core/noise.js'
-import { Cosmos, STAR_CELL, starsNear, KCOL } from './cosmos.js'
+import { Cosmos, KCOL } from './cosmos.js'
+import { Voids } from './void.js'
 
-export const SECTOR = 1800000
-const WAKE = 1050000, SLEEP = 1300000, SENSE = 3400000
+export const SECTOR = 14000000
+const WAKE = 1500000, SLEEP = 1800000, SENSE = 32000000
 
 const HOME_BODIES = [
   { id: 'halvor', name: 'Halvor', kind: 'terra', R: 30000, g: 9.81, seed: 11, center: [0, 0, 0], relief: 1700,
@@ -84,7 +87,7 @@ export function sectorDef(i, k) {
   const r = rng(hash2i(i, k))
   if (r() > 0.66 && !(Math.abs(i) + Math.abs(k) === 1)) return { key: i + ',' + k, i, k, empty: true }
   const far = Math.min(1, Math.hypot(i, k) / 6)
-  const c = [(i + (r() - 0.5) * 0.3) * SECTOR, (r() - 0.5) * 300000, (k + (r() - 0.5) * 0.3) * SECTOR]
+  const c = [(i + (r() - 0.5) * 0.3) * SECTOR, (r() - 0.5) * 0.6 * SECTOR, (k + (r() - 0.5) * 0.3) * SECTOR]
   const name = makeName(r), key = i + ',' + k
   const dir = () => { const a = r() * Math.PI * 2, e = (r() - 0.5) * 0.5; return [Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e)] }
   const at = (o, d, len) => [o[0] + d[0] * len, o[1] + d[1] * len, o[2] + d[2] * len]
@@ -103,11 +106,12 @@ export function sectorDef(i, k) {
     cols: h < 0.33 ? [[0.86, 0.66, 0.42], [0.62, 0.42, 0.28], [0.95, 0.9, 0.8]] : h < 0.66 ? [[0.42, 0.62, 0.86], [0.26, 0.38, 0.66], [0.85, 0.92, 1]] : [[0.7, 0.8, 0.55], [0.45, 0.55, 0.36], [0.92, 0.95, 0.8]], blurb: 'A gas giant: no ground, only cloud that crushes the deeper you go.' }) }
   if (r() < 0.3) fields.push({ id: `s${key}c`, name: `Comet ${makeName(r)}`, center: at(c, dir(), 300000 + r() * 300000), radius: 900, count: 0, seed: Math.floor(r() * 1e6), anchor: 110 + r() * 70, comet: true, tail: 40000 + r() * 50000, ores: ['ice', 'ice', ...pickOres(r, far).slice(0, 2)], blurb: 'A comet: dirty ice with a tail of light.' })
   if (r() < 0.25) { const h = r(); nebulae.push({ id: `s${key}n`, name: `${makeName(r)} Nebula`, center: at(c, dir(), 900000 + r() * 400000), radius: 200000 + r() * 250000, seed: Math.floor(r() * 1e5), cols: h < 0.5 ? [[0.95, 0.35, 0.45], [0.95, 0.65, 0.3]] : [[0.3, 0.9, 0.7], [0.3, 0.5, 0.95]], blurb: 'A cloud of glowing gas.' }) }
-  // the group's own star, far out above or below the plane of the groups (a stream of its own, so the
-  // worlds above come out as they always have): it circles the group on a tilted cone, which is the day there
+  // the group's own star, thousands of kilometres out (its own random stream, so the worlds above come out
+  // the same with or without it): it circles the group on a cone round a random axis, which is the day there
   const rs = rng(hash2i(i, k) ^ 0x2c1b3c6d), sn = makeName(rs)
-  const star = { id: `s${key}*`, name: sn, R: 150000 + rs() * 170000, col: KCOL[Math.floor(rs() * KCOL.length)], center: c, dist: 3.2e6 + rs() * 1.6e6,
-    el: (0.6 + rs() * 0.35) * (rs() < 0.5 ? 1 : -1), phase: rs() * Math.PI * 2, day: 0.6 + rs() * 0.9, pos: new THREE.Vector3(), group: name }
+  const ax = new THREE.Vector3(rs() - 0.5, rs() - 0.5, rs() - 0.5).normalize(), u = new THREE.Vector3().crossVectors(ax, Math.abs(ax.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)).normalize(), v = new THREE.Vector3().crossVectors(ax, u)
+  const star = { id: `s${key}*`, name: sn, R: 150000 + rs() * 170000, col: KCOL[Math.floor(rs() * KCOL.length)], center: c, dist: 3.5e6 + rs() * 2.5e6,
+    el: (0.2 + rs() * 0.5) * (rs() < 0.5 ? 1 : -1), phase: rs() * Math.PI * 2, day: 0.6 + rs() * 0.9, ax, u, v, pos: new THREE.Vector3(), group: name }
   return { key, i, k, name, center: c, bodies, fields, giants, nebulae, star }
 }
 // the planet group a point belongs to: the group whose centre is nearest, if it is near enough (worlds,
@@ -124,8 +128,8 @@ export function groupFor(p, get = sectorDef) {
 }
 // where a group's star is at a time
 export function clusterStarPos(st, time, out = st.pos) {
-  const a = st.phase + time / (DAY * st.day) * Math.PI * 2, ce = Math.cos(st.el)
-  return out.set(st.center[0] + st.dist * ce * Math.cos(a), st.center[1] + st.dist * Math.sin(st.el), st.center[2] + st.dist * ce * Math.sin(a))
+  const a = st.phase + time / (DAY * st.day) * Math.PI * 2, ce = Math.cos(st.el) * st.dist, se = Math.sin(st.el) * st.dist, ca = Math.cos(a) * ce, sa = Math.sin(a) * ce
+  return out.set(st.center[0] + st.u.x * ca + st.v.x * sa + st.ax.x * se, st.center[1] + st.u.y * ca + st.v.y * sa + st.ax.y * se, st.center[2] + st.u.z * ca + st.v.z * sa + st.ax.z * se)
 }
 
 const DAY = 60 * 60 // seconds for the star to go round once
@@ -140,6 +144,7 @@ export class Universe {
     this.time = 0.18 * DAY
     this.tmpG = new THREE.Vector3()
     this.cosmos = new Cosmos(engine, this)
+    this.voids = new Voids(this, engine)
     this.homeDir = new THREE.Vector3().copy(this.sunDir)
     this.cam = new THREE.Vector3()
     this.wake(this.sector(0, 0))
@@ -172,12 +177,14 @@ export class Universe {
     s.awake = false
     this.refresh()
   }
+  get sectorSize() { return SECTOR }
   refresh() {
     this.planets = []; this.fields = []
     for (const s of this.sectors.values()) if (s.awake) { this.planets.push(...s.planets); this.fields.push(...s.fields) }
+    if (this.voids) this.fields.push(...this.voids.fields())
   }
   byId(id) { for (const s of this.sectors.values()) if (s.planets) for (const p of s.planets) if (p.id === id) return p; return null }
-  field(id) { for (const s of this.sectors.values()) if (s.fields) for (const f of s.fields) if (f.def.id === id) return f; return null }
+  field(id) { for (const s of this.sectors.values()) if (s.fields) for (const f of s.fields) if (f.def.id === id) return f; for (const f of this.voids?.fields() || []) if (f.def.id === id) return f; return null }
   // wakes whatever is in reach of a point (a new start, a jump) at once
   ensure(p) { this.manage(p) }
   manage(cam) {
@@ -272,7 +279,7 @@ export class Universe {
     this.cam.copy(cam)
     this.cosmos.update(this.lastDt || 0.016, cam, this.sunDir)
     this.acc = (this.acc || 0) + 1
-    if (this.acc % 30 === 1) this.manage(cam)
+    if (this.acc % 30 === 1) { this.manage(cam); this.voids.manage(cam) }
     for (const p of this.planets) p.update(cam, now, quality.detail)
     for (const f of this.fields) f.update(cam, quality.rocks)
   }
@@ -301,8 +308,9 @@ export class Universe {
     const C = this.cosmos
     if (C) {
       out.push({ id: 'vela', name: 'Vela', pos: C.home.pos.clone(), r: C.home.R, kind: 'star', blurb: 'The home star. It burns anything that comes within a few of its radii.', group: 'Home' })
-      for (const st of C.far(this.cam).slice().sort((a, b) => a.pos.distanceTo(this.cam) - b.pos.distanceTo(this.cam)).slice(0, 4)) out.push({ id: st.id, name: st.name, pos: st.pos.clone(), r: st.R, kind: 'star', blurb: 'A star far beyond the home system.', group: 'Deep space' })
     }
+    // what the scanner picks up in the void round you
+    if (this.voids) out.push(...this.voids.places(this.cam))
     return out
   }
 }
